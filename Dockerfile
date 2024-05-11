@@ -12,7 +12,7 @@ RUN go build -o gcmdb main.go
 FROM alpine:3
 RUN mkdir -p /root/data
 WORKDIR /root/data
-COPY --from=builder /root/data/rbac .
+COPY --from=builder /root/data/gcmdb .
 WORKDIR /root/data
 RUN chmod +x gcmdb
 EXPOSE 8080
