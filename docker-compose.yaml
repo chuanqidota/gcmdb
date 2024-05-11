@@ -1,0 +1,46 @@
+version: '3'
+services:
+  # mysql
+  mysql:
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: jinang123
+      MYSQL_DATABASE: gcmdb
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  # reids
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # es
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    environment:
+      - node.name=es01
+      - cluster.name=docker-cluster
+      - discovery.type=single-node
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+
+  # 项目本身
+  rbac:
+    restart: always
+    build:
+      context: . # 指定Dockerfile文件所在路径
+      dockerfile: Dockerfile # 指定Dockerfile文件名称
+    image: gcmdb:v1.0.0
+    container_name: gcmdb
+    ports:
+      - "8080:8080"
+volumes:
+  mysql_data:
+  es_data:
