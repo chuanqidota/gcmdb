@@ -4,23 +4,33 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
-
+	"gcmdb/app/cmdb/models"
+	"gcmdb/pkg/database"
+	"gcmdb/pkg/logger"
 	"github.com/spf13/cobra"
 )
 
 // migrateCmd represents the migrate command
 var migrateCmd = &cobra.Command{
 	Use:   "migrate",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "迁移表",
+	Long:  "自动迁移表 go run main.go migrate",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("migrate called")
+		err := database.DB.AutoMigrate(
+			&models.ModelGroup{},
+			&models.Model{},
+			&models.ModelFieldGroup{},
+			&models.ModelField{},
+			&models.ModelRelation{},
+			&models.ModelRelationType{},
+			&models.Instance{},
+			&models.InstanceRelation{},
+		)
+		if err != nil {
+			logger.Error("迁移出错:", err.Error())
+		} else {
+			logger.Info("迁移成功")
+		}
 	},
 }
 
