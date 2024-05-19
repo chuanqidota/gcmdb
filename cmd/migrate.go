@@ -20,6 +20,7 @@ var migrateCmd = &cobra.Command{
 			&models.ModelGroup{},
 			&models.Model{},
 			&models.ModelFieldGroup{},
+			&models.ModelFieldRelation{},
 			&models.ModelField{},
 			&models.ModelRelation{},
 			&models.ModelRelationType{},
