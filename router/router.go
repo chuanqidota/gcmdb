@@ -8,10 +8,11 @@ import (
 func Engine() *gin.Engine {
 	router := gin.Default()
 
-	task := router.Group("task")
+	gcmdb := router.Group("gcmdb")
+	v1 := gcmdb.Group("v1")
 
 	{
-		fmt.Println(task)
+		fmt.Println(v1)
 
 	}
 

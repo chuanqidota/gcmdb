@@ -8,7 +8,7 @@ import (
 	"gcmdb/config"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/logger"
-	"gcmdb/pkg/router"
+	"gcmdb/router"
 	"net/http"
 	"os"
 	"time"
