@@ -4,17 +4,18 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"gcmdb/config"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/es"
 	"gcmdb/pkg/logger"
 	"gcmdb/router"
+	"github.com/spf13/cobra"
 	"net/http"
 	"os"
+	"os/signal"
 	"time"
-
-	"github.com/spf13/cobra"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -63,7 +64,21 @@ func Run() {
 		WriteTimeout:   60 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
-	if err := server.ListenAndServe(); err != nil {
-		logger.Error("连接数据库失败:", err.Error())
+	go func() {
+		if err := server.ListenAndServe(); err != nil {
+			fmt.Println(err.Error())
+		}
+	}()
+	quit := make(chan os.Signal)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	fmt.Println("Shutdown Server ...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		fmt.Println(err.Error())
 	}
+	fmt.Println("Server exiting")
+
 }
