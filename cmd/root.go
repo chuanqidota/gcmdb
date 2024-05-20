@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"gcmdb/config"
 	"gcmdb/pkg/database"
+	"gcmdb/pkg/es"
 	"gcmdb/pkg/logger"
 	"gcmdb/router"
 	"net/http"
@@ -50,6 +51,7 @@ func init() {
 	logger.Init()
 	config.Init()
 	database.Init()
+	es.Init()
 }
 
 func Run() {

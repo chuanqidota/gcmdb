@@ -17,6 +17,11 @@ type Config struct {
 		Port     int    `json:"port"`
 		Name     string `json:"name"`
 	}
+	ElasticSearch struct {
+		Url      string `json:"url"`
+		UserName string `json:"username"`
+		Password string `json:"password"`
+	}
 }
 
 var Conf = new(Config)
