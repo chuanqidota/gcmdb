@@ -70,3 +70,8 @@ time="2024-05-24 06:54:15" level=info msg="解析配置文件：{{localhost 8080
 time="2024-05-24 06:54:15" level=info msg="数据库连接信息:root:jinang123@tcp(127.0.0.1:3306)/gcmdb?charset=utf8mb4&parseTime=True&loc=Local"
 time="2024-05-24 06:54:15" level=info msg="连接数据库成功：root:jinang123@tcp(127.0.0.1:3306)/gcmdb?charset=utf8mb4&parseTime=True&loc=Local"
 time="2024-05-24 06:54:20" level=error msg="es-连接失败: health check timeout: Head \"http://localhost:9200\": dial tcp 127.0.0.1:9200: connect: connection refused: no Elasticsearch node available"
+time="2024-05-24 07:12:52" level=info msg="解析配置文件：{{localhost 8080} {root jinang123 127.0.0.1 3306 gcmdb} {http://localhost:9200  }}"
+time="2024-05-24 07:12:52" level=info msg="数据库连接信息:root:jinang123@tcp(127.0.0.1:3306)/gcmdb?charset=utf8mb4&parseTime=True&loc=Local"
+time="2024-05-24 07:12:52" level=info msg="连接数据库成功：root:jinang123@tcp(127.0.0.1:3306)/gcmdb?charset=utf8mb4&parseTime=True&loc=Local"
+time="2024-05-24 07:12:57" level=error msg="es-连接失败: health check timeout: Head \"http://localhost:9200\": dial tcp 127.0.0.1:9200: connect: connection refused: no Elasticsearch node available"
+time="2024-05-24 07:12:57" level=info msg="迁移成功"

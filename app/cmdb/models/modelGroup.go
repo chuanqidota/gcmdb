@@ -1,11 +1,9 @@
 package models
 
-import "gorm.io/gorm"
-
 // ModelGroup
 // @Description: 模型分组
 type ModelGroup struct {
-	gorm.Model
+	BaseModel
 	Alias       string `gorm:"column:alias;type:string;size:255;unique;not null;comment:别名" json:"alias"`
 	Name        string `gorm:"column:name;type:string;size:255;unique;not null;comment:名称" json:"name"`
 	Description string `gorm:"column:description;type:text;comment:描述" json:"description"`
