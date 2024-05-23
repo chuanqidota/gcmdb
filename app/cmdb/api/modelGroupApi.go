@@ -47,7 +47,9 @@ func (m *modelGroup) ListModelGroup(c *gin.Context) {
 	search := _params.Search
 	limit := _params.Limit
 	offset := _params.Offset
-
+	if limit == 0 {
+		limit = 10
+	}
 	db := database.DB.Model(&models.ModelGroup{})
 
 	if search != "" {
@@ -73,21 +75,29 @@ func (m *modelGroup) RetrieveModelGroup(c *gin.Context) {
 	var result params.RetrieveModelGroup
 	if err := database.DB.Model(&models.ModelGroup{}).
 		Where("id = ?", groupId).
-		Joins("left join model on model_group.id = models.group_id").
-		Scan(&result).Error; err != nil {
+		Scan(&result.ModelGroup).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
+	}
+	if err := database.DB.Model(&models.Model{}).
+		Where("group_id = ?", groupId).
+		Scan(&result.Models).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
+	if result.Models == nil {
+		result.Models = make([]models.Model, 0)
 	}
 	response.Success(c, "执行成功", result)
 
 }
 
-// UpdateModelGroup
+// PatchModelGroup
 //
 //	@Description: 更新模型分组
 //	@receiver m
 //	@param c
-func (m *modelGroup) UpdateModelGroup(c *gin.Context) {
+func (m *modelGroup) PatchModelGroup(c *gin.Context) {
 	groupId := c.Param("id")
 	var body params.ModelGroupBody
 
@@ -109,6 +119,16 @@ func (m *modelGroup) UpdateModelGroup(c *gin.Context) {
 //	@param c
 func (m *modelGroup) DeleteModelGroup(c *gin.Context) {
 	groupId := c.Param("id")
+	var count int64
+	if err := database.DB.Model(&models.Model{}).Where("group_id = ?", groupId).Count(&count).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
+	if count > 0 {
+		response.Fail(c, fmt.Sprintf("该分组下存在模型，无法删除"))
+		return
+	}
+
 	if err := database.DB.Model(&models.ModelGroup{}).Where("id = ?", groupId).Delete(&models.ModelGroup{}).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
 		return
