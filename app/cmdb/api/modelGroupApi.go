@@ -129,7 +129,7 @@ func (m *modelGroup) DeleteModelGroup(c *gin.Context) {
 		return
 	}
 
-	if err := database.DB.Model(&models.ModelGroup{}).Where("id = ?", groupId).Delete(&models.ModelGroup{}).Error; err != nil {
+	if err := database.DB.Unscoped().Model(&models.ModelGroup{}).Where("id = ?", groupId).Delete(&models.ModelGroup{}).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
 		return
 	}
