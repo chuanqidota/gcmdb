@@ -3,8 +3,9 @@ package api
 import (
 	"fmt"
 	"gcmdb/app/cmdb/models"
-	"gcmdb/pkg/response"
+	"gcmdb/app/cmdb/params"
 	"gcmdb/pkg/database"
+	"gcmdb/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,14 +22,15 @@ var ModelGroup = new(modelGroup)
 //	@param c
 func (m *modelGroup) CreateModelGroup(c *gin.Context) {
 	var group models.ModelGroup
-	if err:=c.ShouldBindJSON(&group);err!=nil{
-		response.Fail(c,fmt.Sprintf("参数错误-%s",err.Error()))
-	}
-	if err:=database.DB.Model(&models.ModelGroup{}).Create(&group).Error;err!=nil{
-		response.Fail(c,fmt.Sprintf("创建失败-%s",err.Error()))
+	if err := c.ShouldBindJSON(&group); err != nil {
+		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
-	response.Success(c,"创建成功",nil)
+	if err := database.DB.Model(&models.ModelGroup{}).Create(&group).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
+		return
+	}
+	response.Success(c, "创建成功", nil)
 }
 
 // ListModelGroup
@@ -37,7 +39,28 @@ func (m *modelGroup) CreateModelGroup(c *gin.Context) {
 //	@receiver m
 //	@param c
 func (m *modelGroup) ListModelGroup(c *gin.Context) {
-	
+	var _params params.CommonQuery
+	if err := c.ShouldBindQuery(&_params); err != nil {
+		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
+		return
+	}
+	search := _params.Search
+	limit := _params.Limit
+	offset := _params.Offset
+
+	db := database.DB.Model(&models.ModelGroup{})
+
+	if search != "" {
+		db = db.Where("alias like ?", "%"+search+"%").
+			Or("name like ?", "%"+search+"%").
+			Or("description like ?", "%"+search+"%")
+	}
+	var results []models.ModelGroup
+	if err := db.Limit(limit).Offset(offset).Scan(&results).Error;err!=nil{
+		response.Fail(c,fmt.Sprintf("查询失败-%s",err.Error()))
+		return
+	}
+	response.Success(c,"执行成功",results)
 }
 
 // RetrieveModelGroup
