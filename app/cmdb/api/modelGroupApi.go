@@ -1,6 +1,13 @@
 package api
 
-import "github.com/gin-gonic/gin"
+import (
+	"fmt"
+	"gcmdb/app/cmdb/models"
+	"gcmdb/pkg/response"
+	"gcmdb/pkg/database"
+
+	"github.com/gin-gonic/gin"
+)
 
 type modelGroup struct {
 }
@@ -13,7 +20,15 @@ var ModelGroup = new(modelGroup)
 //	@receiver m
 //	@param c
 func (m *modelGroup) CreateModelGroup(c *gin.Context) {
-
+	var group models.ModelGroup
+	if err:=c.ShouldBindJSON(&group);err!=nil{
+		response.Fail(c,fmt.Sprintf("参数错误-%s",err.Error()))
+	}
+	if err:=database.DB.Model(&models.ModelGroup{}).Create(&group).Error;err!=nil{
+		response.Fail(c,fmt.Sprintf("创建失败-%s",err.Error()))
+		return
+	}
+	response.Success(c,"创建成功",nil)
 }
 
 // ListModelGroup
@@ -22,7 +37,7 @@ func (m *modelGroup) CreateModelGroup(c *gin.Context) {
 //	@receiver m
 //	@param c
 func (m *modelGroup) ListModelGroup(c *gin.Context) {
-
+	
 }
 
 // RetrieveModelGroup
