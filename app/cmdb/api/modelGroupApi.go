@@ -56,11 +56,11 @@ func (m *modelGroup) ListModelGroup(c *gin.Context) {
 			Or("description like ?", "%"+search+"%")
 	}
 	var results []models.ModelGroup
-	if err := db.Limit(limit).Offset(offset).Scan(&results).Error;err!=nil{
-		response.Fail(c,fmt.Sprintf("查询失败-%s",err.Error()))
+	if err := db.Limit(limit).Offset(offset).Scan(&results).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
-	response.Success(c,"执行成功",results)
+	response.Success(c, "执行成功", results)
 }
 
 // RetrieveModelGroup
@@ -69,6 +69,16 @@ func (m *modelGroup) ListModelGroup(c *gin.Context) {
 //	@receiver m
 //	@param c
 func (m *modelGroup) RetrieveModelGroup(c *gin.Context) {
+	groupId := c.Param("id")
+	var result params.RetrieveModelGroup
+	if err := database.DB.Model(&models.ModelGroup{}).
+		Where("id = ?", groupId).
+		Joins("left join model on model_group.id = models.group_id").
+		Scan(&result).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
+	response.Success(c, "执行成功", result)
 
 }
 
@@ -78,6 +88,18 @@ func (m *modelGroup) RetrieveModelGroup(c *gin.Context) {
 //	@receiver m
 //	@param c
 func (m *modelGroup) UpdateModelGroup(c *gin.Context) {
+	groupId := c.Param("id")
+	var body params.ModelGroupBody
+
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
+		return
+	}
+	if err := database.DB.Model(&models.ModelGroup{}).Where("id = ?", groupId).Updates(&body).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("更新失败-%s", err.Error()))
+		return
+	}
+	response.Success(c, "更新成功", nil)
 }
 
 // DeleteModelGroup
@@ -86,5 +108,11 @@ func (m *modelGroup) UpdateModelGroup(c *gin.Context) {
 //	@receiver m
 //	@param c
 func (m *modelGroup) DeleteModelGroup(c *gin.Context) {
+	groupId := c.Param("id")
+	if err := database.DB.Model(&models.ModelGroup{}).Where("id = ?", groupId).Delete(&models.ModelGroup{}).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
+		return
+	}
+	response.Success(c, "删除成功", nil)
 
 }
