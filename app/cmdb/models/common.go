@@ -13,7 +13,7 @@ type CustomTime time.Time
 // MarshalJSON 自定义 JSON 序列化方法
 func (t CustomTime) MarshalJSON() ([]byte, error) {
 	// 格式化时间为 "2006-01-02 15:04:05"
-	formattedTime := time.Time(t).Format("2006-01-02 15:04:05")
+	formattedTime := time.Time(t).Format(time.DateTime)
 	return []byte(fmt.Sprintf(`"%s"`, formattedTime)), nil
 }
 
