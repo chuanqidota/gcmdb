@@ -39,14 +39,14 @@ func (m *modelGroup) CreateModelGroup(c *gin.Context) {
 //	@receiver m
 //	@param c
 func (m *modelGroup) ListModelGroup(c *gin.Context) {
-	var _params params.CommonQuery
-	if err := c.ShouldBindQuery(&_params); err != nil {
+	var query params.CommonQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
-	search := _params.Search
-	limit := _params.Limit
-	offset := _params.Offset
+
+	search := query.Search
+	limit, offset := query.Limit, query.Offset
 	if limit == 0 {
 		limit = 10
 	}
