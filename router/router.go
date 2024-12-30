@@ -2,6 +2,7 @@ package router
 
 import (
 	"gcmdb/app/cmdb/api"
+	"gcmdb/pkg/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -9,7 +10,7 @@ func Engine() *gin.Engine {
 	router := gin.Default()
 
 	gcmdb := router.Group("gcmdb")
-	v1 := gcmdb.Group("v1")
+	v1 := gcmdb.Group("v1").Use(middleware.CORSMiddleware())
 
 	{
 
