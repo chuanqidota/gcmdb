@@ -1,5 +1,7 @@
 package models
 
+import "gcmdb/pkg/database"
+
 // ModelGroup
 // @Description: 模型分组
 type ModelGroup struct {
@@ -17,4 +19,20 @@ type ModelGroup struct {
 //	@return string
 func (ModelGroup) TableName() string {
 	return "model_group"
+}
+
+// GetModel
+//
+//	@Description: 获取组对应的模型
+//	@receiver mg
+//	@return []Model
+//	@return error
+func (mg *ModelGroup) GetModels() ([]Model, error) {
+	models := make([]Model, 0)
+	if err := database.DB.Model(&Model{}).
+		Where("group_id = ?", mg.ID).
+		Scan(&models).Error; err != nil {
+		return nil, err
+	}
+	return models, nil
 }

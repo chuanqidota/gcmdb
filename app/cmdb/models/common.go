@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"gorm.io/gorm"
 	"time"
@@ -15,6 +16,20 @@ func (t CustomTime) MarshalJSON() ([]byte, error) {
 	// 格式化时间为 "2006-01-02 15:04:05"
 	formattedTime := time.Time(t).Format(time.DateTime)
 	return []byte(fmt.Sprintf(`"%s"`, formattedTime)), nil
+}
+
+// UnmarshalJSON 自定义 JSON 反序列化方法
+func (t *CustomTime) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	parsedTime, err := time.Parse(time.DateTime, s)
+	if err != nil {
+		return err
+	}
+	*t = CustomTime(parsedTime)
+	return nil
 }
 
 // Value 实现 driver.Valuer 接口

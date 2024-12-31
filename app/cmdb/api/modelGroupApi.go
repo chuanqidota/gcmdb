@@ -6,7 +6,6 @@ import (
 	"gcmdb/app/cmdb/params"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -39,30 +38,42 @@ func (m *modelGroup) CreateModelGroup(c *gin.Context) {
 //	@receiver m
 //	@param c
 func (m *modelGroup) ListModelGroup(c *gin.Context) {
+	// 参数校验
 	var query params.CommonQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
-
 	search := query.Search
 	limit, offset := query.Limit, query.Offset
 	if limit == 0 {
 		limit = 10
 	}
+	// 查询
 	db := database.DB.Model(&models.ModelGroup{})
-
 	if search != "" {
-		db = db.Where("alias like ?", "%"+search+"%").
+		db.Where("alias like ?", "%"+search+"%").
 			Or("name like ?", "%"+search+"%").
 			Or("description like ?", "%"+search+"%")
 	}
-	var results []models.ModelGroup
-	if err := db.Limit(limit).Offset(offset).Scan(&results).Error; err != nil {
+	// 分页数量
+	var count int64
+	if err := db.Model(&models.ModelGroup{}).Count(&count).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
-	response.Success(c, "执行成功", results)
+	// 结果查询
+	var modelGroups []models.ModelGroup
+	if err := db.Limit(limit).Offset(offset).Scan(&modelGroups).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
+	// 结果响应
+	data := params.CommonList{
+		Count:   count,
+		Results: modelGroups,
+	}
+	response.Success(c, "执行成功", data)
 }
 
 // RetrieveModelGroup
@@ -72,21 +83,21 @@ func (m *modelGroup) ListModelGroup(c *gin.Context) {
 //	@param c
 func (m *modelGroup) RetrieveModelGroup(c *gin.Context) {
 	groupId := c.Param("id")
-	var result params.RetrieveModelGroup
+	var group models.ModelGroup
 	if err := database.DB.Model(&models.ModelGroup{}).
 		Where("id = ?", groupId).
-		Scan(&result.ModelGroup).Error; err != nil {
+		Scan(&group).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
-	if err := database.DB.Model(&models.Model{}).
-		Where("group_id = ?", groupId).
-		Scan(&result.Models).Error; err != nil {
+	_models, err := group.GetModels()
+	if err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
-	if result.Models == nil {
-		result.Models = make([]models.Model, 0)
+	result := params.RetrieveModelGroup{
+		ModelGroup: group,
+		Models:     _models,
 	}
 	response.Success(c, "执行成功", result)
 
@@ -99,13 +110,15 @@ func (m *modelGroup) RetrieveModelGroup(c *gin.Context) {
 //	@param c
 func (m *modelGroup) PatchModelGroup(c *gin.Context) {
 	groupId := c.Param("id")
-	var body params.ModelGroupBody
+	var body params.PatchModelGroupBody
 
 	if err := c.ShouldBindJSON(&body); err != nil {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
-	if err := database.DB.Model(&models.ModelGroup{}).Where("id = ?", groupId).Updates(&body).Error; err != nil {
+	if err := database.DB.Model(&models.ModelGroup{}).
+		Where("id = ?", groupId).
+		Updates(map[string]any{"name": body.Name, "description": body.Description}).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("更新失败-%s", err.Error()))
 		return
 	}
@@ -120,7 +133,9 @@ func (m *modelGroup) PatchModelGroup(c *gin.Context) {
 func (m *modelGroup) DeleteModelGroup(c *gin.Context) {
 	groupId := c.Param("id")
 	var count int64
-	if err := database.DB.Model(&models.Model{}).Where("group_id = ?", groupId).Count(&count).Error; err != nil {
+	if err := database.DB.Model(&models.Model{}).
+		Where(map[string]any{"group_id": groupId}).
+		Count(&count).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
@@ -129,7 +144,9 @@ func (m *modelGroup) DeleteModelGroup(c *gin.Context) {
 		return
 	}
 
-	if err := database.DB.Unscoped().Model(&models.ModelGroup{}).Where("id = ?", groupId).Delete(&models.ModelGroup{}).Error; err != nil {
+	if err := database.DB.Unscoped().Model(&models.ModelGroup{}).
+		Where(map[string]any{"id": groupId}).
+		Delete(&models.ModelGroup{}).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
 		return
 	}
