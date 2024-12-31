@@ -1,5 +1,7 @@
 package models
 
+import "gcmdb/pkg/database"
+
 // Model
 // @Description:模型
 type Model struct {
@@ -20,4 +22,36 @@ type Model struct {
 //	@return string
 func (Model) TableName() string {
 	return "model"
+}
+
+// GetModelFieldGroups
+//
+//	@Description: 获取模型对应的字段分组
+//	@receiver m
+//	@return []ModelFieldGroup
+//	@return error
+func (m *Model) GetModelFieldGroups() ([]ModelFieldGroup, error) {
+	modelFieldGroups := make([]ModelFieldGroup, 0)
+	if err := database.DB.Model(&ModelFieldGroup{}).
+		Where(map[string]any{"model_id": m.ID}).
+		Scan(&modelFieldGroups).Error; err != nil {
+		return nil, err
+	}
+	return modelFieldGroups, nil
+}
+
+// GetModelFields
+//
+//	@Description: 获取模型对应的字段
+//	@receiver m
+//	@return []ModelField
+//	@return error
+func (m *Model) GetModelFields() ([]ModelField, error) {
+	modelFields := make([]ModelField, 0)
+	if err := database.DB.Model(&ModelField{}).
+		Where(map[string]any{"model_id": m.ID}).
+		Scan(&modelFields).Error; err != nil {
+		return nil, err
+	}
+	return modelFields, nil
 }

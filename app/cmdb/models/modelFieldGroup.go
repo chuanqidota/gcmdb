@@ -1,5 +1,7 @@
 package models
 
+import "gcmdb/pkg/database"
+
 // ModelFieldGroup
 // @Description:模型字段分组>模型和字段分组名称联合唯一
 type ModelFieldGroup struct {
@@ -16,4 +18,20 @@ type ModelFieldGroup struct {
 //	@return string
 func (ModelFieldGroup) TableName() string {
 	return "model_field_group"
+}
+
+// GetModelFields
+//
+//	@Description: 根据模型字段分组id获取模型字段
+//	@receiver mfg
+//	@return []ModelField
+//	@return error
+func (mfg *ModelFieldGroup) GetModelFields() ([]ModelField, error) {
+	modelFields := make([]ModelField, 0)
+	if err := database.DB.Model(&ModelField{}).
+		Where(map[string]any{"field_group_id": mfg.ID}).
+		Scan(&modelFields).Error; err != nil {
+		return nil, err
+	}
+	return modelFields, nil
 }

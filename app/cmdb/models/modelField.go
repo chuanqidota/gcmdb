@@ -5,7 +5,7 @@ package models
 type ModelField struct {
 	BaseModel
 	ModelId      uint   `gorm:"column:model_id;type:uint;not null;uniqueIndex:idx_alias_model_id;uniqueIndex:idx_name_model_id;comment:模型id" json:"model_id"`
-	FieldGroupId uint   `gorm:"column:model_id;type:uint;comment:字段分组id" json:"field_group_id"`
+	FieldGroupId uint   `gorm:"column:field_group_id;type:uint;comment:字段分组id" json:"field_group_id"`
 	Alias        string `gorm:"column:alias;type:string;size:255;not null;uniqueIndex:idx_alias_model_id;comment:别名" json:"alias"`
 	Name         string `gorm:"column:name;type:string;size:255;not null;uniqueIndex:idx_name_model_id;comment:名称" json:"name"`
 	Type         string `gorm:"column:type;type:string;size:255;not null;comment:类型" json:"type"` //ENUM('string','number','bool')待定
