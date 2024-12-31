@@ -39,10 +39,10 @@ func Engine() *gin.Engine {
 		v1.DELETE("model-relation-type", api.ModelRelationType.DeleteModelRelationType) // 删除模型关系类型
 
 		// 模型字段分组
-		v1.POST("model-field-group", api.ModelFieldGroup.CreateModelFieldGroup)            // 创建模型字段分组
-		v1.GET("model-field-group/:model_id", api.ModelFieldGroup.RetrieveModelFieldGroup) // 查询模型字段分组详情
-		v1.PUT("model-field-group/:id", api.ModelFieldGroup.UpdateModelFieldGroup)         // 修改模型字段分组
-		v1.DELETE("model-field-group/:id", api.ModelFieldGroup.DeleteModelFieldGroup)      // 删除模型字段分组
+		v1.POST("model-field-group", api.ModelFieldGroup.CreateModelFieldGroup)       // 创建模型字段分组
+		v1.GET("model-field-group/:id", api.ModelFieldGroup.RetrieveModelFieldGroup)  // 查询模型字段分组详情
+		v1.PUT("model-field-group/:id", api.ModelFieldGroup.UpdateModelFieldGroup)    // 修改模型字段分组
+		v1.DELETE("model-field-group/:id", api.ModelFieldGroup.DeleteModelFieldGroup) // 删除模型字段分组
 
 		// 模型字段
 		v1.POST("model-field", api.ModelField.CreateModelField)       // 创建模型字段

@@ -3,6 +3,8 @@ package api
 import (
 	"fmt"
 	"gcmdb/app/cmdb/models"
+	"gcmdb/app/cmdb/params"
+	"gcmdb/app/cmdb/resp"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -35,32 +37,25 @@ func (m *modelFieldGroup) CreateModelFieldGroup(c *gin.Context) {
 //
 
 func (m *modelFieldGroup) RetrieveModelFieldGroup(c *gin.Context) {
-	modelId := c.Query("model_id")
-
-	// 查询模型对应的模型字段分组
-	modelFieldGroups := make([]models.ModelFieldGroup, 0)
+	id := c.Query("id")
+	// 获取字段分组信息
+	var modelFieldGroup models.ModelFieldGroup
 	if err := database.DB.Model(&models.ModelFieldGroup{}).
-		Where(map[string]any{"model_id": modelId}).
-		Order("order asc").
-		Scan(&modelFieldGroups).Error; err != nil {
+		Where(map[string]any{"id": id}).
+		Scan(&modelFieldGroup).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
-	// 额外补充字段信息
-	results := make([]map[string]any, 0)
-	for _, modelFieldGroup := range modelFieldGroups {
-		result := map[string]any{
-			"id":    modelFieldGroup.ID,
-			"name":  modelFieldGroup.Name,
-			"order": modelFieldGroup.Order,
-		}
-		modelFields, err := modelFieldGroup.GetModelFields()
-		if err != nil {
-			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
-			return
-		}
-		result["fields"] = modelFields
-		results = append(results, result)
+	// 获取字段分组对应的字段
+	fields, err := modelFieldGroup.GetModelFields()
+	if err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
+	// 响应
+	results := resp.RetrieveModelFieldGroup{
+		ModelFieldGroup: modelFieldGroup,
+		Fields:          fields,
 	}
 	response.Success(c, "执行成功", results)
 
@@ -73,14 +68,14 @@ func (m *modelFieldGroup) RetrieveModelFieldGroup(c *gin.Context) {
 //	@param c
 func (m *modelFieldGroup) UpdateModelFieldGroup(c *gin.Context) {
 	id := c.Param("id")
-	var name string
-	if err := c.ShouldBindJSON(&name); err != nil {
+	var body params.UpdateModelFieldGroup
+	if err := c.ShouldBindJSON(&body); err != nil {
 		response.Fail(c, "参数错误")
 		return
 	}
 	if err := database.DB.Model(&models.ModelFieldGroup{}).
 		Where(map[string]any{"id": id}).
-		Updates(map[string]any{"name": name}).Error; err != nil {
+		Updates(map[string]any{"name": body.Name}).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("更新失败-%s", err.Error()))
 		return
 	}
