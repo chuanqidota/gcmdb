@@ -21,7 +21,7 @@ func (ModelGroup) TableName() string {
 	return "model_group"
 }
 
-// GetModel
+// GetModels
 //
 //	@Description: 获取组对应的模型
 //	@receiver mg
