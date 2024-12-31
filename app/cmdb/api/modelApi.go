@@ -158,6 +158,7 @@ func (m *model) UpdateModel(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("更新失败-%s", err.Error()))
 		return
 	}
+	response.Success(c, "更新成功", nil)
 }
 
 // DeleteModel
