@@ -223,6 +223,14 @@ func (m *model) DeleteModel(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("删除字段分组失败-%s", err.Error()))
 		return
 	}
+	// 删除模型字段关联
+	if err := database.DB.Unscoped().Model(&models.ModelFieldRelation{}).
+		Where(map[string]any{"source_model_id": modelId}).
+		Or(map[string]any{"target_model_id": modelId}).
+		Delete(&models.ModelFieldRelation{}).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("删除模型字段关联失败-%s", err.Error()))
+		return
+	}
 	// 删除模型
 	if err := database.DB.Unscoped().Model(&models.Model{}).
 		Where(map[string]any{"id": modelId}).
@@ -230,5 +238,6 @@ func (m *model) DeleteModel(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("删除模型失败-%s", err.Error()))
 		return
 	}
+
 	response.Success(c, "执行成功", nil)
 }

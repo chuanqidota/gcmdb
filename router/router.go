@@ -26,9 +26,8 @@ func Engine() *gin.Engine {
 		v1.PATCH("model/change-group", api.Model.PatchModelGroupId) // 修改模型分组
 		v1.DELETE("model/:id", api.Model.DeleteModel)               // 删除模型
 
-		v1.POST("model-relation", api.ModelRelation.CreateModelRelation)       // 创建模型关系
+		v1.POST("model-relation", api.ModelRelation.CreateModelRelation)       // 创建模型关系- 需要创建实例关系 // todo
 		v1.GET("model-relation", api.ModelRelation.ListModelRelation)          // 模型关系查询
-		v1.PUT("model-relation/:id", api.ModelRelation.UpdateModelRelation)    // 修改模型关系
 		v1.DELETE("model-relation/:id", api.ModelRelation.DeleteModelRelation) // 删除模型关系
 
 		v1.POST("model-relation-type", api.ModelRelationType.CreateModelRelationType)   // 创建模型关系类型

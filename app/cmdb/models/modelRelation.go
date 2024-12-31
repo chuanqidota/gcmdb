@@ -1,5 +1,10 @@
 package models
 
+import (
+	"fmt"
+	"gcmdb/pkg/database"
+)
+
 // ModelRelation
 // @Description:模型关系
 type ModelRelation struct {
@@ -17,4 +22,52 @@ type ModelRelation struct {
 //	@return string
 func (ModelRelation) TableName() string {
 	return "model_relation"
+}
+
+// SourceDisplay
+//
+//	@Description: 源模型展示
+//	@receiver mr
+//	@return string
+//	@return error
+func (mr *ModelRelation) SourceDisplay() (string, error) {
+	var _model Model
+	if err := database.DB.Model(&Model{}).
+		Where(map[string]any{"id": mr.SourceId}).
+		Scan(&_model).Error; err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s(%s)", _model.Name, _model.Alias), nil
+}
+
+// TargetDisplay
+//
+//	@Description: 目的模型展示
+//	@receiver mr
+//	@return string
+//	@return error
+func (mr *ModelRelation) TargetDisplay() (string, error) {
+	var _model Model
+	if err := database.DB.Model(&Model{}).
+		Where(map[string]any{"id": mr.TargetId}).
+		Scan(&_model).Error; err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s(%s)", _model.Name, _model.Alias), nil
+}
+
+// TypeDisplay
+//
+//	@Description: 模型关系类型展示
+//	@receiver mr
+//	@return string
+//	@return error
+func (mr *ModelRelation) TypeDisplay() (string, error) {
+	var _modelRelationType ModelRelationType
+	if err := database.DB.Model(&ModelRelationType{}).
+		Where(map[string]any{"id": mr.TypeId}).
+		Scan(&_modelRelationType).Error; err != nil {
+		return "", err
+	}
+	return _modelRelationType.Name, nil
 }
