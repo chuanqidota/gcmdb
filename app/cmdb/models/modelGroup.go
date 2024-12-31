@@ -31,6 +31,7 @@ func (mg *ModelGroup) GetModels() ([]Model, error) {
 	models := make([]Model, 0)
 	if err := database.DB.Model(&Model{}).
 		Where("group_id = ?", mg.ID).
+		Order("order asc").
 		Scan(&models).Error; err != nil {
 		return nil, err
 	}

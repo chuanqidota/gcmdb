@@ -108,6 +108,7 @@ func (m *modelRelationType) UpdateModelRelationType(c *gin.Context) {
 //	@param c
 func (m *modelRelationType) DeleteModelRelationType(c *gin.Context) {
 	relationId := c.Param("id")
+	// 判断是否存在模型关系
 	var count int64
 	if err := database.DB.Model(&models.ModelRelation{}).
 		Where(map[string]any{"type_id": relationId}).
@@ -119,6 +120,7 @@ func (m *modelRelationType) DeleteModelRelationType(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("该类型存在关联关系，无法删除"))
 		return
 	}
+	// 删除
 	if err := database.DB.Unscoped().Model(&models.ModelRelationType{}).
 		Where(map[string]any{"id": relationId}).
 		Delete(&models.ModelRelationType{}).Error; err != nil {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/app/cmdb/params"
+	"gcmdb/app/cmdb/resp"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -78,7 +79,7 @@ func (m *model) ListModel(c *gin.Context) {
 	}
 	//
 	var _models []models.Model
-	if err := db.Limit(limit).Offset(offset).Scan(&_models).Error; err != nil {
+	if err := db.Order("order asc").Limit(limit).Offset(offset).Scan(&_models).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
@@ -99,14 +100,39 @@ func (m *model) ListModel(c *gin.Context) {
 //	@param c
 func (m *model) RetrieveModel(c *gin.Context) {
 	modelId := c.Param("id")
-	var result models.Model
+	var _model models.Model
 	if err := database.DB.Model(&models.Model{}).
 		Where(map[string]any{"id": modelId}).
-		Scan(&result).Error; err != nil {
+		Scan(&_model).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
-	response.Success(c, "执行成功", result)
+	// 模型对应的字段分组
+	groups, err := _model.GetModelFieldGroups()
+	if err != nil {
+		response.Fail(c, fmt.Sprintf("获取字段组失败-%s", err.Error()))
+		return
+	}
+	// 字段分组对应的字段
+	groupResults := make([]resp.RetrieveModelGroupField, 0)
+	for _, group := range groups {
+		modelFields, err := group.GetModelFields()
+		if err != nil {
+			response.Fail(c, fmt.Sprintf("获取字段失败-%s", err.Error()))
+			return
+		}
+		item := resp.RetrieveModelGroupField{
+			Groups:      group,
+			ModelFields: modelFields,
+		}
+		groupResults = append(groupResults, item)
+	}
+	// 响应
+	results := resp.RetrieveModelResp{
+		Model:  _model,
+		Groups: groupResults,
+	}
+	response.Success(c, "执行成功", results)
 }
 
 // PatchModelGroupId

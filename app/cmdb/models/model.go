@@ -36,6 +36,7 @@ func (m *Model) GetModelFieldGroups() ([]ModelFieldGroup, error) {
 	modelFieldGroups := make([]ModelFieldGroup, 0)
 	if err := database.DB.Model(&ModelFieldGroup{}).
 		Where(map[string]any{"model_id": m.ID}).
+		Order("order asc").
 		Scan(&modelFieldGroups).Error; err != nil {
 		return nil, err
 	}
@@ -52,6 +53,7 @@ func (m *Model) GetModelFields() ([]ModelField, error) {
 	modelFields := make([]ModelField, 0)
 	if err := database.DB.Model(&ModelField{}).
 		Where(map[string]any{"model_id": m.ID}).
+		Order("order asc").
 		Scan(&modelFields).Error; err != nil {
 		return nil, err
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/app/cmdb/params"
+	"gcmdb/app/cmdb/resp"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -64,7 +65,7 @@ func (m *modelGroup) ListModelGroup(c *gin.Context) {
 	}
 	// 结果查询
 	var modelGroups []models.ModelGroup
-	if err := db.Limit(limit).Offset(offset).Scan(&modelGroups).Error; err != nil {
+	if err := db.Order("order asc").Limit(limit).Offset(offset).Scan(&modelGroups).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
@@ -95,7 +96,7 @@ func (m *modelGroup) RetrieveModelGroup(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
-	result := params.RetrieveModelGroup{
+	result := resp.RetrieveModelGroup{
 		ModelGroup: group,
 		Models:     _models,
 	}
