@@ -19,11 +19,12 @@ func Engine() *gin.Engine {
 		v1.PATCH("model-group/:id", api.ModelGroup.PatchModelGroup)   // 修改模型分组
 		v1.DELETE("model-group/:id", api.ModelGroup.DeleteModelGroup) // 删除模型分组
 
-		v1.POST("model", api.Model.CreateModel)       // 创建模型
-		v1.GET("model", api.Model.ListModel)          // 模型查询
-		v1.GET("model/:id", api.Model.RetrieveModel)  // 模型详情
-		v1.PUT("model/:id", api.Model.UpdateModel)    // 修改模型
-		v1.DELETE("model/:id", api.Model.DeleteModel) // 删除模型
+		v1.POST("model", api.Model.CreateModel)                 // 创建模型
+		v1.GET("model", api.Model.ListModel)                    // 模型查询
+		v1.GET("model/:id", api.Model.RetrieveModel)            // 模型详情
+		v1.PUT("model/:id", api.Model.UpdateModel)              // 修改模型
+		v1.PATCH("model-group-id", api.Model.PatchModelGroupId) // 修改模型分组
+		v1.DELETE("model/:id", api.Model.DeleteModel)           // 删除模型
 
 		v1.POST("model-relation", api.ModelRelation.CreateModelRelation)       // 创建模型关系
 		v1.GET("model-relation", api.ModelRelation.ListModelRelation)          // 模型关系查询

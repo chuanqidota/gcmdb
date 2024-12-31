@@ -1,6 +1,8 @@
 package models
 
-import "gcmdb/pkg/database"
+import (
+	"gcmdb/pkg/database"
+)
 
 // Model
 // @Description:模型

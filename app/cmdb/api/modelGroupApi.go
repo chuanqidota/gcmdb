@@ -58,7 +58,7 @@ func (m *modelGroup) ListModelGroup(c *gin.Context) {
 	}
 	// 分页数量
 	var count int64
-	if err := db.Model(&models.ModelGroup{}).Count(&count).Error; err != nil {
+	if err := db.Count(&count).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
