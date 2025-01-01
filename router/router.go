@@ -44,6 +44,11 @@ func Engine() *gin.Engine {
 		v1.PUT("model-field-group/:id", api.ModelFieldGroup.UpdateModelFieldGroup)    // 修改模型字段分组
 		v1.DELETE("model-field-group/:id", api.ModelFieldGroup.DeleteModelFieldGroup) // 删除模型字段分组
 
+		// 模型唯一字段
+		v1.POST("model-field-unique", api.ModelFieldUnique.CreateModelFieldUnique)            // 模型唯一字段
+		v1.GET("model-field-unique/:model_id", api.ModelFieldUnique.RetrieveModelFieldUnique) // 展示模型的唯一字段
+		v1.DELETE("model-field-unique/:id", api.ModelFieldUnique.DeleteModelFieldUnique)      // 删除模型唯一字段
+
 		// 模型字段
 		v1.POST("model-field", api.ModelField.CreateModelField)            // 创建模型字段-todo 实例里面异步补充字段
 		v1.GET("model-field/:model_id", api.ModelField.RetrieveModelField) // 查询模型字段详情
