@@ -61,16 +61,15 @@ func Engine() *gin.Engine {
 		v1.DELETE("model-field-relation/:id", api.ModelFieldRelation.DeleteModelFieldRelation)         // 删除模型字段关系-todo 需要操作实例
 
 		// 实例
-		v1.POST("instance", api.Instance.CreateInstance)       // 创建实例
-		v1.GET("instance", api.Instance.ListInstance)          // 查询实例
+		v1.POST("instance", api.Instance.CreateInstance)       // 创建实例- todo 未做唯一性判断
+		v1.GET("instance", api.Instance.ListInstance)          // 查询实例-todo
 		v1.GET("instance/:id", api.Instance.RetrieveInstance)  // 查询实例详情
-		v1.PUT("instance/:id", api.Instance.UpdateInstance)    // 更新实例
+		v1.PUT("instance/:id", api.Instance.UpdateInstance)    // 更新实例-todo
 		v1.DELETE("instance/:id", api.Instance.DeleteInstance) // 删除实例
 
 		// 实例关系
 		v1.POST("instance-relation", api.InstanceRelation.CreateInstanceRelation)       // 创建实例关系
-		v1.GET("instance-relation", api.InstanceRelation.ListInstanceRelation)          // 查询实例关系
-		v1.PUT("instance-relation/:id", api.InstanceRelation.UpdateInstanceRelation)    // 修改实例关系
+		v1.GET("instance-relation", api.InstanceRelation.ListInstanceRelation)          // 查询实例关系 - todo
 		v1.DELETE("instance-relation/:id", api.InstanceRelation.DeleteInstanceRelation) // 删除实例关系
 
 	}
