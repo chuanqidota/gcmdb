@@ -44,13 +44,13 @@ func (m *modelRelationType) ListModelRelationType(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
-
+	// 参数
 	search := query.Search
 	limit, offset := query.Limit, query.Offset
 	if limit == 0 {
 		limit = 10
 	}
-
+	// 查询
 	db := database.DB.Model(&models.ModelRelationType{})
 	if search != "" {
 		db.Where("name like ?", "%"+search+"%").
@@ -62,11 +62,13 @@ func (m *modelRelationType) ListModelRelationType(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
+	// 分页
 	var modelRelationTypes []models.ModelRelationType
 	if err := db.Limit(limit).Offset(offset).Scan(&modelRelationTypes).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
+	// 响应
 	results := params.CommonList{
 		Count:   count,
 		Results: modelRelationTypes,
@@ -107,11 +109,11 @@ func (m *modelRelationType) UpdateModelRelationType(c *gin.Context) {
 //	@receiver m
 //	@param c
 func (m *modelRelationType) DeleteModelRelationType(c *gin.Context) {
-	relationId := c.Param("id")
+	typeId := c.Param("id")
 	// 判断是否存在模型关系
 	var count int64
 	if err := database.DB.Model(&models.ModelRelation{}).
-		Where(map[string]any{"type_id": relationId}).
+		Where(map[string]any{"type_id": typeId}).
 		Count(&count).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
@@ -122,7 +124,7 @@ func (m *modelRelationType) DeleteModelRelationType(c *gin.Context) {
 	}
 	// 删除
 	if err := database.DB.Unscoped().Model(&models.ModelRelationType{}).
-		Where(map[string]any{"id": relationId}).
+		Where(map[string]any{"id": typeId}).
 		Delete(&models.ModelRelationType{}).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
 		return

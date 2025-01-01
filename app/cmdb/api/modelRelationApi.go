@@ -84,8 +84,8 @@ func (m *modelRelation) ListModelRelation(c *gin.Context) {
 //	@receiver m
 //	@param c
 func (m *modelRelation) DeleteModelRelation(c *gin.Context) {
-	// 查询源模型和目标模型的ID
 	id := c.Param("id")
+	// 查询源模型和目标模型的ID
 	var modelRelation models.ModelRelation
 	if err := database.DB.Model(&models.ModelRelation{}).
 		Where(map[string]any{"id": id}).

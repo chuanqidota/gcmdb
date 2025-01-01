@@ -37,7 +37,7 @@ func (m *modelFieldGroup) CreateModelFieldGroup(c *gin.Context) {
 //
 
 func (m *modelFieldGroup) RetrieveModelFieldGroup(c *gin.Context) {
-	id := c.Query("id")
+	id := c.Param("id")
 	// 获取字段分组信息
 	var modelFieldGroup models.ModelFieldGroup
 	if err := database.DB.Model(&models.ModelFieldGroup{}).

@@ -28,15 +28,15 @@ func Engine() *gin.Engine {
 		v1.DELETE("model/:id", api.Model.DeleteModel)               // 删除模型
 
 		// 模型关系
-		v1.POST("model-relation", api.ModelRelation.CreateModelRelation)       // 创建模型关系- 需要创建实例关系 // todo
+		v1.POST("model-relation", api.ModelRelation.CreateModelRelation)       // 创建模型关系
 		v1.GET("model-relation", api.ModelRelation.ListModelRelation)          // 模型关系查询
 		v1.DELETE("model-relation/:id", api.ModelRelation.DeleteModelRelation) // 删除模型关系
 
 		// 模型关系类型
-		v1.POST("model-relation-type", api.ModelRelationType.CreateModelRelationType)   // 创建模型关系类型
-		v1.GET("model-relation-type", api.ModelRelationType.ListModelRelationType)      // 模型关系类型查询
-		v1.PUT("model-relation-type", api.ModelRelationType.UpdateModelRelationType)    // 修改模型关系类型
-		v1.DELETE("model-relation-type", api.ModelRelationType.DeleteModelRelationType) // 删除模型关系类型
+		v1.POST("model-relation-type", api.ModelRelationType.CreateModelRelationType)    // 创建模型关系类型
+		v1.GET("model-relation-type", api.ModelRelationType.ListModelRelationType)       // 模型关系类型查询
+		v1.PUT("model-relation-type/:id", api.ModelRelationType.UpdateModelRelationType) // 修改模型关系类型
+		v1.DELETE("model-relation-type", api.ModelRelationType.DeleteModelRelationType)  // 删除模型关系类型
 
 		// 模型字段分组
 		v1.POST("model-field-group", api.ModelFieldGroup.CreateModelFieldGroup)       // 创建模型字段分组
@@ -45,13 +45,13 @@ func Engine() *gin.Engine {
 		v1.DELETE("model-field-group/:id", api.ModelFieldGroup.DeleteModelFieldGroup) // 删除模型字段分组
 
 		// 模型字段
-		v1.POST("model-field", api.ModelField.CreateModelField)            // 创建模型字段-todo 实例里面补充字段
+		v1.POST("model-field", api.ModelField.CreateModelField)            // 创建模型字段-todo 实例里面异步补充字段
 		v1.GET("model-field/:model_id", api.ModelField.RetrieveModelField) // 查询模型字段详情
 		v1.PUT("model-field/:id", api.ModelField.UpdateModelField)         // 修改模型字段
 		v1.DELETE("model-field/:id", api.ModelField.DeleteModelField)      // 删除模型字段-todo 实例里面删除字段
 
 		// 模型字段关系
-		v1.POST("model-field-relation", api.ModelFieldRelation.CreateModelFieldRelation)               // 创建模型字段关系-todo 需要操作实例
+		v1.POST("model-field-relation", api.ModelFieldRelation.CreateModelFieldRelation)               // 创建模型字段关系-todo 异步创建实例
 		v1.GET("model-field-relation/:source_model_id", api.ModelFieldRelation.ListModelFieldRelation) // 展示模型字段关系
 		v1.DELETE("model-field-relation/:id", api.ModelFieldRelation.DeleteModelFieldRelation)         // 删除模型字段关系-todo 需要操作实例
 
