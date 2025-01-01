@@ -1,4 +1,4 @@
-FROM golang:1.21.4 AS builder
+FROM golang:1.21.6 AS builder
 RUN go env -w GO111MODULE=on \
     && go env -w CGO_ENABLED=0 \
     && go env -w GOOS=linux \
