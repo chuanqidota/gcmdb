@@ -50,8 +50,8 @@ func (t *CustomTime) Scan(value interface{}) error {
 // BaseModel
 // @Description: 基础模型
 type BaseModel struct {
-	ID        uint           `gorm:"column:id; primary_key; AUTO_INCREMENT" json:"id"`
-	CreatedAt CustomTime     `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt CustomTime     `gorm:"column:updated_at" json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	ID        uint           `gorm:"column:id; primary_key; AUTO_INCREMENT; comment:主键ID" json:"id"`
+	CreatedAt CustomTime     `gorm:"column:created_at; comment:创建时间" json:"created_at"`
+	UpdatedAt CustomTime     `gorm:"column:updated_at; comment:更新时间" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index; comment:删除时间" json:"-"`
 }
