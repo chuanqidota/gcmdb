@@ -196,6 +196,7 @@ func (m *model) DeleteModel(c *gin.Context) {
 	modelId := c.Param("id")
 	var (
 		modelRelationCount    int64
+		fieldRelationCount    int64
 		instanceCount         int64
 		instanceRelationCount int64
 	)
@@ -209,6 +210,18 @@ func (m *model) DeleteModel(c *gin.Context) {
 	}
 	if modelRelationCount > 0 {
 		response.Fail(c, fmt.Sprintf("该模型存在关联关系，无法删除"))
+		return
+	}
+	// 判断字段关联
+	if err := database.DB.Model(&models.ModelFieldRelation{}).
+		Where(map[string]any{"source_model_id": modelId}).
+		Or(map[string]any{"target_model_id": modelId}).
+		Count(&fieldRelationCount).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
+	if fieldRelationCount > 0 {
+		response.Fail(c, fmt.Sprintf("该模型存在字段关联，无法删除"))
 		return
 	}
 	// 判断实例关联
@@ -234,7 +247,6 @@ func (m *model) DeleteModel(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("该模型存在实例，无法删除"))
 		return
 	}
-
 	// 删除模型字段
 	if err := database.DB.Unscoped().Model(&models.ModelField{}).
 		Where(map[string]any{"model_id": modelId}).
@@ -247,14 +259,6 @@ func (m *model) DeleteModel(c *gin.Context) {
 		Where(map[string]any{"model_id": modelId}).
 		Delete(&models.ModelFieldGroup{}).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("删除字段分组失败-%s", err.Error()))
-		return
-	}
-	// 删除模型字段关联
-	if err := database.DB.Unscoped().Model(&models.ModelFieldRelation{}).
-		Where(map[string]any{"source_model_id": modelId}).
-		Or(map[string]any{"target_model_id": modelId}).
-		Delete(&models.ModelFieldRelation{}).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("删除模型字段关联失败-%s", err.Error()))
 		return
 	}
 	// 删除模型
