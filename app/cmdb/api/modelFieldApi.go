@@ -8,6 +8,8 @@ import (
 	"gcmdb/pkg/response"
 	"github.com/gin-gonic/gin"
 	"time"
+	"slices"
+	"strings"
 )
 
 type modelField struct {
@@ -105,6 +107,29 @@ func (m *modelField) DeleteModelField(c *gin.Context) {
 	}
 	if modelFieldRelationCount > 0 {
 		response.Fail(c, fmt.Sprintf("该字段被引用，无法删除"))
+		return
+	}
+	// 获取modelId
+	var modelField models.ModelField
+	if err:=database.DB.Model(&models.ModelField{}).
+		Where(map[string]any{"id":id}).
+		Scan(&modelField).Error;err!=nil{
+			response.Fail(c, fmt.Sprintf("查询失败-%s",err.Error()))
+			return
+		}
+	modelId := modelField.ModelId
+	alias := modelField.Alias
+	// 判断字段是否在模型字段唯一字段中
+	var modelFieldUnique models.ModelFieldUnique
+	if err:=database.DB.Model(&models.ModelFieldUnique{}).
+		Where(map[string]any{"model_id":modelId}).
+		Scan(&modelFieldUnique).Error;err!=nil{
+			response.Fail(c, fmt.Sprintf("查询失败-%s",err.Error()))
+			return
+		}
+	fields := strings.Split(modelFieldUnique.Fields,",")
+	if slices.Contains(fields, alias) {
+		response.Fail(c, fmt.Sprintf("该字段在模型唯一校验中被引用,无法删除"))
 		return
 	}
 	// 删除模型字段
