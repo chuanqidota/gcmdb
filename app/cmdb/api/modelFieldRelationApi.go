@@ -31,6 +31,15 @@ func (m *modelFieldRelation) CreateModelFieldRelation(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
 		return
 	}
+	sourceFiled := ""
+	targetField := ""
+	sourceModel := ""
+	targetModel := ""
+
+	sql := fmt.Sprintf(`SELECT * FROM instance instance1
+							  INNER JOIN instance instance2 ON data->'$.%s'=data->'$.%s'
+							  WHERE instance1.model_id = %+v AND instance2.model_id = %+v`, sourceFiled, targetField, sourceModel, targetModel)
+	fmt.Println(sql)
 	response.Success(c, "创建成功", nil)
 
 }
