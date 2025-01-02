@@ -158,5 +158,16 @@ func (m *modelField) DeleteModelField(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
 		return
 	}
+	// 删除实例里面的字段
+	go func(){
+		expr := fmt.Sprintf("JSON_REMOVE(data,'$.%+v')", alias)
+		if err:=database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"model_id":modelId}).
+		Update("data",gorm.Expr(expr)).Error;err!=nil{
+			fmt.Printf("删除失败-%s",err.Error())
+		}
+	}()
+
+
 	response.Success(c, "执行成功", nil)
 }
