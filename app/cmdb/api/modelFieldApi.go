@@ -1,15 +1,18 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/app/cmdb/params"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
-	"github.com/gin-gonic/gin"
-	"time"
 	"slices"
 	"strings"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type modelField struct {
@@ -45,6 +48,22 @@ func (m *modelField) CreateModelField(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
 		return
 	}
+
+	go func(string){
+		fieldtype := body.Type
+		filed := body.Alias
+		value, ok :=models.DefaultValueByType[fieldtype]
+		if !ok{
+			value = ""
+		}
+		expr := fmt.Sprintf("JSON_SET(data,'$.%+v',%+v)", filed,value)
+		if err:=database.DB.Model(&models.Instance{}).
+			Where(map[string]any{"model_id":body.ModelId}).
+			Update("data",gorm.Expr(expr)).Error;err!=nil{
+				fmt.Printf("更新字段失败-%s",err.Error())
+			}
+	}(body.Type)
+
 	response.Success(c, "执行成功", nil)
 }
 

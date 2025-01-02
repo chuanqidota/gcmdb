@@ -1,5 +1,11 @@
 package models
 
+var DefaultValueByType = map[string]any{
+	"string":"",
+	"number":0,
+	"bool":false,
+}
+
 // ModelField
 // @Description:模型字段>模型和模型字段的别名及名称联合唯一
 type ModelField struct {
@@ -22,3 +28,5 @@ type ModelField struct {
 func (ModelField) TableName() string {
 	return "model_field"
 }
+
+
