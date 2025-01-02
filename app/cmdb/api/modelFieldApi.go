@@ -65,7 +65,7 @@ func (m *modelField) CreateModelField(c *gin.Context) {
 	}(body.Type)
 
 	response.Success(c, "执行成功", nil)
-}
+}	
 
 // RetrieveModelField
 //
