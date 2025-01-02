@@ -64,7 +64,7 @@ func Engine() *gin.Engine {
 		v1.POST("instance", api.Instance.CreateInstance)       // 创建实例- todo 未做唯一性判断
 		v1.GET("instance", api.Instance.ListInstance)          // 查询实例-todo
 		v1.GET("instance/:id", api.Instance.RetrieveInstance)  // 查询实例详情
-		v1.PUT("instance/:id", api.Instance.UpdateInstance)    // 更新实例-todo
+		v1.PUT("instance/:id", api.Instance.UpdateInstance)    // 更新实例-todo 未做唯一性判断
 		v1.DELETE("instance/:id", api.Instance.DeleteInstance) // 删除实例
 
 		// 实例关系
