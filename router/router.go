@@ -45,7 +45,7 @@ func Engine() *gin.Engine {
 		v1.DELETE("model-field-group/:id", api.ModelFieldGroup.DeleteModelFieldGroup) // 删除模型字段分组
 
 		// 模型唯一字段
-		v1.POST("model-field-unique", api.ModelFieldUnique.CreateModelFieldUnique)            // 模型唯一字段
+		v1.POST("model-field-unique", api.ModelFieldUnique.CreateModelFieldUnique)            // 创建模型唯一字段
 		v1.GET("model-field-unique/:model_id", api.ModelFieldUnique.RetrieveModelFieldUnique) // 展示模型的唯一字段
 		v1.DELETE("model-field-unique/:id", api.ModelFieldUnique.DeleteModelFieldUnique)      // 删除模型唯一字段
 
