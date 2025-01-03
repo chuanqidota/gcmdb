@@ -47,11 +47,13 @@ func (m *modelRelation) CreateModelRelation(c *gin.Context) {
 
 // ListModelRelation
 //
-//	@Description: 模型关系展示，从源模型开始展示
+//	@Description: 模型关系展示
 //	@receiver m
 //	@param c
 func (m *modelRelation) ListModelRelation(c *gin.Context) {
 	sourceId := c.Query("source_id") // 源模型id
+
+	// 正向+反向
 	modelRelations := make([]models.ModelRelation, 0)
 	if err := database.DB.Model(&models.ModelRelation{}).
 		Where(map[string]any{"source_id": sourceId}).

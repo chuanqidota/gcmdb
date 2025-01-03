@@ -1,0 +1,3 @@
+time="2025-01-03 10:15:22" level=info msg="解析配置文件：{{localhost 8080} {root jinang123 127.0.0.1 3306 gcmdb} {http://localhost:9200  }}"
+time="2025-01-03 10:15:22" level=info msg="数据库连接信息:root:jinang123@tcp(127.0.0.1:3306)/gcmdb?charset=utf8mb4&parseTime=True&loc=Local"
+time="2025-01-03 10:15:22" level=error msg="连接数据库出错:dial tcp 127.0.0.1:3306: connect: connection refused"

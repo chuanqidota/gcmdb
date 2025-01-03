@@ -1,9 +1,15 @@
 package models
+import (
+	"time"
+)
 
 var DefaultValueByType = map[string]any{
 	"string":"",
 	"number":0,
 	"bool":false,
+	"date":time.Now().Format(time.DateOnly),
+	"datetime":time.Now().Format(time.DateTime),
+	"json":map[string]any{},
 }
 
 // ModelField
