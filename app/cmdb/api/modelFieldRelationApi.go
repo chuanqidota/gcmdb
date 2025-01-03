@@ -103,7 +103,48 @@ func (m *modelFieldRelation) ListModelFieldRelation(c *gin.Context) {
 //	@param c
 func (m *modelFieldRelation) DeleteModelFieldRelation(c *gin.Context) {
 	id := c.Param("id")
+	// 查询模型字段关系实例
+	var modelFieldRelation models.ModelFieldRelation
+	if err:=database.DB.Model(&models.ModelFieldRelation{}).
+		Where(map[string]any{"id":id}).
+		Scan(&modelFieldRelation).Error;err!=nil{
+			response.Fail(c,fmt.Sprintf("查询失败-%s",err.Error()))
+			return
+		}
+	
+	sourceModel := modelFieldRelation.SourceModelId
+	targetModel := modelFieldRelation.TargetModelId
+	sourceFiled := modelFieldRelation.SourceFieldId
+	targetField := modelFieldRelation.TargetFieldId
 
+	// 查询需要删除那些实例关系
+	sql := fmt.Sprintf(`SELECT 
+							instance1.model_id as source_model_id,
+							instance2.model_id as target_model_id,
+							instance1.id as source_id,
+							instance2.id as target_id 
+						FROM 
+							instance instance1
+						INNER JOIN 
+							instance instance2 
+						ON 
+							data->'$.%s'=data->'$.%s'
+						WHERE 
+							instance1.model_id = %+v 
+						AND 
+							instance2.model_id = %+v`, sourceFiled, targetField, sourceModel, targetModel)
+	
+	instanceRelations := make([]models.InstanceRelation,0)
+	if err:=database.DB.Raw(sql).Scan(&instanceRelations).Error;err!=nil{
+		response.Fail(c,fmt.Sprintf("查询失败-%s",err.Error()))
+		return
+	}
+	// 删除实例关系
+	if err:=database.DB.Delete(&instanceRelations).Error;err!=nil{
+		response.Fail(c,fmt.Sprintf("查询失败-%s",err.Error()))
+		return
+	}
+	// 删除模型字段关系
 	if err := database.DB.Model(&models.ModelFieldRelation{}).
 		Where(map[string]any{"id": id}).
 		Delete(&models.ModelFieldRelation{}).Error; err != nil {
