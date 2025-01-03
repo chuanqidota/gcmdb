@@ -47,21 +47,21 @@ func (m *modelFieldRelation) CreateModelFieldRelation(c *gin.Context) {
 						INNER JOIN 
 							instance instance2 
 						ON 
-							data->'$.%s'=data->'$.%s'
+							data->'$.%+v'=data->'$.%+v'
 						WHERE 
 							instance1.model_id = %+v 
 						AND 
 							instance2.model_id = %+v`, sourceFiled, targetField, sourceModel, targetModel)
-	instanceRelations := make([]models.InstanceRelation,0)
-	if err:=database.DB.Raw(sql).Scan(&instanceRelations).Error;err!=nil{
-		response.Fail(c,fmt.Sprintf("查询失败-%s",err.Error()))
+	instanceRelations := make([]models.InstanceRelation, 0)
+	if err := database.DB.Raw(sql).Scan(&instanceRelations).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
-	if err:=database.DB.Model(&models.InstanceRelation{}).
-		CreateInBatches(instanceRelations,100).Error;err!=nil{
-			response.Fail(c,fmt.Sprintf("创建失败-%s",err.Error()))
-			return
-		}
+	if err := database.DB.Model(&models.InstanceRelation{}).
+		CreateInBatches(instanceRelations, 100).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
+		return
+	}
 	response.Success(c, "创建成功", nil)
 }
 
@@ -105,13 +105,13 @@ func (m *modelFieldRelation) DeleteModelFieldRelation(c *gin.Context) {
 	id := c.Param("id")
 	// 查询模型字段关系实例
 	var modelFieldRelation models.ModelFieldRelation
-	if err:=database.DB.Model(&models.ModelFieldRelation{}).
-		Where(map[string]any{"id":id}).
-		Scan(&modelFieldRelation).Error;err!=nil{
-			response.Fail(c,fmt.Sprintf("查询失败-%s",err.Error()))
-			return
-		}
-	
+	if err := database.DB.Model(&models.ModelFieldRelation{}).
+		Where(map[string]any{"id": id}).
+		Scan(&modelFieldRelation).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
+
 	sourceModel := modelFieldRelation.SourceModelId
 	targetModel := modelFieldRelation.TargetModelId
 	sourceFiled := modelFieldRelation.SourceFieldId
@@ -128,20 +128,20 @@ func (m *modelFieldRelation) DeleteModelFieldRelation(c *gin.Context) {
 						INNER JOIN 
 							instance instance2 
 						ON 
-							data->'$.%s'=data->'$.%s'
+							data->'$.%+v'=data->'$.%+v'
 						WHERE 
 							instance1.model_id = %+v 
 						AND 
 							instance2.model_id = %+v`, sourceFiled, targetField, sourceModel, targetModel)
-	
-	instanceRelations := make([]models.InstanceRelation,0)
-	if err:=database.DB.Raw(sql).Scan(&instanceRelations).Error;err!=nil{
-		response.Fail(c,fmt.Sprintf("查询失败-%s",err.Error()))
+
+	instanceRelations := make([]models.InstanceRelation, 0)
+	if err := database.DB.Raw(sql).Scan(&instanceRelations).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
 	// 删除实例关系
-	if err:=database.DB.Delete(&instanceRelations).Error;err!=nil{
-		response.Fail(c,fmt.Sprintf("查询失败-%s",err.Error()))
+	if err := database.DB.Delete(&instanceRelations).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
 	// 删除模型字段关系

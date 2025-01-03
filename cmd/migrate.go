@@ -19,13 +19,15 @@ var migrateCmd = &cobra.Command{
 		err := database.DB.AutoMigrate(
 			&models.ModelGroup{},
 			&models.Model{},
-			&models.ModelFieldGroup{},
-			&models.ModelFieldRelation{},
-			&models.ModelField{},
 			&models.ModelRelation{},
 			&models.ModelRelationType{},
+			&models.ModelFieldGroup{},
+			&models.ModelField{},
+			&models.ModelFieldRelation{},
+			&models.ModelFieldUnique{},
 			&models.Instance{},
 			&models.InstanceRelation{},
+			&models.SearchDirectSql{},
 		)
 		if err != nil {
 			logger.Error("迁移出错:", err.Error())

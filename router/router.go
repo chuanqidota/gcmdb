@@ -72,6 +72,12 @@ func Engine() *gin.Engine {
 		v1.GET("instance-relation", api.InstanceRelation.ListInstanceRelation)          // 查询实例关系 - todo
 		v1.DELETE("instance-relation/:id", api.InstanceRelation.DeleteInstanceRelation) // 删除实例关系
 
+		// 直接查询sql
+		v1.POST("search-direct-sql", api.SearchDirectSql.CreateSearchDirectSql)       // 创建直接查询sql
+		v1.GET("search-direct-sql", api.SearchDirectSql.ListSearchDirectSql)          // 查询直接查询sql
+		v1.PUT("search-direct-sql/:id", api.SearchDirectSql.UpdateSearchDirectSql)    // 修改直接查询sql
+		v1.DELETE("search-direct-sql/:id", api.SearchDirectSql.DeleteSearchDirectSql) // 删除直接查询sql
+
 	}
 	// 任务
 	{

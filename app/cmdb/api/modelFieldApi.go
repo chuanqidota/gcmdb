@@ -110,6 +110,11 @@ func (m *modelField) UpdateModelField(c *gin.Context) {
 	response.Success(c, "更新成功", nil)
 }
 
+// DeleteModelField
+//
+//	@Description: 删除模型字段
+//	@receiver m
+//	@param c
 func (m *modelField) DeleteModelField(c *gin.Context) {
 	id := c.Param("id")
 	// 判断字段关联中时候在使用
