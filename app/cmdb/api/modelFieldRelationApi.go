@@ -6,6 +6,7 @@ import (
 	"gcmdb/app/cmdb/resp"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -31,17 +32,37 @@ func (m *modelFieldRelation) CreateModelFieldRelation(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
 		return
 	}
-	sourceFiled := ""
-	targetField := ""
-	sourceModel := ""
-	targetModel := ""
+	sourceModel := body.SourceModelId
+	targetModel := body.TargetModelId
+	sourceFiled := body.SourceFieldId
+	targetField := body.TargetFieldId
 
-	sql := fmt.Sprintf(`SELECT * FROM instance instance1
-							  INNER JOIN instance instance2 ON data->'$.%s'=data->'$.%s'
-							  WHERE instance1.model_id = %+v AND instance2.model_id = %+v`, sourceFiled, targetField, sourceModel, targetModel)
-	fmt.Println(sql)
+	sql := fmt.Sprintf(`SELECT 
+							instance1.model_id as source_model_id,
+							instance2.model_id as target_model_id,
+							instance1.id as source_id,
+							instance2.id as target_id 
+						FROM 
+							instance instance1
+						INNER JOIN 
+							instance instance2 
+						ON 
+							data->'$.%s'=data->'$.%s'
+						WHERE 
+							instance1.model_id = %+v 
+						AND 
+							instance2.model_id = %+v`, sourceFiled, targetField, sourceModel, targetModel)
+	instanceRelations := make([]models.InstanceRelation,0)
+	if err:=database.DB.Raw(sql).Scan(&instanceRelations).Error;err!=nil{
+		response.Fail(c,fmt.Sprintf("查询失败-%s",err.Error()))
+		return
+	}
+	if err:=database.DB.Model(&models.InstanceRelation{}).
+		CreateInBatches(instanceRelations,100).Error;err!=nil{
+			response.Fail(c,fmt.Sprintf("创建失败-%s",err.Error()))
+			return
+		}
 	response.Success(c, "创建成功", nil)
-
 }
 
 // ListModelFieldRelation
