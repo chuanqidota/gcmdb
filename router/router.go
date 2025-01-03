@@ -73,6 +73,10 @@ func Engine() *gin.Engine {
 		v1.DELETE("instance-relation/:id", api.InstanceRelation.DeleteInstanceRelation) // 删除实例关系
 
 	}
+	// 任务
+	{
+		v1.POST("sync-instance-relation") // 同步实例关系
+	}
 
 	return router
 }
