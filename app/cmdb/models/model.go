@@ -23,7 +23,7 @@ type Model struct {
 //	@receiver Model
 //	@return string
 func (Model) TableName() string {
-	return "model"
+	return "models"
 }
 
 // GetModelFieldGroups
