@@ -6,6 +6,7 @@ import (
 	"gcmdb/app/cmdb/params"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -57,6 +58,7 @@ func (m *modelRelation) ListModelRelation(c *gin.Context) {
 	modelRelations := make([]models.ModelRelation, 0)
 	if err := database.DB.Model(&models.ModelRelation{}).
 		Where(map[string]any{"source_id": sourceId}).
+		Or(map[string]any{"target_id": sourceId}).
 		Scan(&modelRelations).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
