@@ -56,9 +56,9 @@ func Engine() *gin.Engine {
 		v1.DELETE("model-field/:id", api.ModelField.DeleteModelField)      // 删除模型字段
 
 		// 模型字段关系
-		v1.POST("model-field-relation", api.ModelFieldRelation.CreateModelFieldRelation)               // 创建模型字段关系-todo 异步创建实例
+		v1.POST("model-field-relation", api.ModelFieldRelation.CreateModelFieldRelation)               // 创建模型字段关系
 		v1.GET("model-field-relation/:source_model_id", api.ModelFieldRelation.ListModelFieldRelation) // 展示模型字段关系
-		v1.DELETE("model-field-relation/:id", api.ModelFieldRelation.DeleteModelFieldRelation)         // 删除模型字段关系-todo 需要操作实例
+		v1.DELETE("model-field-relation/:id", api.ModelFieldRelation.DeleteModelFieldRelation)         // 删除模型字段关系
 
 		// 实例
 		v1.POST("instance", api.Instance.CreateInstance)       // 创建实例- todo 未做唯一性判断
