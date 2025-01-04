@@ -3,6 +3,7 @@ package router
 import (
 	cmdbApi "gcmdb/app/cmdb/api"
 	openApi "gcmdb/app/openapi/api"
+	taskApi "gcmdb/app/tasks/api"
 	"gcmdb/pkg/middleware"
 	"github.com/gin-gonic/gin"
 )
@@ -80,7 +81,7 @@ func Engine() *gin.Engine {
 		cmdb.DELETE("search-direct-sql/:id", cmdbApi.SearchDirectSql.DeleteSearchDirectSql) // 删除直接查询sql
 
 		// 任务
-		cmdb.POST("sync-instance-relation") // 同步实例关系
+		cmdb.POST("sync-instance-relation", taskApi.InstanceRelation.SyncInstanceRelation) // 同步实例关系
 	}
 	// 对外开发接口
 	openapi := router.Group("openapi")

@@ -91,7 +91,6 @@ func (sds *searchDirectSql) UpdateSearchDirectSql(c *gin.Context) {
 		"created_at": time.Now(),
 		"name":       body.Name,
 		"sql":        body.Sql,
-		"params":     body.Params,
 	}
 	if err := database.DB.Model(&models.SearchDirectSql{}).
 		Where(map[string]any{"id": id}).
