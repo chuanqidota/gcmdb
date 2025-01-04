@@ -1,15 +1,16 @@
 package models
+
 import (
 	"time"
 )
 
 var DefaultValueByType = map[string]any{
-	"string":"",
-	"number":0,
-	"bool":false,
-	"date":time.Now().Format(time.DateOnly),
-	"datetime":time.Now().Format(time.DateTime),
-	"json":map[string]any{},
+	"string":   "",
+	"number":   0,
+	"bool":     false,
+	"date":     time.Now().Format(time.DateOnly),
+	"datetime": time.Now().Format(time.DateTime),
+	"json":     map[string]any{},
 }
 
 // ModelField
@@ -20,8 +21,7 @@ type ModelField struct {
 	FieldGroupId uint   `gorm:"column:field_group_id;type:uint;comment:字段分组id" json:"field_group_id"`
 	Alias        string `gorm:"column:alias;type:string;size:255;not null;uniqueIndex:idx_alias_model_id;comment:别名" json:"alias"`
 	Name         string `gorm:"column:name;type:string;size:255;not null;uniqueIndex:idx_name_model_id;comment:名称" json:"name"`
-	Type         string `gorm:"column:type;type:string;size:255;not null;comment:类型" json:"type"` //ENUM('string','number','bool')待定
-	IsUnique     bool   `gorm:"column:is_unique;type:boolean;not null;default:false;comment:是否唯一" json:"is_unique"`
+	Type         string `gorm:"column:type;type:string;size:255;not null;comment:类型" json:"type"`
 	IsRequired   bool   `gorm:"column:is_required;type:boolean;not null;default:false;comment:是否必填" json:"is_required"`
 	Order        uint   `gorm:"column:order;type:uint;default:0;comment:排序" json:"order"`
 }
@@ -34,5 +34,3 @@ type ModelField struct {
 func (ModelField) TableName() string {
 	return "model_field"
 }
-
-

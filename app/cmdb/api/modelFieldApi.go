@@ -38,7 +38,6 @@ func (m *modelField) CreateModelField(c *gin.Context) {
 		"alias":          body.Alias,
 		"name":           body.Name,
 		"type":           body.Type,
-		"is_unique":      body.IsUnique,
 		"is_required":    body.IsRequired,
 		"order":          body.Order,
 	}
@@ -97,7 +96,6 @@ func (m *modelField) UpdateModelField(c *gin.Context) {
 		"updated_at":     time.Now(),
 		"field_group_id": body.FieldGroupId,
 		"is_required":    body.IsRequired,
-		"is_unique":      body.IsUnique,
 		"name":           body.Name,
 		"order":          body.Order,
 	}

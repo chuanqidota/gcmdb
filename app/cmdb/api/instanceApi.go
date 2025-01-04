@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/app/cmdb/params"
+	"gcmdb/app/cmdb/utils"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -26,12 +27,18 @@ func (i *instance) CreateInstance(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
+	_data, err := utils.Verify.CreateInstqnce(body.ModelId, body.Data)
+	if err != nil {
+		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
+		return
+	}
+
 	data := map[string]any{
 		"created_at":  time.Now(),
 		"updated_at":  time.Now(),
 		"model_id":    body.ModelId,
 		"model_alias": body.ModelAlias,
-		"data":        body.Data,
+		"data":        _data,
 	}
 	if err := database.DB.Model(&models.Instance{}).
 		Create(data).Error; err != nil {
@@ -75,11 +82,25 @@ func (i *instance) UpdateInstance(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
+	// 查询实例
+	var instance models.Instance
+	if err := database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"id": id}).Scan(&instance).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
+	// 验证参数
+	_data, err := utils.Verify.UpdateInstance(instance.ModelId, body.Data)
+	if err != nil {
+		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
+		return
+	}
+	// 更新实例
 	if err := database.DB.Model(&models.Instance{}).
 		Where(map[string]any{"id": id}).
 		Updates(map[string]any{
 			"updated_at": time.Now(),
-			"data":       body.Data,
+			"data":       _data,
 		}).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("更新失败-%s", err.Error()))
 		return

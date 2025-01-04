@@ -24,6 +24,19 @@ func (mfu *modelFieldUnique) CreateModelFieldUnique(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
+	// 判断是否实例
+	var instanceCount int64
+	if err := database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"model_id": body.ModelId}).
+		Count(&instanceCount).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
+	if instanceCount > 0 {
+		response.Fail(c, fmt.Sprintf("该模型存在实例，无法删除唯一字段"))
+		return
+	}
+
 	var result models.ModelFieldUnique
 	if err := database.DB.Model(&models.ModelFieldUnique{}).
 		FirstOrCreate(&result, body).Error; err != nil {
