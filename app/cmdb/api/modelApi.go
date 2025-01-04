@@ -84,7 +84,7 @@ func (m *model) ListModel(c *gin.Context) {
 		return
 	}
 	// 结果响应
-	data := params.CommonList{
+	data := resp.CommonList{
 		Count:   count,
 		Results: _models,
 	}

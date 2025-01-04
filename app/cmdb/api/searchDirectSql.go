@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/app/cmdb/params"
+	"gcmdb/app/cmdb/resp"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -70,7 +71,7 @@ func (sds *searchDirectSql) ListSearchDirectSql(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
-	results := params.CommonList{
+	results := resp.CommonList{
 		Count:   count,
 		Results: searchDirectSqls,
 	}

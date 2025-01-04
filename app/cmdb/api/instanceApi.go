@@ -8,6 +8,7 @@ import (
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
 	"github.com/gin-gonic/gin"
+	"strconv"
 	"time"
 )
 
@@ -62,11 +63,18 @@ func (i *instance) ListInstance(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
-	limit, offset := query.Limit, query.Offset
-	if limit == 0 {
-		limit = 10
+	_modelId, err := strconv.Atoi(modelId)
+	if err != nil {
+		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
+		return
 	}
-	fmt.Println(modelId, offset)
+	resp, err := utils.SimpleSearchInstance(uint(_modelId), query)
+	if err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
+	response.Success(c, "查询成功", resp)
+
 }
 
 // RetrieveInstance

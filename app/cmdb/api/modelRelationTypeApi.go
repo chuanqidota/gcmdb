@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/app/cmdb/params"
+	"gcmdb/app/cmdb/resp"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -69,7 +70,7 @@ func (m *modelRelationType) ListModelRelationType(c *gin.Context) {
 		return
 	}
 	// 响应
-	results := params.CommonList{
+	results := resp.CommonList{
 		Count:   count,
 		Results: modelRelationTypes,
 	}

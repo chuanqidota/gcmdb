@@ -3,7 +3,7 @@ package api
 import (
 	"fmt"
 	"gcmdb/app/cmdb/models"
-	"gcmdb/app/cmdb/params"
+	"gcmdb/app/cmdb/resp"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
 
@@ -75,7 +75,7 @@ func (m *modelRelation) ListModelRelation(c *gin.Context) {
 		result["type_display"], _ = modelRelation.TypeDisplay()
 	}
 	count := len(results)
-	result := params.CommonList{
+	result := resp.CommonList{
 		Count:   int64(count),
 		Results: results,
 	}
