@@ -85,7 +85,7 @@ func Engine() *gin.Engine {
 	// 对外开发接口
 	openapi := router.Group("openapi")
 	{
-		openapi.GET("search-direct-sql/:uuid", openApi.SearchDirectSql.Search) // todo
+		openapi.GET("search-direct-sql/:uuid", openApi.SearchDirectSql.Search) //复杂查询
 	}
 
 	return router

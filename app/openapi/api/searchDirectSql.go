@@ -25,9 +25,12 @@ func (sds *searchDirectSql) Search(c *gin.Context) {
 		return
 	}
 	sql := searchDirectSql.Sql
-	params := searchDirectSql.Params
+	if sql == "" {
+		response.Fail(c, "sql语句为空")
+		return
+	}
 	var result interface{}
-	if err := database.DB.Raw(sql, params).Scan(&result).Error; err != nil {
+	if err := database.DB.Raw(sql).Scan(&result).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
