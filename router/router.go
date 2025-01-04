@@ -63,10 +63,10 @@ func Engine() *gin.Engine {
 		cmdb.DELETE("models-field-relation/:id", cmdbApi.ModelFieldRelation.DeleteModelFieldRelation)         // 删除模型字段关系
 
 		// 实例
-		cmdb.POST("instance", cmdbApi.Instance.CreateInstance)       // 创建实例- todo 未做唯一性判断
-		cmdb.GET("instance", cmdbApi.Instance.ListInstance)          // 查询实例-todo
+		cmdb.POST("instance", cmdbApi.Instance.CreateInstance)       // 创建实例
+		cmdb.GET("instance/:id", cmdbApi.Instance.ListInstance)      // 查询实例 -todo
 		cmdb.GET("instance/:id", cmdbApi.Instance.RetrieveInstance)  // 查询实例详情
-		cmdb.PUT("instance/:id", cmdbApi.Instance.UpdateInstance)    // 更新实例-todo 未做唯一性判断
+		cmdb.PUT("instance/:id", cmdbApi.Instance.UpdateInstance)    // 更新实例
 		cmdb.DELETE("instance/:id", cmdbApi.Instance.DeleteInstance) // 删除实例
 
 		// 实例关系
@@ -77,6 +77,7 @@ func Engine() *gin.Engine {
 		// 直接查询sql
 		cmdb.POST("search-direct-sql", cmdbApi.SearchDirectSql.CreateSearchDirectSql)       // 创建直接查询sql
 		cmdb.GET("search-direct-sql", cmdbApi.SearchDirectSql.ListSearchDirectSql)          // 查询直接查询sql
+		cmdb.GET("search-direct-sql/:id", cmdbApi.SearchDirectSql.ExecuteSearchDirectSql)   // 执行直接查询sql
 		cmdb.PUT("search-direct-sql/:id", cmdbApi.SearchDirectSql.UpdateSearchDirectSql)    // 修改直接查询sql
 		cmdb.DELETE("search-direct-sql/:id", cmdbApi.SearchDirectSql.DeleteSearchDirectSql) // 删除直接查询sql
 

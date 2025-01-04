@@ -27,6 +27,7 @@ func (i *instance) CreateInstance(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
+	// 验证参数
 	_data, err := utils.Verify.CreateInstqnce(body.ModelId, body.Data)
 	if err != nil {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
@@ -49,8 +50,23 @@ func (i *instance) CreateInstance(c *gin.Context) {
 
 }
 
+// ListInstance
+//
+//	@Description: 查询实例
+//	@receiver i
+//	@param c
 func (i *instance) ListInstance(c *gin.Context) {
-
+	modelId := c.Param("model_id")
+	var query params.ListInstance
+	if err := c.ShouldBindQuery(&query); err != nil {
+		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
+		return
+	}
+	limit, offset := query.Limit, query.Offset
+	if limit == 0 {
+		limit = 10
+	}
+	fmt.Println(modelId, offset)
 }
 
 // RetrieveInstance

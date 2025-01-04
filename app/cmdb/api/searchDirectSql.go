@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/app/cmdb/params"
@@ -8,6 +9,7 @@ import (
 	"gcmdb/pkg/response"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 	"strings"
 	"time"
 )
@@ -73,6 +75,32 @@ func (sds *searchDirectSql) ListSearchDirectSql(c *gin.Context) {
 		Results: searchDirectSqls,
 	}
 	response.Success(c, "执行成功", results)
+}
+
+// ExecuteSearchDirectSql
+//
+//	@Description: 执行查询
+//	@receiver sds
+//	@param c
+func (sds *searchDirectSql) ExecuteSearchDirectSql(c *gin.Context) {
+	id := c.Param("id")
+	var searchDirectSql models.SearchDirectSql
+	if err := database.DB.Model(&models.SearchDirectSql{}).
+		Where(map[string]any{"id": id}).
+		First(&searchDirectSql).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
+	sql := searchDirectSql.Sql
+	if sql == "" {
+		response.Fail(c, "sql语句为空")
+		return
+	}
+	var result interface{}
+	if err := database.DB.Raw(sql).Scan(&result).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
 }
 
 // UpdateSearchDirectSql
