@@ -52,10 +52,10 @@ func Engine() *gin.Engine {
 		cmdb.DELETE("models-field-unique/:id", cmdbApi.ModelFieldUnique.DeleteModelFieldUnique)      // 删除模型唯一字段
 
 		// 模型字段
-		cmdb.POST("models-field", cmdbApi.ModelField.CreateModelField)            // 创建模型字段
+		cmdb.POST("models-field", cmdbApi.ModelField.CreateModelField)            // 创建模型字段-todo 缺少维护实例关系
 		cmdb.GET("models-field/:model_id", cmdbApi.ModelField.RetrieveModelField) // 查询模型字段详情
 		cmdb.PUT("models-field/:id", cmdbApi.ModelField.UpdateModelField)         // 修改模型字段
-		cmdb.DELETE("models-field/:id", cmdbApi.ModelField.DeleteModelField)      // 删除模型字段
+		cmdb.DELETE("models-field/:id", cmdbApi.ModelField.DeleteModelField)      // 删除模型字段-todo 缺少维护实例关系
 
 		// 模型字段关系
 		cmdb.POST("models-field-relation", cmdbApi.ModelFieldRelation.CreateModelFieldRelation)               // 创建模型字段关系
@@ -63,10 +63,10 @@ func Engine() *gin.Engine {
 		cmdb.DELETE("models-field-relation/:id", cmdbApi.ModelFieldRelation.DeleteModelFieldRelation)         // 删除模型字段关系
 
 		// 实例
-		cmdb.POST("instance", cmdbApi.Instance.CreateInstance)        // 创建实例
+		cmdb.POST("instance", cmdbApi.Instance.CreateInstance)        // 创建实例-todo 缺少维护实例关系
 		cmdb.GET("instance/:model_id", cmdbApi.Instance.ListInstance) // 查询实例
 		cmdb.GET("instance/:id", cmdbApi.Instance.RetrieveInstance)   // 查询实例详情
-		cmdb.PUT("instance/:id", cmdbApi.Instance.UpdateInstance)     // 更新实例
+		cmdb.PUT("instance/:id", cmdbApi.Instance.UpdateInstance)     // 更新实例-todo 缺少维护实例关系
 		cmdb.DELETE("instance/:id", cmdbApi.Instance.DeleteInstance)  // 删除实例
 
 		// 实例关系
@@ -89,6 +89,12 @@ func Engine() *gin.Engine {
 	openapi := router.Group("openapi")
 	{
 		openapi.GET("search-direct-sql/:uuid", openApi.SearchDirectSql.Search) //复杂查询
+		openapi.GET("all-models")                                              // 返回所有模型信息
+		openapi.GET("model-all-info:/model_id")                                // 返回指定模型所有,模型关联、字段、字段关联信息
+		openapi.POST("create-instance")                                        // 创建实例
+		openapi.POST("delete-instance")                                        // 删除实例
+		openapi.POST("update-instance")                                        // 更新实例
+		openapi.POST("search-instance")                                        // 搜索实例
 	}
 
 	return router

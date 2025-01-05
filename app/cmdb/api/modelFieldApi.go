@@ -46,7 +46,7 @@ func (m *modelField) CreateModelField(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
 		return
 	}
-
+	// 增加字段维护实例关系
 	go func(fieldType, field string) {
 		value, ok := models.DefaultValueByType[fieldType]
 		if !ok {

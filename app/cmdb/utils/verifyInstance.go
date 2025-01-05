@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// 校验实例能否被调整
 type verify struct {
 }
 
