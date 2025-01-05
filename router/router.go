@@ -70,9 +70,10 @@ func Engine() *gin.Engine {
 		cmdb.DELETE("instance/:id", cmdbApi.Instance.DeleteInstance)  // 删除实例
 
 		// 实例关系
-		cmdb.POST("instance-relation", cmdbApi.InstanceRelation.CreateInstanceRelation)       // 创建实例关系
-		cmdb.GET("instance-relation", cmdbApi.InstanceRelation.ListInstanceRelation)          // 查询实例关系 - todo
-		cmdb.DELETE("instance-relation/:id", cmdbApi.InstanceRelation.DeleteInstanceRelation) // 删除实例关系
+		cmdb.POST("instance-relation", cmdbApi.InstanceRelation.CreateInstanceRelation)                      // 创建实例关系
+		cmdb.GET("source-target-relation/:source_id", cmdbApi.InstanceRelation.SourceTargetInstanceRelation) // 源到目标的实例关系
+		cmdb.GET("target-source-relation/:source_id", cmdbApi.InstanceRelation.TargetSourceInstanceRelation) // 目标到源的实例关系
+		cmdb.DELETE("instance-relation/:id", cmdbApi.InstanceRelation.DeleteInstanceRelation)                // 删除实例关系
 
 		// 直接查询sql
 		cmdb.POST("search-direct-sql", cmdbApi.SearchDirectSql.CreateSearchDirectSql)       // 创建直接查询sql
