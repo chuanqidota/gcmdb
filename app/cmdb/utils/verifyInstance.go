@@ -6,6 +6,7 @@ import (
 	"gcmdb/app/cmdb/models"
 	"gcmdb/pkg/database"
 	"gorm.io/datatypes"
+	"slices"
 	"strings"
 )
 
@@ -14,7 +15,7 @@ type verify struct {
 
 var Verify = new(verify)
 
-// CreateInstqnce
+// CreateInstance
 //
 //	@Description: 校验创建实例(验证必须的字段、删除多余字段、验证唯一性)
 //	@receiver v
@@ -22,7 +23,7 @@ var Verify = new(verify)
 //	@param data 实例数据
 //	@return datatypes.JSON
 //	@return error
-func (v *verify) CreateInstqnce(modelId uint, data datatypes.JSON) (datatypes.JSON, error) {
+func (v *verify) CreateInstance(modelId uint, data datatypes.JSON) (datatypes.JSON, error) {
 	// 校验字段是否必须有
 	modelFields := make([]models.ModelField, 0)
 	if err := database.DB.Model(&models.ModelField{}).
@@ -32,10 +33,12 @@ func (v *verify) CreateInstqnce(modelId uint, data datatypes.JSON) (datatypes.JS
 	}
 	// 需要的字段
 	requiredFields := make([]string, 0)
+	filedAlias := make([]string, 0)
 	for _, modelField := range modelFields {
 		if modelField.IsRequired {
 			requiredFields = append(requiredFields, modelField.Alias)
 		}
+		filedAlias = append(filedAlias, modelField.Alias)
 	}
 
 	// 验证字段是否必须
@@ -48,10 +51,20 @@ func (v *verify) CreateInstqnce(modelId uint, data datatypes.JSON) (datatypes.JS
 			return nil, fmt.Errorf("字段%s必须", requiredField)
 		}
 	}
-	// 多余的字段剔除
+
+	// 删除多余字段
+	for key, _ := range dataMap {
+		if !slices.Contains(filedAlias, key) {
+			delete(dataMap, key)
+		}
+	}
+
+	// 补充字段
 	for _, modelField := range modelFields {
 		if _, ok := dataMap[modelField.Alias]; !ok {
-			delete(dataMap, modelField.Alias)
+			if models.DefaultValueByType[modelField.Type] != nil {
+				dataMap[modelField.Alias] = models.DefaultValueByType[modelField.Type]
+			}
 		}
 	}
 
@@ -65,11 +78,16 @@ func (v *verify) CreateInstqnce(modelId uint, data datatypes.JSON) (datatypes.JS
 	db := database.DB.Model(&models.Instance{}).Where(map[string]any{"model_id": modelId})
 	for _, modelFieldUnique := range modelFieldsUniques {
 		fields := strings.Split(modelFieldUnique.Fields, ",") // 获取字段
-		for _, field := range fields {
-			if err := db.Where(fmt.Sprintf("JSON_EXTRACT(data,'$.%s') = ?", field), dataMap[field]).
-				First(&models.Instance{}).Error; err == nil {
-				return nil, fmt.Errorf("字段%s值重复", field)
-			}
+		conditions := make([]string, 0)
+		_params := make([]any, len(fields))
+		for i, _field := range fields {
+			conditions = append(conditions, fmt.Sprintf("data->'$.%s' = ?", _field))
+			_params[i] = fmt.Sprintf("%%%s%%", dataMap[_field])
+		}
+		query := strings.Join(conditions, " AND ")
+		if err := db.Where(query, _params...).
+			First(&models.Instance{}).Error; err == nil {
+			return nil, fmt.Errorf("字段%s值重复", modelFieldUnique.Fields)
 		}
 	}
 	// 响应数据
@@ -89,44 +107,57 @@ func (v *verify) CreateInstqnce(modelId uint, data datatypes.JSON) (datatypes.JS
 //	@param data 实例数据
 //	@return datatypes.JSON
 //	@return error
-func (v *verify) UpdateInstance(modelId uint, data datatypes.JSON) (datatypes.JSON, error) {
-	// 校验字段是否必须有
-	modelFields := make([]models.ModelField, 0)
-	if err := database.DB.Model(&models.ModelField{}).
-		Or(map[string]any{"model_id": modelId}).
-		Scan(&modelFields).Error; err != nil {
+func (v *verify) UpdateInstance(id uint, data datatypes.JSON) (datatypes.JSON, error) {
+	// 查询实例
+	var instance models.Instance
+	if err := database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"id": id}).Scan(&instance).Error; err != nil {
 		return nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
-
-	// 多余的字段剔除
+	// 删除和补充字段
 	var dataMap map[string]any
 	if err := json.Unmarshal(data, &dataMap); err != nil {
 		return nil, fmt.Errorf("json解析失败-%s", err.Error())
 	}
-	for _, modelField := range modelFields {
-		if _, ok := dataMap[modelField.Alias]; !ok {
-			delete(dataMap, modelField.Alias)
+	var instanceData map[string]any
+	if err := json.Unmarshal(instance.Data, &instanceData); err != nil {
+		return nil, fmt.Errorf("json解析失败-%s", err.Error())
+	}
+	// 删除多余字段
+	for key, _ := range dataMap {
+		_, ok := instanceData[key]
+		if !ok {
+			delete(dataMap, key)
 		}
 	}
-	if len(dataMap) == 0 {
-		return nil, fmt.Errorf("没有需要更新的字段在模型中")
+	// 补充字段值
+	for key, value := range instanceData {
+		if _, ok := dataMap[key]; !ok {
+			dataMap[key] = value
+		}
 	}
 
 	// 验证唯一性
 	modelFieldsUniques := make([]models.ModelFieldUnique, 0)
 	if err := database.DB.Model(&models.ModelFieldUnique{}).
-		Where(map[string]any{"model_id": modelId}).
+		Where(map[string]any{"model_id": instance.ModelId}).
 		Scan(&modelFieldsUniques).Error; err != nil {
 		return nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
-	db := database.DB.Model(&models.Instance{}).Where(map[string]any{"model_id": modelId})
+	db := database.DB.Model(&models.Instance{}).Where(map[string]any{"model_id": instance.ModelId})
 	for _, modelFieldUnique := range modelFieldsUniques {
 		fields := strings.Split(modelFieldUnique.Fields, ",") // 获取字段
-		for _, field := range fields {
-			if err := db.Where(fmt.Sprintf("JSON_EXTRACT(data,'$.%s') = ?", field), dataMap[field]).
-				First(&models.Instance{}).Error; err == nil {
-				return nil, fmt.Errorf("字段%s值重复", field)
-			}
+		conditions := make([]string, 0)
+		_params := make([]any, len(fields))
+		for i, _field := range fields {
+			conditions = append(conditions, fmt.Sprintf("data->'$.%s' = ?", _field))
+			_params[i] = fmt.Sprintf("%%%s%%", dataMap[_field])
+		}
+		query := strings.Join(conditions, " AND ")
+		if err := db.Where(query, _params...).
+			Not(map[string]any{"id": id}).
+			First(&models.Instance{}).Error; err == nil {
+			return nil, fmt.Errorf("字段%s值重复", modelFieldUnique.Fields)
 		}
 	}
 	// 响应数据

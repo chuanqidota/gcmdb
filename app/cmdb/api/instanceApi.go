@@ -29,7 +29,7 @@ func (i *instance) CreateInstance(c *gin.Context) {
 		return
 	}
 	// 验证参数
-	_data, err := utils.Verify.CreateInstqnce(body.ModelId, body.Data)
+	_data, err := utils.Verify.CreateInstance(body.ModelId, body.Data)
 	if err != nil {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
@@ -106,15 +106,14 @@ func (i *instance) UpdateInstance(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
-	// 查询实例
-	var instance models.Instance
-	if err := database.DB.Model(&models.Instance{}).
-		Where(map[string]any{"id": id}).Scan(&instance).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+	// 参数转化
+	_id, err := strconv.Atoi(id)
+	if err != nil {
+		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
 	// 验证参数
-	_data, err := utils.Verify.UpdateInstance(instance.ModelId, body.Data)
+	_data, err := utils.Verify.UpdateInstance(uint(_id), body.Data)
 	if err != nil {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
