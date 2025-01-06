@@ -7,9 +7,10 @@ import (
 	"gcmdb/app/cmdb/utils"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
-	"github.com/gin-gonic/gin"
 	"strconv"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type instance struct {
@@ -47,6 +48,8 @@ func (i *instance) CreateInstance(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("创建实例失败-%s", err.Error()))
 		return
 	}
+	// 异步创建实例关联
+	go utils.Fix.CreateInstance(body.ModelId, _data)
 	response.Success(c, "创建成功", nil)
 
 }
@@ -154,5 +157,12 @@ func (i *instance) DeleteInstance(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("删除实例失败-%s", err.Error()))
 		return
 	}
+	_id, err := strconv.Atoi(id)
+	if  err!=nil{
+		response.Fail(c, fmt.Sprintf("id转为int失败-%s", err.Error()))
+		return
+	}
+	// 异步删除实例关系
+	go utils.Fix.DeleteInstance(uint(_id))
 	response.Success(c, "删除成功", nil)
 }

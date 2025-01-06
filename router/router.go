@@ -63,10 +63,10 @@ func Engine() *gin.Engine {
 		cmdb.DELETE("models-field-relation/:id", cmdbApi.ModelFieldRelation.DeleteModelFieldRelation)         // 删除模型字段关系
 
 		// 实例
-		cmdb.POST("instance", cmdbApi.Instance.CreateInstance)        // 创建实例-todo 缺少维护实例关系
+		cmdb.POST("instance", cmdbApi.Instance.CreateInstance)        // 创建实例
 		cmdb.GET("instance/:model_id", cmdbApi.Instance.ListInstance) // 查询实例
 		cmdb.GET("instance/:id", cmdbApi.Instance.RetrieveInstance)   // 查询实例详情
-		cmdb.PUT("instance/:id", cmdbApi.Instance.UpdateInstance)     // 更新实例-todo 缺少维护实例关系
+		cmdb.PUT("instance/:id", cmdbApi.Instance.UpdateInstance)     // 更新实例
 		cmdb.DELETE("instance/:id", cmdbApi.Instance.DeleteInstance)  // 删除实例
 
 		// 实例关系
