@@ -35,13 +35,12 @@ func (i *instance) CreateInstance(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
-
+	// 创建实例
 	instance := models.Instance{
 		ModelId:    body.ModelId,
 		ModelAlias: body.ModelAlias,
 		Data:       _data,
 	}
-
 	if err := database.DB.Model(&models.Instance{}).
 		Create(&instance).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("创建实例失败-%s", err.Error()))
