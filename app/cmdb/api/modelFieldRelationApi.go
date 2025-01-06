@@ -7,6 +7,8 @@ import (
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
 
+	"gcmdb/app/cmdb/utils"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,36 +34,12 @@ func (m *modelFieldRelation) CreateModelFieldRelation(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
 		return
 	}
-	sourceModel := body.SourceModelId
-	targetModel := body.TargetModelId
-	sourceFiled := body.SourceFieldId
-	targetField := body.TargetFieldId
-
-	sql := fmt.Sprintf(`SELECT 
-							instance1.model_id as source_model_id,
-							instance2.model_id as target_model_id,
-							instance1.id as source_id,
-							instance2.id as target_id 
-						FROM 
-							instance instance1
-						INNER JOIN 
-							instance instance2 
-						ON 
-							data->'$.%+v'=data->'$.%+v'
-						WHERE 
-							instance1.model_id = %+v 
-						AND 
-							instance2.model_id = %+v`, sourceFiled, targetField, sourceModel, targetModel)
-	instanceRelations := make([]models.InstanceRelation, 0)
-	if err := database.DB.Raw(sql).Scan(&instanceRelations).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
-		return
-	}
-	if err := database.DB.Model(&models.InstanceRelation{}).
-		CreateInBatches(instanceRelations, 100).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
-		return
-	}
+	sourceModelId := body.SourceModelId
+	targetModelId := body.TargetModelId
+	sourceFieldId := body.SourceFieldId
+	targetFieldId := body.TargetFieldId
+	// 异步增加实例关系
+	go utils.Fix.CreateModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId)
 	response.Success(c, "创建成功", nil)
 }
 
@@ -112,38 +90,12 @@ func (m *modelFieldRelation) DeleteModelFieldRelation(c *gin.Context) {
 		return
 	}
 
-	sourceModel := modelFieldRelation.SourceModelId
-	targetModel := modelFieldRelation.TargetModelId
-	sourceFiled := modelFieldRelation.SourceFieldId
-	targetField := modelFieldRelation.TargetFieldId
-
-	// 查询需要删除那些实例关系
-	sql := fmt.Sprintf(`SELECT 
-							instance1.model_id as source_model_id,
-							instance2.model_id as target_model_id,
-							instance1.id as source_id,
-							instance2.id as target_id 
-						FROM 
-							instance instance1
-						INNER JOIN 
-							instance instance2 
-						ON 
-							data->'$.%+v'=data->'$.%+v'
-						WHERE 
-							instance1.model_id = %+v 
-						AND 
-							instance2.model_id = %+v`, sourceFiled, targetField, sourceModel, targetModel)
-
-	instanceRelations := make([]models.InstanceRelation, 0)
-	if err := database.DB.Raw(sql).Scan(&instanceRelations).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
-		return
-	}
-	// 删除实例关系
-	if err := database.DB.Delete(&instanceRelations).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
-		return
-	}
+	sourceModelId := modelFieldRelation.SourceModelId
+	targetModelId := modelFieldRelation.TargetModelId
+	sourceFieldId := modelFieldRelation.SourceFieldId
+	targetFieldId := modelFieldRelation.TargetFieldId
+	// 异步删除实例关系
+	go utils.Fix.DeleteModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId)
 	// 删除模型字段关系
 	if err := database.DB.Model(&models.ModelFieldRelation{}).
 		Where(map[string]any{"id": id}).
