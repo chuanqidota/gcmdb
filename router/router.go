@@ -52,10 +52,10 @@ func Engine() *gin.Engine {
 		cmdb.DELETE("models-field-unique/:id", cmdbApi.ModelFieldUnique.DeleteModelFieldUnique)      // 删除模型唯一字段
 
 		// 模型字段
-		cmdb.POST("models-field", cmdbApi.ModelField.CreateModelField)            // 创建模型字段-todo 缺少维护实例关系
+		cmdb.POST("models-field", cmdbApi.ModelField.CreateModelField)            // 创建模型字段
 		cmdb.GET("models-field/:model_id", cmdbApi.ModelField.RetrieveModelField) // 查询模型字段详情
 		cmdb.PUT("models-field/:id", cmdbApi.ModelField.UpdateModelField)         // 修改模型字段
-		cmdb.DELETE("models-field/:id", cmdbApi.ModelField.DeleteModelField)      // 删除模型字段-todo 缺少维护实例关系
+		cmdb.DELETE("models-field/:id", cmdbApi.ModelField.DeleteModelField)      // 删除模型字段-
 
 		// 模型字段关系
 		cmdb.POST("models-field-relation", cmdbApi.ModelFieldRelation.CreateModelFieldRelation)               // 创建模型字段关系
