@@ -39,7 +39,11 @@ func (m *modelFieldRelation) CreateModelFieldRelation(c *gin.Context) {
 	sourceFieldId := body.SourceFieldId
 	targetFieldId := body.TargetFieldId
 	// 异步增加实例关系
-	go utils.Fix.CreateModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId)
+	go func() {
+		if err := utils.InstanceRelation.CreateModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId); err != nil {
+			fmt.Printf("创建实例关系失败-%", err.Error())
+		}
+	}()
 	response.Success(c, "创建成功", nil)
 }
 
@@ -95,7 +99,11 @@ func (m *modelFieldRelation) DeleteModelFieldRelation(c *gin.Context) {
 	sourceFieldId := modelFieldRelation.SourceFieldId
 	targetFieldId := modelFieldRelation.TargetFieldId
 	// 异步删除实例关系
-	go utils.Fix.DeleteModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId)
+	go func() {
+		if err := utils.InstanceRelation.DeleteModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId); err != nil {
+			fmt.Printf("删除实例关系失败-%s", err.Error())
+		}
+	}()
 	// 删除模型字段关系
 	if err := database.DB.Model(&models.ModelFieldRelation{}).
 		Where(map[string]any{"id": id}).

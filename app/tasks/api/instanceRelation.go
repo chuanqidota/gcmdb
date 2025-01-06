@@ -27,6 +27,10 @@ func (ir *instanceRelation) SyncInstanceRelation(c *gin.Context) {
 	}
 	modelId := body.ModelId
 	// 同步指定源模型对应的实例关系
-	go utils.Fix.SyncSourceModelInstanceRelation(modelId)
+	go func() {
+		if err := utils.InstanceRelation.SyncSourceModelInstanceRelation(modelId); err != nil {
+			fmt.Printf("同步指定模型:%+v,同步实例关系成功", modelId)
+		}
+	}()
 	response.Success(c, "异步执行中", nil)
 }

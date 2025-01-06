@@ -4,21 +4,19 @@ import (
 	"fmt"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/pkg/database"
-
-	"gorm.io/datatypes"
 )
 
 // 维护实例关系
-type fix struct {
+type instanceRelation struct {
 }
 
-var Fix = new(fix)
+var InstanceRelation = new(instanceRelation)
 
 // CreateModelFieldRelation
 //
 //	@Description: 创建模型字段关联-维护实例关系
 //	@receiver f
-func (f *fix) CreateModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId uint) error {
+func (f *instanceRelation) CreateModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId uint) error {
 	modelFields := make([]models.ModelField, 0)
 	if err := database.DB.Model(&models.ModelField{}).
 		Where("id in ?", []uint{sourceFieldId, targetFieldId}).
@@ -39,20 +37,20 @@ func (f *fix) CreateModelFieldRelation(sourceModelId, targetModelId, sourceField
 		return fmt.Errorf("没有找到目标字段ID对应的别名")
 	}
 	sql := fmt.Sprintf(`SELECT 
-							instance1.model_id as source_model_id,
-							instance2.model_id as target_model_id,
-							instance1.id as source_id,
-							instance2.id as target_id 
-						FROM 
-							instance instance1
-						INNER JOIN 
-							instance instance2 
-						ON 
-							data->'$.%+v'=data->'$.%+v'
-						WHERE 
-							instance1.model_id = %+v 
-						AND 
-							instance2.model_id = %+v`, sourceFiled, targetField, sourceModelId, targetModelId)
+									instance1.model_id as source_model_id,
+									instance2.model_id as target_model_id,
+									instance1.id as source_id,
+									instance2.id as target_id 
+							   FROM 
+									instance instance1
+							   INNER JOIN 
+									instance instance2 
+							   ON 
+									data->'$.%+v'=data->'$.%+v'
+							   WHERE 
+									instance1.model_id = %+v 
+							   AND 
+									instance2.model_id = %+v`, sourceFiled, targetField, sourceModelId, targetModelId)
 
 	instanceRelations := make([]models.InstanceRelation, 0)
 	if err := database.DB.Raw(sql).Scan(&instanceRelations).Error; err != nil {
@@ -70,7 +68,7 @@ func (f *fix) CreateModelFieldRelation(sourceModelId, targetModelId, sourceField
 //
 //	@Description: 删除模型字段关联-维护实例关系
 //	@receiver f
-func (f *fix) DeleteModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId uint) error {
+func (f *instanceRelation) DeleteModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId uint) error {
 	modelFields := make([]models.ModelField, 0)
 	if err := database.DB.Model(&models.ModelField{}).
 		Where("id in ?", []uint{sourceFieldId, targetFieldId}).
@@ -91,21 +89,20 @@ func (f *fix) DeleteModelFieldRelation(sourceModelId, targetModelId, sourceField
 		return fmt.Errorf("没有找到目标字段ID对应的别名")
 	}
 	sql := fmt.Sprintf(`SELECT 
-							instance1.model_id as source_model_id,
-							instance2.model_id as target_model_id,
-							instance1.id as source_id,
-							instance2.id as target_id 
-						FROM 
-							instance instance1
-						INNER JOIN 
-							instance instance2 
-						ON 
-							data->'$.%+v'=data->'$.%+v'
-						WHERE 
-							instance1.model_id = %+v 
-						AND 
-							instance2.model_id = %+v`, sourceFiled, targetField, sourceModelId, targetModelId)
-
+									instance1.model_id as source_model_id,
+									instance2.model_id as target_model_id,
+									instance1.id as source_id,
+									instance2.id as target_id 
+							   FROM 
+								    instance instance1
+							   INNER JOIN 
+									instance instance2 
+							   ON 
+									data->'$.%+v'=data->'$.%+v'
+							   WHERE 
+									instance1.model_id = %+v 
+							   AND 
+									instance2.model_id = %+v`, sourceFiled, targetField, sourceModelId, targetModelId)
 	instanceRelations := make([]models.InstanceRelation, 0)
 	if err := database.DB.Raw(sql).Scan(&instanceRelations).Error; err != nil {
 		return fmt.Errorf("查询失败-%s", err.Error())
@@ -121,7 +118,7 @@ func (f *fix) DeleteModelFieldRelation(sourceModelId, targetModelId, sourceField
 //
 //	@Description: 创建实例-维护实例关系
 //	@receiver f
-func (f *fix) CreateInstance(ModelId uint, data datatypes.JSON) error {
+func (f *instanceRelation) CreateInstance(ModelId uint, instanceId uint) error {
 	modelFieldRelations := make([]models.ModelFieldRelation, 0)
 	if err := database.DB.Model(&models.ModelFieldRelation{}).
 		Where(map[string]any{"source_model_id": ModelId}).
@@ -152,20 +149,22 @@ func (f *fix) CreateInstance(ModelId uint, data datatypes.JSON) error {
 		sourceModelId := modelFieldRelation.SourceModelId
 		targetModelId := modelFieldRelation.TargetModelId
 		sql := fmt.Sprintf(`SELECT 
-							instance1.model_id as source_model_id,
-							instance2.model_id as target_model_id,
-							instance1.id as source_id,
-							instance2.id as target_id 
-						FROM 
-							instance instance1
-						INNER JOIN 
-							instance instance2 
-						ON 
-							data->'$.%+v'=data->'$.%+v'
-						WHERE 
-							instance1.model_id = %+v 
-						AND 
-							instance2.model_id = %+v`, sourceFiled, targetField, sourceModelId, targetModelId)
+										instance1.model_id as source_model_id,
+										instance2.model_id as target_model_id,
+										instance1.id as source_id,
+										instance2.id as target_id 
+									FROM 
+										instance instance1
+									INNER JOIN 
+										instance instance2 
+									ON 
+										data->'$.%+v'=data->'$.%+v'
+									WHERE 
+										instance1.model_id = %+v 
+									AND 
+										instance2.model_id = %+v
+									AND 
+										(source_id=%+v OR target_id =%+v)`, sourceFiled, targetField, sourceModelId, targetModelId, instanceId, instanceId)
 		instanceRelations := make([]models.InstanceRelation, 0)
 		if err := database.DB.Raw(sql).Scan(&instanceRelations).Error; err != nil {
 			return fmt.Errorf("查询失败-%s", err.Error())
@@ -182,13 +181,13 @@ func (f *fix) CreateInstance(ModelId uint, data datatypes.JSON) error {
 //
 //	@Description: 删除实例-维护实例关系
 //	@receiver f
-func (f *fix) DeleteInstance(id uint) error{
-	if err:=database.DB.Unscoped().Model(&models.InstanceRelation{}).
-		Where(map[string]any{"source_id":id}).
-		Or(map[string]any{"target_id":id}).
-		Delete(&models.InstanceRelation{}).Error;err!=nil{
-			return fmt.Errorf("删除错误-%s",err.Error())
-		}
+func (f *instanceRelation) DeleteInstance(id uint) error {
+	if err := database.DB.Unscoped().Model(&models.InstanceRelation{}).
+		Where(map[string]any{"source_id": id}).
+		Or(map[string]any{"target_id": id}).
+		Delete(&models.InstanceRelation{}).Error; err != nil {
+		return fmt.Errorf("删除错误-%s", err.Error())
+	}
 	return nil
 }
 
@@ -196,7 +195,7 @@ func (f *fix) DeleteInstance(id uint) error{
 //
 //	@Description: 同步指定源模型的实例关系
 //	@receiver f
-func (f *fix) SyncSourceModelInstanceRelation(modelId uint) error {
+func (f *instanceRelation) SyncSourceModelInstanceRelation(modelId uint) error {
 
 	if err := database.DB.Model(&models.InstanceRelation{}).
 		Where(map[string]any{"source_model_id": modelId}).
@@ -237,20 +236,20 @@ func (f *fix) SyncSourceModelInstanceRelation(modelId uint) error {
 			return fmt.Errorf("没有找到目标字段ID对应的别名")
 		}
 		sql := fmt.Sprintf(`SELECT 
-						instance1.model_id as source_model_id,
-						instance2.model_id as target_model_id,
-						instance1.id as source_id,
-						instance2.id as target_id 
-					FROM 
-						instance instance1
-					INNER JOIN 
-						instance instance2 
-					ON 
-						data->'$.%+v'=data->'$.%+v'
-					WHERE 
-						instance1.model_id = %+v 
-					AND 
-						instance2.model_id = %+v`, sourceFiled, targetField, sourceModelId, targetModelId)
+										instance1.model_id as source_model_id,
+										instance2.model_id as target_model_id,
+										instance1.id as source_id,
+										instance2.id as target_id 
+								    FROM 
+										instance instance1
+								    INNER JOIN 
+										instance instance2 
+								    ON 
+										data->'$.%+v'=data->'$.%+v'
+								    WHERE 
+										instance1.model_id = %+v 
+								    AND 
+										instance2.model_id = %+v`, sourceFiled, targetField, sourceModelId, targetModelId)
 		instanceRelations := make([]models.InstanceRelation, 0)
 		if err := database.DB.Raw(sql).Scan(&instanceRelations).Error; err != nil {
 			return fmt.Errorf("查询失败-%s", err.Error())
