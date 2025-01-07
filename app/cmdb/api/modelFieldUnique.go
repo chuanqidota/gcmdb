@@ -33,7 +33,7 @@ func (mfu *modelFieldUnique) CreateModelFieldUnique(c *gin.Context) {
 		return
 	}
 	if instanceCount > 0 {
-		response.Fail(c, fmt.Sprintf("该模型存在实例，无法删除唯一字段"))
+		response.Fail(c, fmt.Sprintf("该模型存在实例，无法创建唯一字段"))
 		return
 	}
 
