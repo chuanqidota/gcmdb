@@ -3,10 +3,11 @@ package api
 import (
 	"fmt"
 	"gcmdb/app/cmdb/models"
-	"gcmdb/app/cmdb/utils"
+	cmdbUtils "gcmdb/app/cmdb/utils"
 	"gcmdb/app/openapi/params"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,7 +37,7 @@ func (i *instance) CreateInstance(c *gin.Context) {
 		return
 	}
 	// 校验数据
-	verifyData, err := utils.Verify.CreateInstance(modelId, data)
+	verifyData, err := cmdbUtils.Verify.CreateInstance(modelId, data)
 	if err != nil {
 		response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
 		return
@@ -54,11 +55,23 @@ func (i *instance) CreateInstance(c *gin.Context) {
 		return
 	}
 	// 异步创建实例关系
-	go utils.InstanceRelation.CreateInstance(modelId, createInstance.ID)
+	go cmdbUtils.InstanceRelation.CreateInstance(modelId, createInstance.ID)
 	response.Success(c, "执行成功", nil)
 }
 
-
-func(i *instance)DeleteInstance(c *gin.Context){
-	
+func (i *instance) DeleteInstanceById(c *gin.Context) {
+	id := c.Param("id")
+	if err := database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"id": id}).
+		Delete(&models.Instance{}).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
+		return
+	}
+	_id, err := strconv.Atoi(id)
+	if err != nil {
+		response.Fail(c, fmt.Sprintf("参数转换失败-%s", err.Error()))
+		return
+	}
+	go cmdbUtils.InstanceRelation.DeleteInstance(uint(_id))
+	response.Success(c, "执行成功", nil)
 }
