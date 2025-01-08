@@ -8,6 +8,7 @@ import (
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -74,4 +75,27 @@ func (i *instance) DeleteInstanceById(c *gin.Context) {
 	}
 	go cmdbUtils.InstanceRelation.DeleteInstance(uint(_id))
 	response.Success(c, "执行成功", nil)
+}
+
+func(i *instance)DeleteInstanceByField(c *gin.Context){
+	var body map[string]any
+	if err:=c.ShouldBindJSON(&body);err!=nil{
+		response.Fail(c,fmt.Sprintf("参数校验失败-%s",err.Error()))
+		return
+	}
+	conditions := make([]string, 0)
+	params := make([]any, 0)
+	for key, value := range body {
+		conditions = append(conditions, fmt.Sprintf("data->'$.%s' = ?", key))
+		params = append(params,fmt.Sprintf("%%%s%%",value))
+	}
+	query := strings.Join(conditions, " AND ")
+	if err:=database.DB.Model(&models.Instance{}).
+	Where(query,params...).
+	Delete(&models.Instance{}).Error;err!=nil{
+		response.Fail(c,fmt.Sprintf("删除失败-%s",err.Error()))
+		return
+	}
+
+
 }
