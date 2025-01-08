@@ -96,7 +96,12 @@ func Engine() *gin.Engine {
 		openapi.DELETE("delete-instance-by-id/:id", openApi.Instance.DeleteInstanceById)   // 删除实例根据id
 		openapi.DELETE("delete-instance-by-field", openApi.Instance.DeleteInstanceByField) // 删除实例根据字段
 		openapi.POST("update-instance")                                                    // 更新实例
-		openapi.POST("search-instance")                                                    // 搜索实例
+		openapi.POST("search-instance")
+
+		openapi.POST("model/:range")              // 模型操作
+		openapi.POST("instance/:action")          // 实例操作
+		openapi.POST("instance-relation/:action") // 实例关系操作
+		openapi.POST("full-text-search")          //全文检索
 	}
 
 	return router
