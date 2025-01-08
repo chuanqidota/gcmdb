@@ -5,6 +5,7 @@ import (
 	openApi "gcmdb/app/openapi/api"
 	taskApi "gcmdb/app/tasks/api"
 	"gcmdb/pkg/middleware"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -90,9 +91,10 @@ func Engine() *gin.Engine {
 	{
 		openapi.GET("search-direct-sql/:uuid", openApi.SearchDirectSql.Search) //复杂查询
 		openapi.GET("all-models", openApi.Model.GetAllModels)                  // 返回所有模型信息
-		openapi.GET("model-info/:id",openApi.Model.ModelInfo)                  // 返回指定模型所有:模型关联、字段分组、字段、唯一字段、字段关联信息
-		openapi.POST("create-instance")                                        // 创建实例
-		openapi.POST("delete-instance")                                        // 删除实例
+		openapi.GET("model-info/:id", openApi.Model.ModelInfo)                 // 返回指定模型所有:模型关联、字段分组、字段、唯一字段、字段关联信息
+		openapi.POST("create-instance", openApi.Instance.CreateInstance)       // 创建实例
+		openapi.DELETE("delete-instance/:id")                                  // 删除实例根据id
+		openapi.DELETE("delete-instance-by-field")                             // 删除实例根据字段
 		openapi.POST("update-instance")                                        // 更新实例
 		openapi.POST("search-instance")                                        // 搜索实例
 	}
