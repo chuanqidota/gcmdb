@@ -18,6 +18,11 @@ type instance struct {
 
 var Instance = new(instance)
 
+// CreateInstance
+//
+//	@Description: 创建实例
+//	@receiver i
+//	@param c
 func (i *instance) CreateInstance(c *gin.Context) {
 	var body params.CreateInstance
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -56,10 +61,19 @@ func (i *instance) CreateInstance(c *gin.Context) {
 		return
 	}
 	// 异步创建实例关系
-	go cmdbUtils.InstanceRelation.CreateInstance(modelId, createInstance.ID)
+	go func() {
+		if err := cmdbUtils.InstanceRelation.CreateInstance(modelId, createInstance.ID); err != nil {
+			fmt.Printf("创建实例关联失败-%s", err.Error())
+		}
+	}()
 	response.Success(c, "执行成功", nil)
 }
 
+// DeleteInstanceById
+//
+//	@Description: 根据id删除实例
+//	@receiver i
+//	@param c
 func (i *instance) DeleteInstanceById(c *gin.Context) {
 	id := c.Param("id")
 	if err := database.DB.Model(&models.Instance{}).
@@ -73,29 +87,50 @@ func (i *instance) DeleteInstanceById(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数转换失败-%s", err.Error()))
 		return
 	}
-	go cmdbUtils.InstanceRelation.DeleteInstance(uint(_id))
+	// 删除实例关联
+	go func() {
+		if err := cmdbUtils.InstanceRelation.DeleteInstance(uint(_id)); err != nil {
+			fmt.Printf("删除实例关联失败-%s", err.Error())
+		}
+	}()
 	response.Success(c, "执行成功", nil)
 }
 
-func(i *instance)DeleteInstanceByField(c *gin.Context){
+func (i *instance) DeleteInstanceByField(c *gin.Context) {
 	var body map[string]any
-	if err:=c.ShouldBindJSON(&body);err!=nil{
-		response.Fail(c,fmt.Sprintf("参数校验失败-%s",err.Error()))
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
 		return
 	}
+	// 获取实例id
 	conditions := make([]string, 0)
-	params := make([]any, 0)
+	_params := make([]any, 0)
 	for key, value := range body {
 		conditions = append(conditions, fmt.Sprintf("data->'$.%s' = ?", key))
-		params = append(params,fmt.Sprintf("%%%s%%",value))
+		_params = append(_params, fmt.Sprintf("%%%s%%", value))
 	}
 	query := strings.Join(conditions, " AND ")
-	if err:=database.DB.Model(&models.Instance{}).
-	Where(query,params...).
-	Delete(&models.Instance{}).Error;err!=nil{
-		response.Fail(c,fmt.Sprintf("删除失败-%s",err.Error()))
+	instanceIds := make([]uint, 0)
+	if err := database.DB.Model(&models.Instance{}).
+		Select("id").
+		Where(query, _params...).
+		Scan(&instanceIds).
+		Error; err != nil {
+		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
 		return
 	}
-
-
+	// 删除实例信息
+	if err := database.DB.Model(&models.Instance{}).
+		Where("id in ?", instanceIds).
+		Delete(&models.Instance{}).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
+		return
+	}
+	// 批量删除实例信息
+	go func() {
+		if err := cmdbUtils.InstanceRelation.DeleteInstances(instanceIds); err != nil {
+			fmt.Printf("删除实例关联失败-%s", err.Error())
+		}
+	}()
+	response.Success(c, "执行成功", nil)
 }

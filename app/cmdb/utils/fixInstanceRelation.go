@@ -191,6 +191,22 @@ func (f *instanceRelation) DeleteInstance(id uint) error {
 	return nil
 }
 
+// DeleteInstances
+//
+//	@Description: 批量删除实例关系
+//	@receiver f
+//	@param ids
+//	@return error
+func (f *instanceRelation) DeleteInstances(ids []uint) error {
+	if err := database.DB.Unscoped().Model(&models.InstanceRelation{}).
+		Where("source_id in ?", ids).
+		Or("target_id in ?", ids).
+		Delete(&models.InstanceRelation{}).Error; err != nil {
+		return fmt.Errorf("删除错误-%s", err.Error())
+	}
+	return nil
+}
+
 // SyncSourceModelInstanceRelation
 //
 //	@Description: 同步指定源模型的实例关系
