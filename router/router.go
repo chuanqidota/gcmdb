@@ -90,15 +90,13 @@ func Engine() *gin.Engine {
 	openapi := router.Group("openapi")
 	{
 		openapi.GET("search-direct-sql/:uuid", openApi.SearchDirectSql.Search)             //复杂查询
-		openapi.GET("all-models", openApi.Model.GetAllModels)                              // 返回所有模型信息
-		openapi.GET("model-info/:id", openApi.Model.ModelInfo)                             // 返回指定模型所有:模型关联、字段分组、字段、唯一字段、字段关联信息
 		openapi.POST("create-instance", openApi.Instance.CreateInstance)                   // 创建实例
 		openapi.DELETE("delete-instance-by-id/:id", openApi.Instance.DeleteInstanceById)   // 删除实例根据id
 		openapi.DELETE("delete-instance-by-field", openApi.Instance.DeleteInstanceByField) // 删除实例根据字段
 		openapi.POST("update-instance")                                                    // 更新实例
 		openapi.POST("search-instance")
 
-		openapi.GET("model/:range")                                                              // 模型操作
+		openapi.GET("model/:range", openApi.Model.ModelRange)                                      //模型查询                                                         // 模型操作
 		openapi.POST("instance/:action")                                                           // 实例操作
 		openapi.POST("instance-relation/:action", openApi.InstanceRelation.InstanceRelationAction) // 实例关系操作
 		openapi.POST("full-text-search")                                                           //全文检索

@@ -15,6 +15,11 @@ type instanceRelation struct {
 
 var InstanceRelation = new(instanceRelation)
 
+// InstanceRelationAction
+//
+//	@Description: 创建/删除实例关联
+//	@receiver ir
+//	@param c
 func (ir *instanceRelation) InstanceRelationAction(c *gin.Context) {
 	action := c.Param("action")
 	switch action {
@@ -34,13 +39,13 @@ func (ir *instanceRelation) InstanceRelationAction(c *gin.Context) {
 			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
 			return
 		}
-		if err:=utils.InstanceRelation.DeleteInstanceRelation(deleteBody);err!=nil{
-			response.Fail(c,fmt.Sprintf("删除关联失败-%s",err.Error()))
+		if err := utils.InstanceRelation.DeleteInstanceRelation(deleteBody); err != nil {
+			response.Fail(c, fmt.Sprintf("删除关联失败-%s", err.Error()))
 			return
 		}
 
 	default:
 		response.Fail(c, fmt.Sprintf("参数错误,action不在create和delete范围内:%s", action))
 	}
-	response.Success(c,"执行成功",nil)
+	response.Success(c, "执行成功", nil)
 }
