@@ -15,6 +15,19 @@ type model struct {
 
 var Model = new(model)
 
+
+func (m *model)ModelRange(c *gin.Context){
+	_range := c.Param("range")
+	switch _range {
+	case "all":
+	case "single":
+	default:
+		
+	}
+
+
+}
+
 // GetAllModels
 //
 //	@Description: 获取所有模型的信息

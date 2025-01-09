@@ -98,10 +98,10 @@ func Engine() *gin.Engine {
 		openapi.POST("update-instance")                                                    // 更新实例
 		openapi.POST("search-instance")
 
-		openapi.POST("model/:range")              // 模型操作
-		openapi.POST("instance/:action")          // 实例操作
-		openapi.POST("instance-relation/:action") // 实例关系操作
-		openapi.POST("full-text-search")          //全文检索
+		openapi.GET("model/:range")                                                              // 模型操作
+		openapi.POST("instance/:action")                                                           // 实例操作
+		openapi.POST("instance-relation/:action", openApi.InstanceRelation.InstanceRelationAction) // 实例关系操作
+		openapi.POST("full-text-search")                                                           //全文检索
 	}
 
 	return router
