@@ -54,7 +54,7 @@ func (v *verify) VerifyCreateInstance(modelId uint, data datatypes.JSON) (dataty
 	}
 
 	// 删除多余字段
-	for key, _ := range dataMap {
+	for key := range dataMap {
 		if !slices.Contains(filedAlias, key) {
 			delete(dataMap, key)
 		}
@@ -125,7 +125,7 @@ func (v *verify) VerifyUpdateInstance(id uint, data datatypes.JSON) (datatypes.J
 		return nil, fmt.Errorf("json解析失败-%s", err.Error())
 	}
 	// 删除多余字段
-	for key, _ := range dataMap {
+	for key := range dataMap {
 		_, ok := instanceData[key]
 		if !ok {
 			delete(dataMap, key)
