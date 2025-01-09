@@ -30,7 +30,7 @@ func (i *instance) CreateInstance(modelAlias string, data datatypes.JSON) error 
 		Scan(&modelId).Error; err != nil {
 		return fmt.Errorf("查询模型失败：%s", err.Error())
 	}
-	verifyData, err := utils.Verify.CreateInstance(modelId, data)
+	verifyData, err := utils.Verify.VerifyCreateInstance(modelId, data)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func (i *instance) CreateInstance(modelAlias string, data datatypes.JSON) error 
 //	@param data 更新数据
 //	@return error
 func (i *instance) UpdateInstance(id uint, data datatypes.JSON) error {
-	verifyData, err := utils.Verify.UpdateInstance(id, data)
+	verifyData, err := utils.Verify.VerifyUpdateInstance(id, data)
 	if err != nil {
 		return fmt.Errorf("参数校验失败:%s", err.Error())
 	}

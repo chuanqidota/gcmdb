@@ -9,7 +9,7 @@
 ### 接口uri示例说明
 
 ```
-https://***/openapi/v1/instance/租户/模型/动作
+https://***/v1/openapi/动作
 如：
 https://***/openapi/v1/instance/zeus/host/create
 ```

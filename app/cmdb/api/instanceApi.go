@@ -30,7 +30,7 @@ func (i *instance) CreateInstance(c *gin.Context) {
 		return
 	}
 	// 验证参数
-	_data, err := utils.Verify.CreateInstance(body.ModelId, body.Data)
+	verifyData, err := utils.Verify.VerifyCreateInstance(body.ModelId, body.Data)
 	if err != nil {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
@@ -39,7 +39,7 @@ func (i *instance) CreateInstance(c *gin.Context) {
 	instance := models.Instance{
 		ModelId:    body.ModelId,
 		ModelAlias: body.ModelAlias,
-		Data:       _data,
+		Data:       verifyData,
 	}
 	if err := database.DB.Model(&models.Instance{}).
 		Create(&instance).Error; err != nil {
@@ -118,7 +118,7 @@ func (i *instance) UpdateInstance(c *gin.Context) {
 		return
 	}
 	// 验证参数
-	_data, err := utils.Verify.UpdateInstance(uint(_id), body.Data)
+	verifyData, err := utils.Verify.VerifyUpdateInstance(uint(_id), body.Data)
 	if err != nil {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
@@ -128,7 +128,7 @@ func (i *instance) UpdateInstance(c *gin.Context) {
 		Where(map[string]any{"id": id}).
 		Updates(map[string]any{
 			"updated_at": time.Now(),
-			"data":       _data,
+			"data":       verifyData,
 		}).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("更新失败-%s", err.Error()))
 		return

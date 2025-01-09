@@ -16,7 +16,7 @@ type verify struct {
 
 var Verify = new(verify)
 
-// CreateInstance
+// VerifyCreateInstance
 //
 //	@Description: 校验创建实例(验证必须的字段、删除多余字段、验证唯一性)
 //	@receiver v
@@ -24,7 +24,7 @@ var Verify = new(verify)
 //	@param data 实例数据
 //	@return datatypes.JSON
 //	@return error
-func (v *verify) CreateInstance(modelId uint, data datatypes.JSON) (datatypes.JSON, error) {
+func (v *verify) VerifyCreateInstance(modelId uint, data datatypes.JSON) (datatypes.JSON, error) {
 	// 校验字段是否必须有
 	modelFields := make([]models.ModelField, 0)
 	if err := database.DB.Model(&models.ModelField{}).
@@ -100,7 +100,7 @@ func (v *verify) CreateInstance(modelId uint, data datatypes.JSON) (datatypes.JS
 
 }
 
-// UpdateInstance
+// VerifyUpdateInstance
 //
 //	@Description: 校验更新实例(删除多余字段、验证唯一性)
 //	@receiver v
@@ -108,7 +108,7 @@ func (v *verify) CreateInstance(modelId uint, data datatypes.JSON) (datatypes.JS
 //	@param data 实例数据
 //	@return datatypes.JSON
 //	@return error
-func (v *verify) UpdateInstance(id uint, data datatypes.JSON) (datatypes.JSON, error) {
+func (v *verify) VerifyUpdateInstance(id uint, data datatypes.JSON) (datatypes.JSON, error) {
 	// 查询实例
 	var instance models.Instance
 	if err := database.DB.Model(&models.Instance{}).
