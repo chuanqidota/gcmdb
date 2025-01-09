@@ -2,14 +2,9 @@ package api
 
 import (
 	"fmt"
-	"gcmdb/app/cmdb/models"
-	cmdbUtils "gcmdb/app/cmdb/utils"
 	"gcmdb/app/openapi/params"
-	"gcmdb/pkg/database"
+	"gcmdb/app/openapi/utils"
 	"gcmdb/pkg/response"
-	"strconv"
-	"strings"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,119 +13,84 @@ type instance struct {
 
 var Instance = new(instance)
 
-// CreateInstance
+// InstanceAction
 //
-//	@Description: 创建实例
+//	@Description: 实例的创建，更新，删除，批量删除
 //	@receiver i
 //	@param c
-func (i *instance) CreateInstance(c *gin.Context) {
-	var body params.CreateInstance
-	if err := c.ShouldBindJSON(&body); err != nil {
-		response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
-		return
-	}
-
-	modelAlias := body.ModelAlias
-	data := body.Data
-
-	// 根据模型别称获取模型id
-	var modelId uint
-	if err := database.DB.Model(&models.Model{}).
-		Select("id").
-		Where(map[string]any{"alias": modelAlias}).
-		Scan(&modelId).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("查询出错-%s", err.Error()))
-		return
-	}
-	// 校验数据
-	verifyData, err := cmdbUtils.Verify.CreateInstance(modelId, data)
-	if err != nil {
-		response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
-		return
-	}
-	// 创建实例数据
-	createInstance := models.Instance{
-		ModelId:    modelId,
-		ModelAlias: modelAlias,
-		Data:       verifyData,
-	}
-
-	if err := database.DB.Model(&models.Instance{}).
-		Create(&createInstance).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("创建实例失败-%s", err.Error()))
-		return
-	}
-	// 异步创建实例关系
-	go func() {
-		if err := cmdbUtils.InstanceRelation.CreateInstance(modelId, createInstance.ID); err != nil {
-			fmt.Printf("创建实例关联失败-%s", err.Error())
+func (i *instance) InstanceAction(c *gin.Context) {
+	action := c.Param("action")
+	switch action {
+	case "create": // 创建
+		var createBody params.CreateInstance
+		if err := c.ShouldBindJSON(&createBody); err != nil {
+			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			return
 		}
-	}()
-	response.Success(c, "执行成功", nil)
-}
-
-// DeleteInstanceById
-//
-//	@Description: 根据id删除实例
-//	@receiver i
-//	@param c
-func (i *instance) DeleteInstanceById(c *gin.Context) {
-	id := c.Param("id")
-	if err := database.DB.Model(&models.Instance{}).
-		Where(map[string]any{"id": id}).
-		Delete(&models.Instance{}).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
-		return
-	}
-	_id, err := strconv.Atoi(id)
-	if err != nil {
-		response.Fail(c, fmt.Sprintf("参数转换失败-%s", err.Error()))
-		return
-	}
-	// 删除实例关联
-	go func() {
-		if err := cmdbUtils.InstanceRelation.DeleteInstance(uint(_id)); err != nil {
-			fmt.Printf("删除实例关联失败-%s", err.Error())
+		if err := utils.Instance.CreateInstance(createBody.ModelAlias, createBody.Data); err != nil {
+			response.Fail(c, fmt.Sprintf("创建实例失败"))
+			return
 		}
-	}()
-	response.Success(c, "执行成功", nil)
-}
+		response.Success(c, "执行成功", nil)
 
-func (i *instance) DeleteInstanceByField(c *gin.Context) {
-	var body map[string]any
-	if err := c.ShouldBindJSON(&body); err != nil {
-		response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
-		return
-	}
-	// 获取实例id
-	conditions := make([]string, 0)
-	_params := make([]any, 0)
-	for key, value := range body {
-		conditions = append(conditions, fmt.Sprintf("data->'$.%s' = ?", key))
-		_params = append(_params, fmt.Sprintf("%%%s%%", value))
-	}
-	query := strings.Join(conditions, " AND ")
-	instanceIds := make([]uint, 0)
-	if err := database.DB.Model(&models.Instance{}).
-		Select("id").
-		Where(query, _params...).
-		Scan(&instanceIds).
-		Error; err != nil {
-		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
-		return
-	}
-	// 删除实例信息
-	if err := database.DB.Model(&models.Instance{}).
-		Where("id in ?", instanceIds).
-		Delete(&models.Instance{}).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
-		return
-	}
-	// 批量删除实例信息
-	go func() {
-		if err := cmdbUtils.InstanceRelation.DeleteInstances(instanceIds); err != nil {
-			fmt.Printf("删除实例关联失败-%s", err.Error())
+	case "update": // 更新
+		var updateBody params.UpdateInstance
+		if err := c.ShouldBindJSON(&updateBody); err != nil {
+			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			return
 		}
-	}()
-	response.Success(c, "执行成功", nil)
+		if err := utils.Instance.UpdateInstance(updateBody.Id, updateBody.Data); err != nil {
+			response.Fail(c, fmt.Sprintf("更新实例失败"))
+			return
+		}
+		response.Success(c, "执行成功", nil)
+
+	case "delete": // 删除
+		var deleteBody params.DeleteInstance
+		if err := c.ShouldBindJSON(&deleteBody); err != nil {
+			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			return
+		}
+		if err := utils.Instance.DeleteInstance(deleteBody.ModelAlias, deleteBody.Id); err != nil {
+			response.Fail(c, fmt.Sprintf("删除实例失败"))
+			return
+		}
+		response.Success(c, "执行成功", nil)
+
+	case "mul_delete": // 批量删除
+		var mulDeleteBody params.MulDeleteInstance
+		if err := c.ShouldBindJSON(&mulDeleteBody); err != nil {
+			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			return
+		}
+		if err := utils.Instance.MulDeleteInstance(mulDeleteBody.ModelAlias, mulDeleteBody.Ids); err != nil {
+			response.Fail(c, fmt.Sprintf("删除实例失败"))
+			return
+		}
+		response.Success(c, "执行成功", nil)
+
+	case "direct": // 直接sql
+		fmt.Println("direct")
+		var uuid params.DirectSearch
+		if err := c.ShouldBindJSON(&uuid); err != nil {
+			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			return
+		}
+		result, err := utils.Instance.DirectSearch(uuid.Uuid)
+		if err != nil {
+			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			return
+		}
+		response.Success(c, "执行成功", result)
+
+	case "search": // 搜索
+		fmt.Println("search")
+
+	case "fulltext": // 全文检索
+		fmt.Println("fulltext")
+
+	default:
+		response.Fail(c, fmt.Sprintf("参数必须在create,update,delete,不可以为:%+v", action))
+	}
+
 }

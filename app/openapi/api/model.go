@@ -21,24 +21,24 @@ var Model = new(model)
 func (m *model) ModelRange(c *gin.Context) {
 	_range := c.Param("range")
 	switch _range {
-	case "all":
+
+	case "all": // 查询所有模型信息
 		modelAll, err := utils.Model.ModelAll()
 		if err != nil {
 			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		}
 		response.Success(c, "查询成功", modelAll)
-		return
 
-	case "single":
+	case "single": // 查询指定模型信息
 		id := c.Query("id")
 		modelSingle, err := utils.Model.ModelSingle(id)
 		if err != nil {
 			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		}
 		response.Success(c, "查询成功", modelSingle)
-		return
+
 	default:
 		response.Fail(c, fmt.Sprintf("参数:%+v不在[all,single]范围内", _range))
-		return
 	}
+
 }

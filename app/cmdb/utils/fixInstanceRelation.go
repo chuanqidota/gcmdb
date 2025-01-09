@@ -191,13 +191,13 @@ func (f *instanceRelation) DeleteInstance(id uint) error {
 	return nil
 }
 
-// DeleteInstances
+// MulDeleteInstance
 //
 //	@Description: 批量删除实例关系
 //	@receiver f
 //	@param ids
 //	@return error
-func (f *instanceRelation) DeleteInstances(ids []uint) error {
+func (f *instanceRelation) MulDeleteInstance(ids []uint) error {
 	if err := database.DB.Unscoped().Model(&models.InstanceRelation{}).
 		Where("source_id in ?", ids).
 		Or("target_id in ?", ids).
