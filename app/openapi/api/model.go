@@ -20,10 +20,14 @@ func (m *model)ModelRange(c *gin.Context){
 	_range := c.Param("range")
 	switch _range {
 	case "all":
+
 	case "single":
+		id := c.Query("id")
 	default:
-		
+		response.Fail(c,fmt.Sprintf("参数:%+v不在[all,single]范围内",_range))
+		return
 	}
+	
 
 
 }
