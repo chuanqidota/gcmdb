@@ -4,5 +4,5 @@ import "gcmdb/app/cmdb/models"
 
 type RetrieveModelFieldGroup struct {
 	models.ModelFieldGroup
-	Fields []models.ModelField `json:"fields"`
+	Fields []models.ModelField `json:"fields" label:"字段列表"`
 }

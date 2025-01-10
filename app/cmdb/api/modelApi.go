@@ -122,7 +122,7 @@ func (m *model) RetrieveModel(c *gin.Context) {
 			return
 		}
 		item := resp.RetrieveModelGroupField{
-			Groups:      group,
+			Group:       group,
 			ModelFields: modelFields,
 		}
 		groupResults = append(groupResults, item)

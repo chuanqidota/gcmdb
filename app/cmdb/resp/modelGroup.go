@@ -4,5 +4,5 @@ import "gcmdb/app/cmdb/models"
 
 type RetrieveModelGroup struct {
 	models.ModelGroup
-	Models []models.Model `json:"models"`
+	Models []models.Model `json:"models" label:"模型列表"`
 }
