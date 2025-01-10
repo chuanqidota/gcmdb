@@ -12,6 +12,12 @@ type instanceRelation struct {
 
 var InstanceRelation = new(instanceRelation)
 
+// CreateInstanceRelation
+//
+//	@Description: 创建实例关系
+//	@receiver ir
+//	@param body
+//	@return error
 func (ir *instanceRelation) CreateInstanceRelation(body params.CreateInstanceRelation) error {
 	SourceModel := body.SourceModel
 	TargetModel := body.TargetModel
@@ -54,6 +60,12 @@ func (ir *instanceRelation) CreateInstanceRelation(body params.CreateInstanceRel
 	return nil
 }
 
+// DeleteInstanceRelation
+//
+//	@Description: 删除实例关系
+//	@receiver ir
+//	@param body
+//	@return error
 func (ir *instanceRelation) DeleteInstanceRelation(body params.DeleteInstanceRelation) error {
 	SourceModel := body.SourceModel
 	TargetModel := body.TargetModel

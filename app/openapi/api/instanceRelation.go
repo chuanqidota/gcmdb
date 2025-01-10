@@ -23,7 +23,7 @@ var InstanceRelation = new(instanceRelation)
 func (ir *instanceRelation) InstanceRelationAction(c *gin.Context) {
 	action := c.Param("action")
 	switch action {
-	case "create":
+	case "create": // 实例关系创建
 		var createBody params.CreateInstanceRelation
 		if err := c.ShouldBindJSON(&createBody); err != nil {
 			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
@@ -33,7 +33,7 @@ func (ir *instanceRelation) InstanceRelationAction(c *gin.Context) {
 			response.Fail(c, fmt.Sprintf("创建关联失败-%s", err.Error()))
 			return
 		}
-	case "delete":
+	case "delete": // 实例关系删除
 		var deleteBody params.DeleteInstanceRelation
 		if err := c.ShouldBindJSON(&deleteBody); err != nil {
 			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))

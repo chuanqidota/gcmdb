@@ -35,12 +35,14 @@ func (m *model) ModelAll() ([]models.Model, error) {
 //	@return *resp.ModelInfo
 //	@return error
 func (m *model) ModelSingle(id string) (*resp.ModelInfo, error) {
+	// 模型
 	var model models.Model
 	if err := database.DB.Model(&models.Model{}).
 		Where(map[string]any{"id": id}).
 		Scan(&model).Error; err != nil {
 		return nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
+	// 模型管理
 	modelRelations := make([]models.ModelRelation, 0)
 	if err := database.DB.Model(&models.ModelRelation{}).
 		Where(map[string]any{"source_id": id}).
@@ -49,6 +51,7 @@ func (m *model) ModelSingle(id string) (*resp.ModelInfo, error) {
 		return nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
 
+	// 模型分组
 	modelFieldGroups := make([]models.ModelFieldGroup, 0)
 	if err := database.DB.Model(&models.ModelFieldGroup{}).
 		Where(map[string]any{"model_id": id}).
@@ -56,12 +59,15 @@ func (m *model) ModelSingle(id string) (*resp.ModelInfo, error) {
 		return nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
 
+	// 模型唯一字段
 	modelFieldUniques := make([]models.ModelFieldUnique, 0)
 	if err := database.DB.Model(&models.ModelFieldUnique{}).
 		Where(map[string]any{"model_id": id}).
 		Scan(&modelFieldUniques).Error; err != nil {
 		return nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
+
+	// 模型字段关联
 	modelFieldRelations := make([]models.ModelFieldRelation, 0)
 	if err := database.DB.Model(&models.ModelFieldRelation{}).
 		Where(map[string]any{"source_model_id": id}).
@@ -70,6 +76,7 @@ func (m *model) ModelSingle(id string) (*resp.ModelInfo, error) {
 		return nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
 
+	// 模型字段
 	modelFields := make([]models.ModelField, 0)
 	if err := database.DB.Model(&models.ModelField{}).
 		Where(map[string]any{"model_id": id}).
@@ -78,7 +85,7 @@ func (m *model) ModelSingle(id string) (*resp.ModelInfo, error) {
 	}
 	result := &resp.ModelInfo{
 		Model:              model,
-		ModelRealtion:      modelRelations,
+		ModelRelation:      modelRelations,
 		ModelFieldGroup:    modelFieldGroups,
 		ModelFieldUnique:   modelFieldUniques,
 		ModelFieldRelation: modelFieldRelations,
