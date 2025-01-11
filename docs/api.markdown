@@ -2,11 +2,83 @@
 
 ## 简介
 
-- cmdb的数据写入和读取
+- 模型、实例、实例关系的各种操作
 
-## 写入
 
-### 接口uri示例说明
+### 模型
+- 请求说明
+```
+url:     http://{domain}/v1/openapi/model/{range}
+method:  GET
+
+参数说明：
+range：all 或 single
+range 为 all 时，返回所有模型
+      http://{domain}/v1/openapi/model/all
+range 为 single 时,返回单个模型,需要补充查询参数id(模型ID)
+      http://{domain}/v1/openapi/model/instance?id={id}
+```
+- all请求示例
+```
+
+```
+- single请求示例
+```
+
+```
+---
+### 实例关系
+```
+url:     http://{domain}/v1/openapi/instance-relation/{action}
+method:  POST
+参数说明：
+action：create、delete
+```
+- create请求示例
+```
+```
+- delete请求示例
+```
+```
+
+
+---
+### 实例
+- 请求说明
+```
+url:     http://{domain}/v1/openapi/instance/{action}
+method:  POST
+参数说明：
+action：create、update、delete、mul_delete、direct、search、fulltext
+```
+- create请求示例
+```
+```
+- update请求示例
+```
+```
+- delete请求示例
+```
+```
+- mul_delete请求示例
+```
+```
+- direct请求示例
+```
+```
+
+- fulltext请求示例
+```
+```
+
+- search请求示例
+```
+```
+
+
+---
+
+
 
 ```
 https://***/v1/openapi/动作
