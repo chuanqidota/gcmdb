@@ -77,7 +77,51 @@ action：create、update、delete、mul_delete、direct、search、fulltext
 
 
 ---
+```json
+    请求cmdb，查询接口
+        :param body:
+            {
+              "info_name": "datacenter",
+              "columns": [],
+              "children": [],
+              "__condition": {
+                "page": 1,
+                "pageSize": 10,
+                "order": [],
+                "where": [
+                    {"search":""}, # 模糊查询
+                    {"name":{"eq":""}}, # 精准查询
+                    {"name":{"contains":""}}, # 包含
+                    {"name":{"ge":""}}, # 大于等于
+                    {"name":{"le":""}}, # 小于等于
+                    {"name":{"gt":""}}, # 大于
+                    {"name":{"lt":""}}, # 小于
+                    {"name":{"ne":""}}, # 不等于
+                    {"name":{"in":[]}}, # 不等于
+                    {"name":{"startswith":""}}, # 开头
+                    {"name":{"endswith":""}}, # 结尾
+                    {"or":[ {"name":{"eq"}}, {"name":{"eq":""}} ]} # 或条件
+                ]
+            }
+        :return:
+            {      # 拿结果
+                "page": 1,
+                "pagesize": 2,
+                "total": 1,
+                "list": [
+                    {
+                        "id": 195698,
+                        "name": "上海机房",
+                        "uuid": "376b0afa-c935-4209-8c26-7cb16191c056",
+                        "alias": "SH",
+                        "phone": "18695838119",
+                        "address": "上海上海青浦区华新镇华志路",
+                        "description": "vcenter测试"
+                    }
+                ]
+            }
 
+```
 
 
 ```

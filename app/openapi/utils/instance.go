@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/app/cmdb/utils"
+	"gcmdb/app/openapi/params"
+	"gcmdb/app/openapi/resp"
 	"gcmdb/pkg/database"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"strings"
 )
 
 type instance struct {
@@ -146,4 +149,67 @@ func (i *instance) DirectSearch(uuid string) (any, error) {
 		return nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
 	return result, nil
+}
+
+// FulltextInstance
+//
+//	@Description: 全文搜索
+//	@receiver i
+//	@param body
+//	@return int64
+//	@return []resp.FulltextInstance
+//	@return error
+func (i *instance) FulltextInstance(body params.FulltextInstance) (int64, []resp.FulltextInstance, error) {
+	search := body.Search
+	limit := body.Limit
+	offset := body.Offset
+	if limit == 0 {
+		limit = 10
+	}
+	modelAlias := body.ModelAlias
+	modelAliasList := strings.Split(modelAlias, ",")
+
+	sql := fmt.Sprintf(`
+			SELECT
+			    i.id,
+			    i.model_id,
+			    i.model_alias,
+			    m.name as model_name
+			    cast(i.data as JSON) data
+			FROM
+				instance i
+			LEFT JOIN 
+				model m
+			ON
+				i.model_id = m.id
+			WHERE
+			    m.is_usable = true 
+			AND
+				JSON_SEARCH(i.data,"one","%%%s%%")
+    `, search)
+	if modelAliasList != nil {
+		for _, modelAlias := range modelAliasList {
+			sql += fmt.Sprintf(`
+				AND
+					m.model_alias = '%s'
+			`, modelAlias)
+		}
+	}
+	sql += fmt.Sprintf(`
+				LIMIT
+					%d
+				OFFSET
+                    %d
+			`, limit, offset)
+	var result []resp.FulltextInstance
+	qs := database.DB.Raw(sql).Scan(&result)
+	if qs.Error != nil {
+		return 0, nil, fmt.Errorf("查询失败-%s", qs.Error.Error())
+	}
+	count := qs.RowsAffected
+	return count, result, nil
+}
+
+func (i *instance) SearchInstance() {
+
 }

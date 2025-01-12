@@ -27,3 +27,10 @@ type MulDeleteInstance struct {
 type DirectSearch struct {
 	Uuid string `json:"uuid" label:"uuid"`
 }
+
+type FulltextInstance struct {
+	Search     string `json:"search" binding:"required" label:"模糊搜索"`
+	Offset     int    `form:"offset" label:"分页offset"`
+	Limit      int    `form:"limit" label:"分页limit"`
+	ModelAlias string `json:"model_alias" label:"模型英文名,中间用逗号分割"`
+}

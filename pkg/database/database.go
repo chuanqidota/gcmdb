@@ -22,6 +22,7 @@ func Init() {
 	var err error
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
 		SkipDefaultTransaction: true,
+		PrepareStmt:            true,
 	})
 	if err != nil {
 		logger.Error("连接数据库出错:", err.Error())

@@ -1,5 +1,5 @@
 package params
 
 type SyncInstanceRelation struct {
-	ModelId uint `json:"model_id" binding:"require"`
+	ModelId uint `json:"model_id" binding:"required"`
 }

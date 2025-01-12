@@ -70,7 +70,6 @@ func (i *instance) InstanceAction(c *gin.Context) {
 		response.Success(c, "执行成功", nil)
 
 	case "direct": // 直接sql
-		fmt.Println("direct")
 		var uuid params.DirectSearch
 		if err := c.ShouldBindJSON(&uuid); err != nil {
 			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
@@ -83,14 +82,27 @@ func (i *instance) InstanceAction(c *gin.Context) {
 		}
 		response.Success(c, "执行成功", result)
 
+	case "fulltext": // 全文检索
+		var body params.FulltextInstance
+		if err := c.ShouldBindJSON(&body); err != nil {
+			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			return
+		}
+		if count, result, err := utils.Instance.FulltextInstance(body); err != nil {
+			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			return
+		} else {
+			response.Success(c, "执行成功", map[string]any{
+				"count":  count,
+				"result": result,
+			})
+		}
+
 	case "search": // 搜索
 		fmt.Println("search")
 
-	case "fulltext": // 全文检索
-		fmt.Println("fulltext")
-
 	default:
-		response.Fail(c, fmt.Sprintf("参数必须在create,update,delete,不可以为:%+v", action))
+		response.Fail(c, fmt.Sprintf("路径参数不对,不可以为:%+v", action))
 	}
 
 }
