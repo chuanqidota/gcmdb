@@ -99,7 +99,11 @@ func (i *instance) InstanceAction(c *gin.Context) {
 		}
 
 	case "search": // 搜索
-		fmt.Println("search")
+		var body params.SearchInstance
+		if err := c.ShouldBindJSON(&body); err != nil {
+			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			return
+		}
 
 	default:
 		response.Fail(c, fmt.Sprintf("路径参数不对,不可以为:%+v", action))

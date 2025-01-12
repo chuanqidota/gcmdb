@@ -34,3 +34,17 @@ type FulltextInstance struct {
 	Limit      int    `form:"limit" label:"分页limit"`
 	ModelAlias string `json:"model_alias" label:"模型英文名,中间用逗号分割"`
 }
+
+type Condition struct {
+	Limit  int64            `json:"limit"`
+	Offset int64            `json:"offset"`
+	Order  string           `json:"order"`
+	Where  []map[string]any `json:"where"`
+}
+
+type SearchInstance struct {
+	Model     string    `json:"model" binding:"required" label:"模型英文名"`
+	Fields    []string  `json:"fields" label:"查询字段"`
+	Children  []any     `json:"children" label:"关联查询"`
+	Condition Condition `json:"__condition" label:"查询条件"`
+}
