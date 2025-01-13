@@ -29,7 +29,7 @@ func (i *instance) InstanceAction(c *gin.Context) {
 			return
 		}
 		if err := utils.Instance.CreateInstance(createBody.ModelAlias, createBody.Data); err != nil {
-			response.Fail(c, fmt.Sprintf("创建实例失败"))
+			response.Fail(c, fmt.Sprintf("创建实例失败-%s", err.Error()))
 			return
 		}
 		response.Success(c, "执行成功", nil)
@@ -41,7 +41,7 @@ func (i *instance) InstanceAction(c *gin.Context) {
 			return
 		}
 		if err := utils.Instance.UpdateInstance(updateBody.Id, updateBody.Data); err != nil {
-			response.Fail(c, fmt.Sprintf("更新实例失败"))
+			response.Fail(c, fmt.Sprintf("更新实例失败-%s", err.Error()))
 			return
 		}
 		response.Success(c, "执行成功", nil)
@@ -53,7 +53,7 @@ func (i *instance) InstanceAction(c *gin.Context) {
 			return
 		}
 		if err := utils.Instance.DeleteInstance(deleteBody.ModelAlias, deleteBody.Id); err != nil {
-			response.Fail(c, fmt.Sprintf("删除实例失败"))
+			response.Fail(c, fmt.Sprintf("删除实例失败-%s", err.Error()))
 			return
 		}
 		response.Success(c, "执行成功", nil)
@@ -65,7 +65,7 @@ func (i *instance) InstanceAction(c *gin.Context) {
 			return
 		}
 		if err := utils.Instance.MulDeleteInstance(mulDeleteBody.ModelAlias, mulDeleteBody.Ids); err != nil {
-			response.Fail(c, fmt.Sprintf("删除实例失败"))
+			response.Fail(c, fmt.Sprintf("删除实例失败-%s", err.Error()))
 			return
 		}
 		response.Success(c, "执行成功", nil)
