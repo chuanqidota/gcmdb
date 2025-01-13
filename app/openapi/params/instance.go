@@ -36,8 +36,8 @@ type FulltextInstance struct {
 }
 
 type Condition struct {
-	Limit  int64            `json:"limit"`
-	Offset int64            `json:"offset"`
+	Limit  int            `json:"limit"`
+	Offset int            `json:"offset"`
 	Order  string           `json:"order"`
 	Where  []map[string]any `json:"where"`
 }

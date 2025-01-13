@@ -122,6 +122,31 @@ action：create、update、delete、mul_delete、direct、search、fulltext
             }
 
 ```
+```
+{
+  "model": "datacenter",
+  "columns": [],
+  "children": [],
+  "__condition": {
+    "page": 1,
+    "pageSize": 10,
+    "order": [],
+    "where": [
+        {"search":""}, 
+        {"eq":{"name":""}}, 
+        {"contains":{"name":"","age":""}}, 
+        {"ge":{"name":"","age":""}}, 
+        {"le":{"name":"","age":""}}, 
+        {"gt":{"name":"","age":""}}, 
+        {"lt":{"name":"","age":""}}, 
+        {"ne":{"name":"","age":""}}, 
+        {"in":{"name":[]}}, 
+        {"startswith":{"name":""}}, 
+        {"endswith":{"name":""}}, 
+        {"or":[{"eq":{"name"}}, {"eq":{"name":""}} ]}
+    ]
+}
+```
 
 
 ```

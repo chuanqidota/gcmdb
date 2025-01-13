@@ -8,9 +8,10 @@ import (
 	"gcmdb/app/openapi/params"
 	"gcmdb/app/openapi/resp"
 	"gcmdb/pkg/database"
+	"strings"
+
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
-	"strings"
 )
 
 type instance struct {
@@ -210,6 +211,149 @@ func (i *instance) FulltextInstance(body params.FulltextInstance) (int64, []resp
 	return count, result, nil
 }
 
-func (i *instance) SearchInstance() {
+func (i *instance) SearchInstance(body params.SearchInstance) {
+	model := body.Model
+	fields := body.Fields
+	// children := body.Children
+	__condition := body.Condition
+	limit := __condition.Limit
+	offset := __condition.Offset
+	order := __condition.Order
+	where := __condition.Where
 
+	// 指定查询
+	query := database.DB.Model(&models.Instance{}).Where(map[string]any{"model_alias":model})
+
+	selectFields := ""
+	for i, field := range fields {
+		if i > 0 {
+			selectFields += ", "
+		}
+		selectFields += fmt.Sprintf("JSON_EXTRACT(data, '$.%s') as %s", field, field)
+	}
+	if selectFields != ""{
+		query = query.Select(selectFields)
+	}
+
+	var actionMap = map[string]string{
+		"eq":         "=",
+		"ne":         "!=",
+		"contains":   "LIKE",
+		"startswith": "LIKE",
+		"endswith":   "LIKE",
+		"gt":         ">",
+		"ge":         ">=",
+		"lt":         "<",
+		"le":         "<=",
+		"in":         "IN",
+	}
+
+	innerCondition := func(query *gorm.DB,action string,value any) *gorm.DB {
+		switch action {
+		case "search":
+			// 模糊查询
+			query = query.Where("JSON_SEARCH(data, 'one', ?) IS NOT NULL", "%"+value.(string)+"%")
+		case "eq","ne","gt","lt","le":
+			sqlAction := actionMap[action]
+			for field, val := range value.(map[string]interface{}) {
+				query = query.Where(fmt.Sprintf("JSON_EXTRACT(data, ?) %s ?", sqlAction), fmt.Sprintf("$.`%s`", field), val)
+			}
+		case "in":
+			sqlAction := actionMap[action]
+			for field, val := range value.(map[string]interface{}) {
+				query = query.Where(fmt.Sprintf("JSON_EXTRACT(data, ?) %s ?", sqlAction), fmt.Sprintf("$.`%s`", field), fmt.Sprintf("(%s)", strings.Join(strings.Fields(fmt.Sprint(val)), ",")))
+			}
+		case "startswith":
+			sqlAction := actionMap[action]
+			// 开头
+			for field, val := range value.(map[string]interface{}) {
+				query = query.Where(fmt.Sprintf("JSON_EXTRACT(data, ?) %s ?", sqlAction), fmt.Sprintf("$.`%s`", field), val.(string)+"%")
+			}
+		case "endswith":
+			sqlAction := actionMap[action]
+			// 结尾
+			for field, val := range value.(map[string]interface{}) {
+				query = query.Where(fmt.Sprintf("JSON_EXTRACT(data, ?) %s ?", sqlAction), fmt.Sprintf("$.`%s`", field), "%"+val.(string))
+			}
+		default:
+			return query
+		}
+		return query
+	}
+
+
+	for _,cond := range where {
+		for action, value := range cond {
+			switch action {
+			case "search":
+				// 模糊查询
+				query = query.Where("JSON_SEARCH(data, 'one', ?) IS NOT NULL", "%"+value.(string)+"%")
+			case "eq","ne","gt","lt","le","in","startswith","endswith":
+				query = innerCondition(query,action,value)
+			case "or":
+				orConditions := value.([]map[string]interface{})
+				for _, orCond := range orConditions {
+					fmt.Println(orCond)
+				}
+		}
+	}
+
+	// 定义 applyCondition 为匿名函数
+	applyCondition := func(query *gorm.DB, operator string, value interface{}, logic string) *gorm.DB {
+		for field, val := range value.(map[string]interface{}) {
+			jsonPath := fmt.Sprintf("$.%s", field)
+			sqlOperator, ok := actionMap[operator]
+			if !ok {
+				continue // 忽略不支持的操作符
+			}
+			switch operator {
+			case "contains":
+				val = fmt.Sprintf("%%%s%%", val)
+			case "startswith":
+				val = fmt.Sprintf("%s%%", val)
+			case "endswith":
+				val = fmt.Sprintf("%%%s", val)
+			case "in":
+				val = fmt.Sprintf("(%s)", strings.Join(strings.Fields(fmt.Sprint(val)), ","))
+			}
+
+			queryStr := fmt.Sprintf("JSON_EXTRACT(data, ?) %s ?", sqlOperator)
+			if logic == "OR" {
+				query = query.Or(queryStr, jsonPath, val)
+			} else {
+				query = query.Where(queryStr, jsonPath, val)
+			}
+		}
+		return query
+	}
+	// 解析 where 条件
+	for _, cond := range where {
+		for operator, value := range cond {
+			switch operator {
+			case "search":
+				// 模糊查询
+				query = query.Where("JSON_SEARCH(data, 'one', ?) IS NOT NULL", "%"+value.(string)+"%")
+			case "or":
+				// 或条件
+				orConditions := value.([]map[string]interface{})
+				for _, orCond := range orConditions {
+					for op, val := range orCond {
+						query = applyCondition(query, op, val, "OR")
+					}
+				}
+			default:
+				// 其他条件
+				query = applyCondition(query, operator, value, "AND")
+			}
+		}
+	}
+	// 排序
+	for _, item := range order {
+		query = query.Order(item)
+	}
+
+	// 分页
+	query = query.Offset(offset).Limit(limit)
+
+}
 }
