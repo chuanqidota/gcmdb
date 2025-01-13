@@ -5,6 +5,7 @@ import (
 	"gcmdb/app/openapi/params"
 	"gcmdb/app/openapi/utils"
 	"gcmdb/pkg/response"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -104,6 +105,32 @@ func (i *instance) InstanceAction(c *gin.Context) {
 			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
 			return
 		}
+
+	case "target": // 通过源查询目标模型
+		var body params.SourceTargetInstance
+		if err := c.ShouldBindQuery(&body); err != nil {
+			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			return
+		}
+		result, err := utils.Instance.TargetInstance(body.Id, body.Model)
+		if err != nil {
+			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+			return
+		}
+		response.Success(c, "执行成功", result)
+
+	case "source": // 通过目标去查源模型
+		var body params.SourceTargetInstance
+		if err := c.ShouldBindQuery(&body); err != nil {
+			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			return
+		}
+		result, err := utils.Instance.SourceInstance(body.Id, body.Model)
+		if err != nil {
+			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+			return
+		}
+		response.Success(c, "执行成功", result)
 
 	default:
 		response.Fail(c, fmt.Sprintf("路径参数不对,不可以为:%+v", action))

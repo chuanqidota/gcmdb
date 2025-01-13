@@ -222,7 +222,7 @@ func (i *instance) SearchInstance(body params.SearchInstance) {
 	where := __condition.Where
 
 	// 指定查询
-	query := database.DB.Model(&models.Instance{}).Where(map[string]any{"model_alias":model})
+	query := database.DB.Model(&models.Instance{}).Where(map[string]any{"model_alias": model})
 
 	selectFields := ""
 	for i, field := range fields {
@@ -231,7 +231,7 @@ func (i *instance) SearchInstance(body params.SearchInstance) {
 		}
 		selectFields += fmt.Sprintf("JSON_EXTRACT(data, '$.%s') as %s", field, field)
 	}
-	if selectFields != ""{
+	if selectFields != "" {
 		query = query.Select(selectFields)
 	}
 
@@ -248,12 +248,12 @@ func (i *instance) SearchInstance(body params.SearchInstance) {
 		"in":         "IN",
 	}
 
-	innerCondition := func(query *gorm.DB,action string,value any) *gorm.DB {
+	innerCondition := func(query *gorm.DB, action string, value any) *gorm.DB {
 		switch action {
 		case "search":
 			// 模糊查询
 			query = query.Where("JSON_SEARCH(data, 'one', ?) IS NOT NULL", "%"+value.(string)+"%")
-		case "eq","ne","gt","lt","le":
+		case "eq", "ne", "gt", "lt", "le":
 			sqlAction := actionMap[action]
 			for field, val := range value.(map[string]interface{}) {
 				query = query.Where(fmt.Sprintf("JSON_EXTRACT(data, ?) %s ?", sqlAction), fmt.Sprintf("$.`%s`", field), val)
@@ -281,79 +281,132 @@ func (i *instance) SearchInstance(body params.SearchInstance) {
 		return query
 	}
 
-
-	for _,cond := range where {
+	for _, cond := range where {
 		for action, value := range cond {
 			switch action {
 			case "search":
 				// 模糊查询
 				query = query.Where("JSON_SEARCH(data, 'one', ?) IS NOT NULL", "%"+value.(string)+"%")
-			case "eq","ne","gt","lt","le","in","startswith","endswith":
-				query = innerCondition(query,action,value)
+			case "eq", "ne", "gt", "lt", "le", "in", "startswith", "endswith":
+				query = innerCondition(query, action, value)
 			case "or":
 				orConditions := value.([]map[string]interface{})
 				for _, orCond := range orConditions {
 					fmt.Println(orCond)
 				}
-		}
-	}
-
-	// 定义 applyCondition 为匿名函数
-	applyCondition := func(query *gorm.DB, operator string, value interface{}, logic string) *gorm.DB {
-		for field, val := range value.(map[string]interface{}) {
-			jsonPath := fmt.Sprintf("$.%s", field)
-			sqlOperator, ok := actionMap[operator]
-			if !ok {
-				continue // 忽略不支持的操作符
-			}
-			switch operator {
-			case "contains":
-				val = fmt.Sprintf("%%%s%%", val)
-			case "startswith":
-				val = fmt.Sprintf("%s%%", val)
-			case "endswith":
-				val = fmt.Sprintf("%%%s", val)
-			case "in":
-				val = fmt.Sprintf("(%s)", strings.Join(strings.Fields(fmt.Sprint(val)), ","))
-			}
-
-			queryStr := fmt.Sprintf("JSON_EXTRACT(data, ?) %s ?", sqlOperator)
-			if logic == "OR" {
-				query = query.Or(queryStr, jsonPath, val)
-			} else {
-				query = query.Where(queryStr, jsonPath, val)
 			}
 		}
-		return query
-	}
-	// 解析 where 条件
-	for _, cond := range where {
-		for operator, value := range cond {
-			switch operator {
-			case "search":
-				// 模糊查询
-				query = query.Where("JSON_SEARCH(data, 'one', ?) IS NOT NULL", "%"+value.(string)+"%")
-			case "or":
-				// 或条件
-				orConditions := value.([]map[string]interface{})
-				for _, orCond := range orConditions {
-					for op, val := range orCond {
-						query = applyCondition(query, op, val, "OR")
-					}
+
+		// 定义 applyCondition 为匿名函数
+		applyCondition := func(query *gorm.DB, operator string, value interface{}, logic string) *gorm.DB {
+			for field, val := range value.(map[string]interface{}) {
+				jsonPath := fmt.Sprintf("$.%s", field)
+				sqlOperator, ok := actionMap[operator]
+				if !ok {
+					continue // 忽略不支持的操作符
 				}
-			default:
-				// 其他条件
-				query = applyCondition(query, operator, value, "AND")
+				switch operator {
+				case "contains":
+					val = fmt.Sprintf("%%%s%%", val)
+				case "startswith":
+					val = fmt.Sprintf("%s%%", val)
+				case "endswith":
+					val = fmt.Sprintf("%%%s", val)
+				case "in":
+					val = fmt.Sprintf("(%s)", strings.Join(strings.Fields(fmt.Sprint(val)), ","))
+				}
+
+				queryStr := fmt.Sprintf("JSON_EXTRACT(data, ?) %s ?", sqlOperator)
+				if logic == "OR" {
+					query = query.Or(queryStr, jsonPath, val)
+				} else {
+					query = query.Where(queryStr, jsonPath, val)
+				}
+			}
+			return query
+		}
+		// 解析 where 条件
+		for _, cond := range where {
+			for operator, value := range cond {
+				switch operator {
+				case "search":
+					// 模糊查询
+					query = query.Where("JSON_SEARCH(data, 'one', ?) IS NOT NULL", "%"+value.(string)+"%")
+				case "or":
+					// 或条件
+					orConditions := value.([]map[string]interface{})
+					for _, orCond := range orConditions {
+						for op, val := range orCond {
+							query = applyCondition(query, op, val, "OR")
+						}
+					}
+				default:
+					// 其他条件
+					query = applyCondition(query, operator, value, "AND")
+				}
 			}
 		}
-	}
-	// 排序
-	for _, item := range order {
-		query = query.Order(item)
-	}
+		// 排序
+		for _, item := range order {
+			query = query.Order(item)
+		}
 
-	// 分页
-	query = query.Offset(offset).Limit(limit)
+		// 分页
+		query = query.Offset(offset).Limit(limit)
 
+	}
 }
+
+func (i *instance) TargetInstance(sourceId int64, targetModel string) ([]models.Instance, error) {
+	var modelId int64
+	if err := database.DB.Model(&models.Model{}).
+		Select("id").
+		Where(map[string]any{"alias": targetModel}).
+		Scan(&modelId).Error; err != nil {
+		return nil, fmt.Errorf("查询出错-%s", err.Error())
+	}
+	query := database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"source_id": sourceId})
+	if modelId != 0 {
+		query = query.Where(map[string]any{"target_model_id": modelId})
+	}
+	targetIds := make([]int64, 0)
+	if err := query.Select("target_id").Scan(&targetIds).Error; err != nil {
+		return nil, fmt.Errorf("查询失败-%s", err.Error())
+	}
+	instances := make([]models.Instance, 0)
+	if err := database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"id": targetIds}).
+		Scan(&instances).Error; err != nil {
+		return nil, fmt.Errorf("查询出错-%s", err.Error())
+
+	}
+	return instances, nil
+}
+
+func (i *instance) SourceInstance(targetId int64, SourceModel string) ([]models.Instance, error) {
+	var modelId int64
+	if err := database.DB.Model(&models.Model{}).
+		Select("id").
+		Where(map[string]any{"alias": SourceModel}).
+		Scan(&modelId).Error; err != nil {
+		return nil, fmt.Errorf("查询出错-%s", err.Error())
+	}
+	query := database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"target_id": targetId})
+	if modelId != 0 {
+		query = query.Where(map[string]any{"source_model_id": modelId})
+	}
+	sourceIds := make([]int64, 0)
+	if err := query.Select("source_id").Scan(&sourceIds).Error; err != nil {
+		return nil, fmt.Errorf("查询失败-%s", err.Error())
+	}
+	instances := make([]models.Instance, 0)
+	if err := database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"id": sourceIds}).
+		Scan(&instances).Error; err != nil {
+		return nil, fmt.Errorf("查询出错-%s", err.Error())
+
+	}
+	return instances, nil
 }

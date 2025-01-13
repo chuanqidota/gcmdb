@@ -36,8 +36,8 @@ type FulltextInstance struct {
 }
 
 type Condition struct {
-	Limit  int            `json:"limit"`
-	Offset int            `json:"offset"`
+	Limit  int              `json:"limit"`
+	Offset int              `json:"offset"`
 	Order  string           `json:"order"`
 	Where  []map[string]any `json:"where"`
 }
@@ -47,4 +47,9 @@ type SearchInstance struct {
 	Fields    []string  `json:"fields" label:"查询字段"`
 	Children  []any     `json:"children" label:"关联查询"`
 	Condition Condition `json:"__condition" label:"查询条件"`
+}
+
+type SourceTargetInstance struct {
+	Id    int64  `form:"id" binding:"required" label:"实例id"`
+	Model string `form:"model" binding:"required" label:"源/目标模型英文名称"`
 }
