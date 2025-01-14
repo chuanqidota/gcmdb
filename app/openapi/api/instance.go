@@ -105,6 +105,12 @@ func (i *instance) InstanceAction(c *gin.Context) {
 			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
 			return
 		}
+		results, err := utils.Instance.SearchInstance(body)
+		if err != nil {
+			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+			return
+		}
+		response.Success(c, "执行成功", results)
 
 	case "target": // 通过源查询目标模型
 		var body params.SourceTargetInstance
