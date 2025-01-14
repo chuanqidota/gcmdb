@@ -211,6 +211,13 @@ func (i *instance) FulltextInstance(body params.FulltextInstance) (int64, []resp
 	return count, result, nil
 }
 
+// SearchInstance
+//
+//	@Description: 搜索实例信息
+//	@receiver i
+//	@param body
+//	@return []models.Instance
+//	@return error
 func (i *instance) SearchInstance(body params.SearchInstance) ([]models.Instance, error) {
 	model := body.Model
 	fields := body.Fields
@@ -248,6 +255,7 @@ func (i *instance) SearchInstance(body params.SearchInstance) ([]models.Instance
 		"in":         "IN",
 	}
 
+	// 匿名函数
 	innerConditionSql := func(action string, value any) string {
 		var conditions []string
 
@@ -288,6 +296,7 @@ func (i *instance) SearchInstance(body params.SearchInstance) ([]models.Instance
 
 	}
 
+	// 拼接sql
 	querySql := " 1=1 "
 	for _, cond := range where {
 		for action, value := range cond {
@@ -304,8 +313,8 @@ func (i *instance) SearchInstance(body params.SearchInstance) ([]models.Instance
 				for _, cond := range orConditions {
 					// 内部是AND
 					andQuery := make([]string, 0)
-					for or_action, or_value := range cond {
-						_query := innerConditionSql(or_action, or_value)
+					for orAction, orValue := range cond {
+						_query := innerConditionSql(orAction, orValue)
 						andQuery = append(andQuery, _query)
 					}
 					query.Or(strings.Join(andQuery, " AND "))
@@ -328,6 +337,14 @@ func (i *instance) SearchInstance(body params.SearchInstance) ([]models.Instance
 	return instances, nil
 }
 
+// TargetInstance
+//
+//	@Description: 根据源目标实例 查询 目标实例信息
+//	@receiver i
+//	@param sourceId 源实例id
+//	@param targetModel 目标模型别名
+//	@return []models.Instance
+//	@return error
 func (i *instance) TargetInstance(sourceId int64, targetModel string) ([]models.Instance, error) {
 	var modelId int64
 	if err := database.DB.Model(&models.Model{}).
@@ -355,6 +372,14 @@ func (i *instance) TargetInstance(sourceId int64, targetModel string) ([]models.
 	return instances, nil
 }
 
+// SourceInstance
+//
+//	@Description: 根据目标实例 查询 源实例信息
+//	@receiver i
+//	@param targetId 目标实例id
+//	@param SourceModel 源模型别名
+//	@return []models.Instance
+//	@return error
 func (i *instance) SourceInstance(targetId int64, SourceModel string) ([]models.Instance, error) {
 	var modelId int64
 	if err := database.DB.Model(&models.Model{}).
