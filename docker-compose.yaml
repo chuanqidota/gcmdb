@@ -12,7 +12,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
-  # reids
+  # redis
   redis:
     image: redis:latest
     restart: always
@@ -37,7 +37,7 @@ services:
     build:
       context: . # 指定Dockerfile文件所在路径
       dockerfile: Dockerfile # 指定Dockerfile文件名称
-    image: gcmdb:v1.0.0
+    image: gcmdb:latest
     container_name: gcmdb
     ports:
       - "8080:8080"

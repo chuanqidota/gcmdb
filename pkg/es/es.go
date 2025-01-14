@@ -39,20 +39,6 @@ func CreateIndex(index string) error {
 	}
 }
 
-// DeleteIndex
-//
-//	@Description: 删除索引
-//	@param index
-//	@return error
-func DeleteIndex(index string) error {
-	deleteIndex, err := ElasticSearch.DeleteIndex(index).Do(context.Background())
-	if err != nil || !deleteIndex.Acknowledged {
-		return err
-	} else {
-		return nil
-	}
-}
-
 // IsExistsIndex
 //
 //	@Description: 是否存在索引
@@ -67,7 +53,7 @@ func IsExistsIndex(index string) bool {
 	}
 }
 
-// CreateMap
+// CreateMapping
 //
 //	@Description: 创建索引
 //	@param index
@@ -86,7 +72,7 @@ mappings := `{
 	}`
 */
 //		@return error
-func CreateMap(index string, mappings string) error {
+func CreateMapping(index string, mappings string) error {
 	do, err := ElasticSearch.PutMapping().Index(index).BodyString(mappings).Do(context.Background())
 	if err != nil || !do.Acknowledged {
 		return err
