@@ -188,13 +188,11 @@ func (i *instance) FulltextInstance(body params.FulltextInstance) (int64, []resp
 			AND
 				JSON_SEARCH(i.data,"one","%%%s%%")
     `, search)
-	if modelAliasList != nil {
-		for _, modelAlias := range modelAliasList {
-			sql += fmt.Sprintf(`
-				AND
-					m.model_alias = '%s'
-			`, modelAlias)
-		}
+	for _, modelAlias := range modelAliasList {
+		sql += fmt.Sprintf(`
+			AND
+				m.model_alias = '%s'
+		`, modelAlias)
 	}
 	sql += fmt.Sprintf(`
 				LIMIT
@@ -227,6 +225,10 @@ func (i *instance) SearchInstance(body params.SearchInstance) ([]models.Instance
 	offset := __condition.Offset
 	order := __condition.Order
 	where := __condition.Where
+	
+	if limit == 0 {
+		limit = 10
+	}
 
 	// 指定查询
 	query := database.DB.Model(&models.Instance{}).Where(map[string]any{"model_alias": model})
@@ -265,6 +267,7 @@ func (i *instance) SearchInstance(body params.SearchInstance) ([]models.Instance
 			conditions = append(conditions, fmt.Sprintf("JSON_SEARCH(data, 'one', '%s') IS NOT NULL", "%"+value.(string)+"%"))
 
 		case "eq", "ne", "gt", "lt", "le", "ge":
+			// 等于、不等于、大于、小于、小于等于、大于等于
 			sqlAction := actionMap[action]
 			for field, val := range value.(map[string]interface{}) {
 				conditions = append(conditions, fmt.Sprintf("JSON_EXTRACT(data, '$.%s') %s '%v'", field, sqlAction, val))
