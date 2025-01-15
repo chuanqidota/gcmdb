@@ -3,7 +3,7 @@ package params
 import "gorm.io/datatypes"
 
 type UpdateInstance struct {
-	Data datatypes.JSON `json:"data"`
+	Data datatypes.JSON `json:"data" binding:"required"`
 }
 
 type ListInstance struct {

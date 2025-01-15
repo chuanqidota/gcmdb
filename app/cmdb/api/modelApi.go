@@ -165,6 +165,7 @@ func (m *model) PatchModelGroupId(c *gin.Context) {
 //	@receiver m
 //	@param c
 func (m *model) UpdateModel(c *gin.Context) {
+	id := c.Param("id")
 	var body params.PatchModelBody
 	if err := c.ShouldBindJSON(&body); err != nil {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
@@ -179,7 +180,7 @@ func (m *model) UpdateModel(c *gin.Context) {
 		"order":       body.Order,
 	}
 	if err := database.DB.Model(&models.Model{}).
-		Where(map[string]any{"id": body.ID}).
+		Where(map[string]any{"id": id}).
 		Updates(data).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("更新失败-%s", err.Error()))
 		return

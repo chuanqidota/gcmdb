@@ -1,13 +1,12 @@
 package params
 
 type PatchModelGroupIdBody struct {
-	GroupId uint `json:"group_id" label:"模型组ID"`
-	ModelId uint `json:"model_id" label:"模型ID"`
+	GroupId uint `json:"group_id" binding:"required" label:"模型组ID"`
+	ModelId uint `json:"model_id" binding:"required" label:"模型ID"`
 }
 
 type PatchModelBody struct {
-	ID          uint   `json:"id" label:"ID"`
-	Name        string `json:"name" label:"模型中文名"`
+	Name        string `json:"name" binding:"required" label:"模型中文名"`
 	Description string `json:"description" label:"描述"`
 	IsUsable    bool   `json:"is_usable" label:"是否在用"`
 	Icon        string `json:"icon" label:"图标"`

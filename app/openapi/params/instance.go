@@ -5,31 +5,31 @@ import (
 )
 
 type CreateInstance struct {
-	ModelAlias string         `json:"model_alias" label:"模型别名"`
-	Data       datatypes.JSON `json:"data" label:"实例数据"`
+	ModelAlias string         `json:"model_alias" label:"模型别名" binding:"required"`
+	Data       datatypes.JSON `json:"data" label:"实例数据" binding:"required"`
 }
 
 type UpdateInstance struct {
-	Id   uint           `json:"id" label:"实例ID"`
-	Data datatypes.JSON `json:"data" label:"更新数据"`
+	Id   uint           `json:"id" label:"实例ID" binding:"required"`
+	Data datatypes.JSON `json:"data" label:"更新数据" binding:"required"`
 }
 
 type DeleteInstance struct {
-	ModelAlias string `json:"model_alias" label:"模型英文名"`
-	Id         uint   `json:"id" label:"实例ID"`
+	ModelAlias string `json:"model_alias" label:"模型英文名" binding:"required"`
+	Id         uint   `json:"id" label:"实例ID" binding:"required"`
 }
 
 type MulDeleteInstance struct {
-	ModelAlias string `json:"model_alias" label:"模型英文名"`
-	Ids        []uint `json:"ids" label:"实例ID"`
+	ModelAlias string `json:"model_alias" label:"模型英文名" binding:"required"`
+	Ids        []uint `json:"ids" label:"实例ID" binding:"required"`
 }
 
 type DirectSearch struct {
-	Uuid string `json:"uuid" label:"uuid"`
+	Uuid string `json:"uuid" label:"uuid" binding:"required"`
 }
 
 type FulltextInstance struct {
-	Search     string `json:"search" binding:"required" label:"模糊搜索"`
+	Search     string `json:"search" binding:"required" label:"模糊搜索" `
 	Offset     int    `form:"offset" label:"分页offset"`
 	Limit      int    `form:"limit" label:"分页limit"`
 	ModelAlias string `json:"model_alias" label:"模型英文名,中间用逗号分割"`
