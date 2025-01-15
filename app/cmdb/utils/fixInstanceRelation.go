@@ -37,20 +37,20 @@ func (f *instanceRelation) CreateModelFieldRelation(sourceModelId, targetModelId
 		return fmt.Errorf("没有找到目标字段ID对应的别名")
 	}
 	sql := fmt.Sprintf(`SELECT 
-									instance1.model_id as source_model_id,
-									instance2.model_id as target_model_id,
-									instance1.id as source_id,
-									instance2.id as target_id 
-							   FROM 
-									instance instance1
-							   INNER JOIN 
-									instance instance2 
-							   ON 
-									data->'$.%+v'=data->'$.%+v'
-							   WHERE 
-									instance1.model_id = %+v 
-							   AND 
-									instance2.model_id = %+v`, sourceFiled, targetField, sourceModelId, targetModelId)
+							instance1.model_id as source_model_id,
+							instance2.model_id as target_model_id,
+							instance1.id as source_id,
+							instance2.id as target_id 
+						FROM 
+							instance instance1
+						INNER JOIN 
+							instance instance2 
+						ON 
+							data->'$.%+v'=data->'$.%+v'
+						WHERE 
+							instance1.model_id = %+v 
+						AND 
+							instance2.model_id = %+v`, sourceFiled, targetField, sourceModelId, targetModelId)
 
 	instanceRelations := make([]models.InstanceRelation, 0)
 	if err := database.DB.Raw(sql).Scan(&instanceRelations).Error; err != nil {
@@ -89,20 +89,20 @@ func (f *instanceRelation) DeleteModelFieldRelation(sourceModelId, targetModelId
 		return fmt.Errorf("没有找到目标字段ID对应的别名")
 	}
 	sql := fmt.Sprintf(`SELECT 
-									instance1.model_id as source_model_id,
-									instance2.model_id as target_model_id,
-									instance1.id as source_id,
-									instance2.id as target_id 
-							   FROM 
-								    instance instance1
-							   INNER JOIN 
-									instance instance2 
-							   ON 
-									data->'$.%+v'=data->'$.%+v'
-							   WHERE 
-									instance1.model_id = %+v 
-							   AND 
-									instance2.model_id = %+v`, sourceFiled, targetField, sourceModelId, targetModelId)
+							instance1.model_id as source_model_id,
+							instance2.model_id as target_model_id,
+							instance1.id as source_id,
+							instance2.id as target_id 
+						FROM 
+							instance instance1
+						INNER JOIN 
+							instance instance2 
+						ON 
+							data->'$.%+v'=data->'$.%+v'
+						WHERE 
+							instance1.model_id = %+v 
+						AND 
+							instance2.model_id = %+v`, sourceFiled, targetField, sourceModelId, targetModelId)
 	instanceRelations := make([]models.InstanceRelation, 0)
 	if err := database.DB.Raw(sql).Scan(&instanceRelations).Error; err != nil {
 		return fmt.Errorf("查询失败-%s", err.Error())
@@ -149,22 +149,22 @@ func (f *instanceRelation) CreateInstance(ModelId uint, instanceId uint) error {
 		sourceModelId := modelFieldRelation.SourceModelId
 		targetModelId := modelFieldRelation.TargetModelId
 		sql := fmt.Sprintf(`SELECT 
-										instance1.model_id as source_model_id,
-										instance2.model_id as target_model_id,
-										instance1.id as source_id,
-										instance2.id as target_id 
-									FROM 
-										instance instance1
-									INNER JOIN 
-										instance instance2 
-									ON 
-										data->'$.%+v'=data->'$.%+v'
-									WHERE 
-										instance1.model_id = %+v 
-									AND 
-										instance2.model_id = %+v
-									AND 
-										(source_id=%+v OR target_id =%+v)`, sourceFiled, targetField, sourceModelId, targetModelId, instanceId, instanceId)
+								instance1.model_id as source_model_id,
+								instance2.model_id as target_model_id,
+								instance1.id as source_id,
+								instance2.id as target_id 
+							FROM 
+								instance instance1
+							INNER JOIN 
+								instance instance2 
+							ON 
+								data->'$.%+v'=data->'$.%+v'
+							WHERE 
+								instance1.model_id = %+v 
+							AND 
+								instance2.model_id = %+v
+							AND 
+								(source_id=%+v OR target_id =%+v)`, sourceFiled, targetField, sourceModelId, targetModelId, instanceId, instanceId)
 		instanceRelations := make([]models.InstanceRelation, 0)
 		if err := database.DB.Raw(sql).Scan(&instanceRelations).Error; err != nil {
 			return fmt.Errorf("查询失败-%s", err.Error())
@@ -252,20 +252,20 @@ func (f *instanceRelation) SyncSourceModelInstanceRelation(modelId uint) error {
 			return fmt.Errorf("没有找到目标字段ID对应的别名")
 		}
 		sql := fmt.Sprintf(`SELECT 
-										instance1.model_id as source_model_id,
-										instance2.model_id as target_model_id,
-										instance1.id as source_id,
-										instance2.id as target_id 
-								    FROM 
-										instance instance1
-								    INNER JOIN 
-										instance instance2 
-								    ON 
-										data->'$.%+v'=data->'$.%+v'
-								    WHERE 
-										instance1.model_id = %+v 
-								    AND 
-										instance2.model_id = %+v`, sourceFiled, targetField, sourceModelId, targetModelId)
+								instance1.model_id as source_model_id,
+								instance2.model_id as target_model_id,
+								instance1.id as source_id,
+								instance2.id as target_id 
+							FROM 
+								instance instance1
+							INNER JOIN 
+								instance instance2 
+							ON 
+								data->'$.%+v'=data->'$.%+v'
+							WHERE 
+								instance1.model_id = %+v 
+							AND 
+								instance2.model_id = %+v`, sourceFiled, targetField, sourceModelId, targetModelId)
 		instanceRelations := make([]models.InstanceRelation, 0)
 		if err := database.DB.Raw(sql).Scan(&instanceRelations).Error; err != nil {
 			return fmt.Errorf("查询失败-%s", err.Error())
