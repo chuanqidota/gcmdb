@@ -8,6 +8,7 @@ import (
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -67,9 +68,8 @@ func (m *model) ListModel(c *gin.Context) {
 	// 查询
 	db := database.DB.Model(&models.Model{})
 	if search != "" {
-		db.Where("alias like ?", "%"+search+"%").
-			Or("name like ?", "%"+search+"%").
-			Or("description like ?", "%"+search+"%")
+		db = db.Where("alias like ? OR name like ? OR description like ?",
+			"%"+search+"%", "%"+search+"%", "%"+search+"%")
 	}
 	// 分页数量
 	var count int64
@@ -141,6 +141,7 @@ func (m *model) RetrieveModel(c *gin.Context) {
 //	@receiver m
 //	@param c
 func (m *model) PatchModelGroupId(c *gin.Context) {
+	id := c.Param("id")
 	var body params.PatchModelGroupIdBody
 	if err := c.ShouldBindJSON(&body); err != nil {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
@@ -151,7 +152,7 @@ func (m *model) PatchModelGroupId(c *gin.Context) {
 		"group_id":   body.GroupId,
 	}
 	if err := database.DB.Model(&models.Model{}).
-		Where(map[string]any{"id": body.ModelId}).
+		Where(map[string]any{"id": id}).
 		Updates(data).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("更新失败-%s", err.Error()))
 		return
@@ -248,25 +249,27 @@ func (m *model) DeleteModel(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("该模型存在实例，无法删除"))
 		return
 	}
-	// 删除模型字段
-	if err := database.DB.Unscoped().Model(&models.ModelField{}).
-		Where(map[string]any{"model_id": modelId}).
-		Delete(&models.ModelField{}).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("删除模型字段失败-%s", err.Error()))
-		return
-	}
-	// 删除模型字段分组
-	if err := database.DB.Unscoped().Model(&models.ModelFieldGroup{}).
-		Where(map[string]any{"model_id": modelId}).
-		Delete(&models.ModelFieldGroup{}).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("删除字段分组失败-%s", err.Error()))
-		return
-	}
-	// 删除模型
-	if err := database.DB.Unscoped().Model(&models.Model{}).
-		Where(map[string]any{"id": modelId}).
-		Delete(&models.Model{}).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("删除模型失败-%s", err.Error()))
+	// 删除模型字段、字段分组、模型（事务）
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Model(&models.ModelField{}).
+			Where(map[string]any{"model_id": modelId}).
+			Delete(&models.ModelField{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Unscoped().Model(&models.ModelFieldGroup{}).
+			Where(map[string]any{"model_id": modelId}).
+			Delete(&models.ModelFieldGroup{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Unscoped().Model(&models.Model{}).
+			Where(map[string]any{"id": modelId}).
+			Delete(&models.Model{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
 		return
 	}
 

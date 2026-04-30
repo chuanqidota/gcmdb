@@ -48,7 +48,7 @@ func (i *instance) CreateInstance(c *gin.Context) {
 	}
 	// 异步创建实例关联
 	go func() {
-		if err = utils.InstanceRelation.CreateInstance(body.ModelId, instance.ID); err != nil {
+		if err := utils.InstanceRelation.CreateInstance(body.ModelId, instance.ID); err != nil {
 			fmt.Printf("创建实例关联失败-%s", err.Error())
 		}
 	}()
@@ -144,6 +144,11 @@ func (i *instance) UpdateInstance(c *gin.Context) {
 //	@param c
 func (i *instance) DeleteInstance(c *gin.Context) {
 	id := c.Param("id")
+	_id, err := strconv.Atoi(id)
+	if err != nil {
+		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
+		return
+	}
 	// 删除实例关系
 	if err := database.DB.Model(&models.InstanceRelation{}).
 		Where(map[string]any{"source_id": id}).
@@ -159,16 +164,6 @@ func (i *instance) DeleteInstance(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("删除实例失败-%s", err.Error()))
 		return
 	}
-	_id, err := strconv.Atoi(id)
-	if err != nil {
-		response.Fail(c, fmt.Sprintf("id转为int失败-%s", err.Error()))
-		return
-	}
-	// 异步删除实例关系
-	go func() {
-		if err = utils.InstanceRelation.DeleteInstance(uint(_id)); err != nil {
-			fmt.Printf("删除实例失败-%s", err.Error())
-		}
-	}()
 	response.Success(c, "删除成功", nil)
+	_ = _id
 }

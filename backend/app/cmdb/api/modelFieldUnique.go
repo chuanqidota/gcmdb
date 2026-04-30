@@ -60,7 +60,7 @@ func (mfu *modelFieldUnique) RetrieveModelFieldUnique(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
-	response.Success(c, "执行成功", nil)
+	response.Success(c, "执行成功", modelFieldUniques)
 }
 
 // DeleteModelFieldUnique

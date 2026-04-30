@@ -91,7 +91,7 @@ func (i *instanceRelation) SourceTargetInstanceRelation(c *gin.Context) {
 //	@receiver i
 //	@param c
 func (i *instanceRelation) TargetSourceInstanceRelation(c *gin.Context) {
-	targetId := c.Param("source_id")
+	targetId := c.Param("target_id")
 	modelInstances := make([]models.InstanceRelation, 0)
 	if err := database.DB.Model(&models.InstanceRelation{}).
 		Where(map[string]any{"target_id": targetId}).

@@ -31,16 +31,33 @@ services:
     volumes:
       - es_data:/usr/share/elasticsearch/data
 
-  # 项目本身
-  rbac:
+  # 后端
+  gcmdb:
     restart: always
     build:
-      context: . # 指定Dockerfile文件所在路径
-      dockerfile: Dockerfile # 指定Dockerfile文件名称
+      context: ./backend
+      dockerfile: Dockerfile
     image: gcmdb:latest
     container_name: gcmdb
     ports:
       - "8080:8080"
+    depends_on:
+      - mysql
+      - elasticsearch
+
+  # 前端
+  gcmdb-web:
+    restart: always
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: gcmdb-web:latest
+    container_name: gcmdb-web
+    ports:
+      - "80:80"
+    depends_on:
+      - gcmdb
+
 volumes:
   mysql_data:
   es_data:

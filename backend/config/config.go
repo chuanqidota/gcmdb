@@ -1,26 +1,27 @@
 package config
 
 import (
-	"gcmdb/pkg/logger"
 	"github.com/spf13/viper"
+	"log"
 )
 
 type Config struct {
 	Server struct {
-		Host string `json:"host"`
-		Port int    `json:"port"`
+		Host   string `mapstructure:"host"`
+		Port   int    `mapstructure:"port"`
+		ApiKey string `mapstructure:"api_key"`
 	}
 	Database struct {
-		UserName string `json:"username"`
-		PassWord string `json:"password"`
-		Host     string `json:"host"`
-		Port     int    `json:"port"`
-		Name     string `json:"name"`
+		UserName string `mapstructure:"username"`
+		PassWord string `mapstructure:"password"`
+		Host     string `mapstructure:"host"`
+		Port     int    `mapstructure:"port"`
+		Name     string `mapstructure:"name"`
 	}
 	ElasticSearch struct {
-		Url      string `json:"url"`
-		UserName string `json:"username"`
-		Password string `json:"password"`
+		Url      string `mapstructure:"url"`
+		UserName string `mapstructure:"username"`
+		Password string `mapstructure:"password"`
 	}
 }
 
@@ -29,11 +30,10 @@ var Conf = new(Config)
 func Init() {
 	viper.SetConfigFile("./config/config.yaml")
 	if err := viper.ReadInConfig(); err != nil {
-		logger.Error("读取配置文件失败:", err.Error())
+		log.Fatalf("读取配置文件失败: %v", err)
 	}
-	// 解析配置文件
 	if err := viper.Unmarshal(Conf); err != nil {
-		logger.Error("解析配置文件失败:", err.Error())
+		log.Fatalf("解析配置文件失败: %v", err)
 	}
-	logger.Info("解析配置文件：", *Conf)
+	log.Println("配置文件加载成功")
 }

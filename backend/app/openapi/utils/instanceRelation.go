@@ -5,6 +5,7 @@ import (
 	"gcmdb/app/cmdb/models"
 	"gcmdb/app/openapi/params"
 	"gcmdb/pkg/database"
+	"gorm.io/gorm"
 )
 
 type instanceRelation struct {
@@ -53,9 +54,23 @@ func (ir *instanceRelation) CreateInstanceRelation(body params.CreateInstanceRel
 			TargetInstanceId: targetInstanceId,
 		})
 	}
-	if err := database.DB.Model(&models.InstanceRelation{}).
-		CreateInBatches(&createData, 100).Error; err != nil {
-		return err
+	// 去重：先查询已存在的关系
+	for _, data := range createData {
+		var existing models.InstanceRelation
+		result := database.DB.Model(&models.InstanceRelation{}).
+			Where(map[string]any{
+				"source_model_id": data.SourceModelId,
+				"target_model_id": data.TargetModelId,
+				"source_id":       data.SourceInstanceId,
+				"target_id":       data.TargetInstanceId,
+			}).First(&existing)
+		if result.Error == gorm.ErrRecordNotFound {
+			if err := database.DB.Model(&models.InstanceRelation{}).Create(&data).Error; err != nil {
+				return err
+			}
+		} else if result.Error != nil {
+			return result.Error
+		}
 	}
 	return nil
 }

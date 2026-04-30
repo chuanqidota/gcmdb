@@ -5,6 +5,7 @@ import (
 	"gcmdb/app/cmdb/models"
 	"gcmdb/app/cmdb/params"
 	"gcmdb/pkg/database"
+	"gcmdb/pkg/logger"
 	"gcmdb/pkg/response"
 	"slices"
 	"strings"
@@ -30,6 +31,10 @@ func (m *modelField) CreateModelField(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
+	if !models.IsValidFieldType(body.Type) {
+		response.Fail(c, fmt.Sprintf("不支持的字段类型:%s, 支持:string/number/bool/date/datetime/json", body.Type))
+		return
+	}
 	data := map[string]any{
 		"created_at":     time.Now(),
 		"updated_at":     time.Now(),
@@ -47,18 +52,22 @@ func (m *modelField) CreateModelField(c *gin.Context) {
 		return
 	}
 	// 增加字段维护实例关系
-	go func(fieldType, field string) {
-		value, ok := models.DefaultValueByType[fieldType]
-		if !ok {
-			value = ""
+	go func(fieldType, field string, modelId uint) {
+		value := models.DefaultValueByType(fieldType)
+		var valueStr string
+		switch v := value.(type) {
+		case string:
+			valueStr = fmt.Sprintf("'%s'", v)
+		default:
+			valueStr = fmt.Sprintf("%v", v)
 		}
-		expr := fmt.Sprintf("JSON_SET(data,'$.%+v',%+v)", field, value)
+		expr := gorm.Expr(fmt.Sprintf("JSON_SET(data, '$.%s', %s)", field, valueStr))
 		if err := database.DB.Model(&models.Instance{}).
-			Where(map[string]any{"model_id": body.ModelId}).
-			Update("data", gorm.Expr(expr)).Error; err != nil {
-			fmt.Printf("更新字段失败-%s", err.Error())
+			Where(map[string]any{"model_id": modelId}).
+			Update("data", expr).Error; err != nil {
+			logger.Error(fmt.Sprintf("更新字段失败-%s", err.Error()))
 		}
-	}(body.Type, body.Alias)
+	}(body.Type, body.Alias, body.ModelId)
 
 	response.Success(c, "执行成功", nil)
 }
@@ -139,17 +148,19 @@ func (m *modelField) DeleteModelField(c *gin.Context) {
 	modelId := modelField.ModelId
 	alias := modelField.Alias
 	// 判断字段是否在模型字段唯一字段中
-	var modelFieldUnique models.ModelFieldUnique
+	var modelFieldUniques []models.ModelFieldUnique
 	if err := database.DB.Model(&models.ModelFieldUnique{}).
 		Where(map[string]any{"model_id": modelId}).
-		Scan(&modelFieldUnique).Error; err != nil {
+		Scan(&modelFieldUniques).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
-	fields := strings.Split(modelFieldUnique.Fields, ",")
-	if slices.Contains(fields, alias) {
-		response.Fail(c, fmt.Sprintf("该字段在模型唯一校验中被引用,无法删除"))
-		return
+	for _, modelFieldUnique := range modelFieldUniques {
+		fields := strings.Split(modelFieldUnique.Fields, ",")
+		if slices.Contains(fields, alias) {
+			response.Fail(c, fmt.Sprintf("该字段在模型唯一校验中被引用,无法删除"))
+			return
+		}
 	}
 	// 删除模型字段
 	if err := database.DB.Unscoped().Model(&models.ModelField{}).
@@ -160,11 +171,11 @@ func (m *modelField) DeleteModelField(c *gin.Context) {
 	}
 	// 删除实例里面的字段
 	go func(alias string, modelId uint) {
-		expr := fmt.Sprintf("JSON_REMOVE(data,'$.%+v')", alias)
+		expr := gorm.Expr(fmt.Sprintf("JSON_REMOVE(data, '$.%s')", alias))
 		if err := database.DB.Model(&models.Instance{}).
 			Where(map[string]any{"model_id": modelId}).
-			Update("data", gorm.Expr(expr)).Error; err != nil {
-			fmt.Printf("删除失败-%s", err.Error())
+			Update("data", expr).Error; err != nil {
+			logger.Error(fmt.Sprintf("删除字段失败-%s", err.Error()))
 		}
 	}(alias, modelId)
 

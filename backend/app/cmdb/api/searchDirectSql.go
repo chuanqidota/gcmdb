@@ -32,6 +32,11 @@ func (sds *searchDirectSql) CreateSearchDirectSql(c *gin.Context) {
 		return
 	}
 	body.Uuid = strings.Replace(uuid.New().String(), "-", "", -1)
+	upperSQL := strings.ToUpper(strings.TrimSpace(body.Sql))
+	if !strings.HasPrefix(upperSQL, "SELECT") {
+		response.Fail(c, "仅支持SELECT查询语句")
+		return
+	}
 	if err := database.DB.Model(&models.SearchDirectSql{}).Create(&body).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
 		return
@@ -97,11 +102,23 @@ func (sds *searchDirectSql) ExecuteSearchDirectSql(c *gin.Context) {
 		response.Fail(c, "sql语句为空")
 		return
 	}
+	upperSQL := strings.ToUpper(strings.TrimSpace(sql))
+	if !strings.HasPrefix(upperSQL, "SELECT") {
+		response.Fail(c, "仅支持SELECT查询语句")
+		return
+	}
+	if strings.Contains(upperSQL, "DROP ") || strings.Contains(upperSQL, "DELETE ") ||
+		strings.Contains(upperSQL, "UPDATE ") || strings.Contains(upperSQL, "INSERT ") ||
+		strings.Contains(upperSQL, "ALTER ") || strings.Contains(upperSQL, "TRUNCATE ") {
+		response.Fail(c, "不允许执行修改类SQL语句")
+		return
+	}
 	var result interface{}
-	if err := database.DB.Raw(sql).Scan(&result).Error; err != nil {
+	if err := database.DB.Raw(sql).Limit(1000).Scan(&result).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
+	response.Success(c, "执行成功", result)
 }
 
 // UpdateSearchDirectSql

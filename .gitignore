@@ -1,4 +1,35 @@
+# IDE
 .idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+backend/*.exe
+backend/*.exe~
+backend/*.dll
+backend/*.so
+backend/*.dylib
+
+# Node
+node_modules/
+dist/
+
+frontend/.env.local
+frontend/.env.*.local
+
+# Logs
 *.log
 log/
-.DS_store
+
+# Env
+.env
+.env.local
+
+# Docker
+docker-compose.override.yaml

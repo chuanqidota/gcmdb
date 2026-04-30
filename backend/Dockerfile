@@ -12,12 +12,12 @@ RUN go build -o gcmdb main.go
 FROM alpine:3
 RUN mkdir -p /opt/data
 WORKDIR /opt/data
-COPY --from=builder /root/data/gcmdb .
+COPY --from=builder /opt/data/gcmdb .
 WORKDIR /opt/data
 RUN chmod +x gcmdb
 EXPOSE 8080
 
 ENTRYPOINT ["./gcmdb"]
 
-# docker build -t gcmdb:v1.0.0 .
+# cd backend && docker build -t gcmdb:v1.0.0 .
 # docker run --name gcmdb -d -p 8080:8080 gcmdb:v1.0.0

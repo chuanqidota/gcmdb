@@ -7,6 +7,8 @@ import (
 	"gcmdb/app/cmdb/resp"
 	"gcmdb/pkg/database"
 	"strings"
+
+	"gorm.io/gorm"
 )
 
 // SimpleSearchInstance
@@ -34,6 +36,16 @@ func SimpleSearchInstance(modelId uint, listInstance params.ListInstance) (*resp
 		}
 	}
 
+	// 校验字段名安全性
+	validFieldName := func(name string) bool {
+		for _, c := range name {
+			if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+				return false
+			}
+		}
+		return name != ""
+	}
+
 	// 匿名函数-拼接条件
 	whereClause := func(fields []string) (string, []interface{}) {
 		var conditions []string
@@ -46,16 +58,22 @@ func SimpleSearchInstance(modelId uint, listInstance params.ListInstance) (*resp
 		return query, _params
 	}
 
+	baseQuery := func() *gorm.DB {
+		return database.DB.Model(&models.Instance{}).Where(map[string]any{"model_id": modelId})
+	}
+
 	results := make([]models.Instance, 0)
 	if search == "" || (field == "" && value == "") {
 		// 第一种情况,无任何条件
-		if err := database.DB.Model(&models.Instance{}).
-			Limit(limit).Offset(offset).
-			Scan(&results).Error; err != nil {
+		var count int64
+		if err := baseQuery().Count(&count).Error; err != nil {
+			return nil, fmt.Errorf("查询出错-%s", err.Error())
+		}
+		if err := baseQuery().Limit(limit).Offset(offset).Scan(&results).Error; err != nil {
 			return nil, fmt.Errorf("查询出错-%s", err.Error())
 		}
 		return &resp.CommonList{
-			Count:   int64(len(results)),
+			Count:   count,
 			Results: results,
 		}, nil
 	} else if search != "" && (field == "" || value == "") {
@@ -74,43 +92,61 @@ func SimpleSearchInstance(modelId uint, listInstance params.ListInstance) (*resp
 		}
 		// 拼接条件
 		query, _params := whereClause(fields)
+		db := baseQuery().Where(query, _params...)
 
-		// 查询
-		if err := database.DB.Model(&models.Instance{}).
-			Where(map[string]any{"model_id": modelId}).
-			Where(query, _params...).
-			Limit(limit).Offset(offset).
-			Scan(&results).Error; err != nil {
+		var count int64
+		if err := db.Count(&count).Error; err != nil {
 			return nil, fmt.Errorf("查询出错-%s", err.Error())
 		}
-	} else if search == "" && (field != "" && value != "" && compare != "") {
-		// 第三种情况,只有field和value
-		condition := fmt.Sprintf("data->'$.%s' %s ?", field, compare)
-		if err := database.DB.Model(&models.Instance{}).
-			Where(map[string]any{"model_id": modelId}).
-			Where(condition, value).
-			Limit(limit).Offset(offset).
-			Scan(&results).Error; err != nil {
+		if err := db.Limit(limit).Offset(offset).Scan(&results).Error; err != nil {
 			return nil, fmt.Errorf("查询出错-%s", err.Error())
 		}
 		return &resp.CommonList{
-			Count:   int64(len(results)),
+			Count:   count,
+			Results: results,
+		}, nil
+	} else if search == "" && (field != "" && value != "" && compare != "") {
+		// 第三种情况,只有field和value
+		if !validFieldName(field) {
+			return nil, fmt.Errorf("非法字段名:%s", field)
+		}
+		condition := fmt.Sprintf("data->'$.%s' %s ?", field, compare)
+		db := baseQuery().Where(condition, value)
+
+		var count int64
+		if err := db.Count(&count).Error; err != nil {
+			return nil, fmt.Errorf("查询出错-%s", err.Error())
+		}
+		if err := db.Limit(limit).Offset(offset).Scan(&results).Error; err != nil {
+			return nil, fmt.Errorf("查询出错-%s", err.Error())
+		}
+		return &resp.CommonList{
+			Count:   count,
 			Results: results,
 		}, nil
 	} else if search != "" && (field != "" && value != "" && compare != "") {
 		// 第四种情况,search和field和value
+		if !validFieldName(field) {
+			return nil, fmt.Errorf("非法字段名:%s", field)
+		}
 		// 先精准搜索
 		condition := fmt.Sprintf("data->'$.%s' %s ?", field, compare)
-		db := database.DB.Model(&models.Instance{}).
-			Where(map[string]any{"model_id": modelId}).
-			Where(condition, value)
+		db := baseQuery().Where(condition, value)
 		// 再模糊搜索
 		query, _params := whereClause([]string{field})
 		db = db.Where(query, _params...)
-		if err := db.Limit(limit).Offset(offset).
-			Scan(&results).Error; err != nil {
+
+		var count int64
+		if err := db.Count(&count).Error; err != nil {
 			return nil, fmt.Errorf("查询出错-%s", err.Error())
 		}
+		if err := db.Limit(limit).Offset(offset).Scan(&results).Error; err != nil {
+			return nil, fmt.Errorf("查询出错-%s", err.Error())
+		}
+		return &resp.CommonList{
+			Count:   count,
+			Results: results,
+		}, nil
 	}
 	return nil, fmt.Errorf("搜索不支持")
 }

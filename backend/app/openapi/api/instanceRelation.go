@@ -46,6 +46,7 @@ func (ir *instanceRelation) InstanceRelationAction(c *gin.Context) {
 
 	default:
 		response.Fail(c, fmt.Sprintf("参数错误,action不在create和delete范围内:%s", action))
+		return
 	}
 	response.Success(c, "执行成功", nil)
 }

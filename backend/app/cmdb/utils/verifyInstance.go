@@ -28,7 +28,7 @@ func (v *verify) VerifyCreateInstance(modelId uint, data datatypes.JSON) (dataty
 	// 校验字段是否必须有
 	modelFields := make([]models.ModelField, 0)
 	if err := database.DB.Model(&models.ModelField{}).
-		Or(map[string]any{"model_id": modelId}).
+		Where(map[string]any{"model_id": modelId}).
 		Scan(&modelFields).Error; err != nil {
 		return nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
@@ -63,8 +63,9 @@ func (v *verify) VerifyCreateInstance(modelId uint, data datatypes.JSON) (dataty
 	// 补充字段
 	for _, modelField := range modelFields {
 		if _, ok := dataMap[modelField.Alias]; !ok {
-			if models.DefaultValueByType[modelField.Type] != nil {
-				dataMap[modelField.Alias] = models.DefaultValueByType[modelField.Type]
+			defaultVal := models.DefaultValueByType(modelField.Type)
+			if defaultVal != nil {
+				dataMap[modelField.Alias] = defaultVal
 			}
 		}
 	}
@@ -76,18 +77,23 @@ func (v *verify) VerifyCreateInstance(modelId uint, data datatypes.JSON) (dataty
 		Scan(&modelFieldsUniques).Error; err != nil {
 		return nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
-	db := database.DB.Model(&models.Instance{}).Where(map[string]any{"model_id": modelId})
 	for _, modelFieldUnique := range modelFieldsUniques {
 		fields := strings.Split(modelFieldUnique.Fields, ",") // 获取字段
 		conditions := make([]string, 0)
 		_params := make([]any, len(fields))
 		for i, _field := range fields {
 			conditions = append(conditions, fmt.Sprintf("data->'$.%s' = ?", _field))
-			_params[i] = fmt.Sprintf("%%%s%%", dataMap[_field])
+			_params[i] = fmt.Sprintf("%v", dataMap[_field])
 		}
 		query := strings.Join(conditions, " AND ")
-		if err := db.Where(query, _params...).
-			First(&models.Instance{}).Error; err == nil {
+		var count int64
+		if err := database.DB.Model(&models.Instance{}).
+			Where(map[string]any{"model_id": modelId}).
+			Where(query, _params...).
+			Count(&count).Error; err != nil {
+			return nil, fmt.Errorf("查询失败-%s", err.Error())
+		}
+		if count > 0 {
 			return nil, fmt.Errorf("字段%s值重复", modelFieldUnique.Fields)
 		}
 	}
@@ -145,19 +151,24 @@ func (v *verify) VerifyUpdateInstance(id uint, data datatypes.JSON) (datatypes.J
 		Scan(&modelFieldsUniques).Error; err != nil {
 		return nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
-	db := database.DB.Model(&models.Instance{}).Where(map[string]any{"model_id": instance.ModelId})
 	for _, modelFieldUnique := range modelFieldsUniques {
 		fields := strings.Split(modelFieldUnique.Fields, ",") // 获取字段
 		conditions := make([]string, 0)
 		_params := make([]any, len(fields))
 		for i, _field := range fields {
 			conditions = append(conditions, fmt.Sprintf("data->'$.%s' = ?", _field))
-			_params[i] = fmt.Sprintf("%%%s%%", dataMap[_field])
+			_params[i] = fmt.Sprintf("%v", dataMap[_field])
 		}
 		query := strings.Join(conditions, " AND ")
-		if err := db.Where(query, _params...).
+		var count int64
+		if err := database.DB.Model(&models.Instance{}).
+			Where(map[string]any{"model_id": instance.ModelId}).
+			Where(query, _params...).
 			Not(map[string]any{"id": id}).
-			First(&models.Instance{}).Error; err == nil {
+			Count(&count).Error; err != nil {
+			return nil, fmt.Errorf("查询失败-%s", err.Error())
+		}
+		if count > 0 {
 			return nil, fmt.Errorf("字段%s值重复", modelFieldUnique.Fields)
 		}
 	}

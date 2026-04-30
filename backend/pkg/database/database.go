@@ -6,6 +6,8 @@ import (
 	"gcmdb/pkg/logger"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"log"
+	"time"
 )
 
 var DB *gorm.DB
@@ -18,15 +20,17 @@ func Init() {
 		config.Conf.Database.Port,
 		config.Conf.Database.Name,
 	)
-	logger.Info("数据库连接信息:", dsn)
 	var err error
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
 		SkipDefaultTransaction: true,
 		PrepareStmt:            true,
 	})
 	if err != nil {
-		logger.Error("连接数据库出错:", err.Error())
-		return
+		log.Fatalf("连接数据库出错: %v", err)
 	}
-	logger.Info("连接数据库成功：", dsn)
+	sqlDB, _ := DB.DB()
+	sqlDB.SetMaxOpenConns(50)
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+	logger.Info("连接数据库成功")
 }

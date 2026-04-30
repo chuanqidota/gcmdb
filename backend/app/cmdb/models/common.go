@@ -41,7 +41,24 @@ func (t CustomTime) Value() (driver.Value, error) {
 func (t *CustomTime) Scan(value interface{}) error {
 	var tm time.Time
 	if value != nil {
-		tm = value.(time.Time)
+		switch v := value.(type) {
+		case time.Time:
+			tm = v
+		case []byte:
+			parsed, err := time.Parse(time.DateTime, string(v))
+			if err != nil {
+				return err
+			}
+			tm = parsed
+		case string:
+			parsed, err := time.Parse(time.DateTime, v)
+			if err != nil {
+				return err
+			}
+			tm = parsed
+		default:
+			return fmt.Errorf("cannot scan %T into CustomTime", value)
+		}
 	}
 	*t = CustomTime(tm)
 	return nil

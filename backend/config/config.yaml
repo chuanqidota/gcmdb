@@ -1,6 +1,7 @@
 server:
   host: localhost
   port: 8080
+  api_key: ""
 database:
   username: root
   password: jinang123

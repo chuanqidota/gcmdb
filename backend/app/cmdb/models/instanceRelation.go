@@ -9,10 +9,10 @@ import (
 // @Description: 实例关系
 type InstanceRelation struct {
 	BaseModel
-	SourceModelId    uint `gorm:"column:source_model_id;type:uint;not null;comment:源模型id" json:"source_model_id" binding:"required"`
-	TargetModelId    uint `gorm:"column:target_model_id;type:uint;not null;comment:目标模型id" json:"target_model_id" binding:"required"`
-	SourceInstanceId uint `gorm:"column:source_id;type:uint;not null;comment:源实例id" json:"source_instance_id" binding:"required"`
-	TargetInstanceId uint `gorm:"column:target_id;type:uint;not null;comment:目标实例id" json:"target_instance_id" binding:"required"`
+	SourceModelId    uint `gorm:"column:source_model_id;type:uint;not null;index;comment:源模型id" json:"source_model_id" binding:"required"`
+	TargetModelId    uint `gorm:"column:target_model_id;type:uint;not null;index;comment:目标模型id" json:"target_model_id" binding:"required"`
+	SourceInstanceId uint `gorm:"column:source_id;type:uint;not null;index;comment:源实例id" json:"source_instance_id" binding:"required"`
+	TargetInstanceId uint `gorm:"column:target_id;type:uint;not null;index;comment:目标实例id" json:"target_instance_id" binding:"required"`
 }
 
 // TableName

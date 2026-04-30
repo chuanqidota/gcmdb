@@ -4,13 +4,32 @@ import (
 	"time"
 )
 
-var DefaultValueByType = map[string]any{
-	"string":   "",
-	"number":   0,
-	"bool":     false,
-	"date":     time.Now().Format(time.DateOnly),
-	"datetime": time.Now().Format(time.DateTime),
-	"json":     map[string]any{},
+var allowedFieldTypes = map[string]bool{
+	"string": true, "number": true, "bool": true,
+	"date": true, "datetime": true, "json": true,
+}
+
+func DefaultValueByType(fieldType string) any {
+	switch fieldType {
+	case "string":
+		return ""
+	case "number":
+		return 0
+	case "bool":
+		return false
+	case "date":
+		return time.Now().Format(time.DateOnly)
+	case "datetime":
+		return time.Now().Format(time.DateTime)
+	case "json":
+		return map[string]any{}
+	default:
+		return ""
+	}
+}
+
+func IsValidFieldType(t string) bool {
+	return allowedFieldTypes[t]
 }
 
 // ModelField
