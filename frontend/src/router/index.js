@@ -15,6 +15,7 @@ const routes = [
       { path: 'model-relation-type', name: 'ModelRelationType', component: () => import('../views/model-relation-type/index.vue'), meta: { title: '关系类型' } },
       { path: 'instance', name: 'Instance', component: () => import('../views/instance/index.vue'), meta: { title: '实例管理' } },
       { path: 'search-direct-sql', name: 'SearchDirectSql', component: () => import('../views/search-direct-sql/index.vue'), meta: { title: 'SQL 查询' } },
+      { path: 'search', name: 'Search', component: () => import('../views/search/index.vue'), meta: { title: '综合检索' } },
     ],
   },
 ]

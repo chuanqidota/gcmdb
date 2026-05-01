@@ -42,6 +42,10 @@
           <el-icon><Search /></el-icon>
           <template #title>SQL 查询</template>
         </el-menu-item>
+        <el-menu-item index="/search">
+          <el-icon><Search /></el-icon>
+          <template #title>综合检索</template>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
