@@ -28,19 +28,8 @@ func (m *model) CreateModel(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
-	data := map[string]any{
-		"created_at":  time.Now(),
-		"updated_at":  time.Now(),
-		"group_id":    model.GroupId,
-		"alias":       model.Alias,
-		"name":        model.Name,
-		"description": model.Description,
-		"is_usable":   model.IsUsable,
-		"icon":        model.Icon,
-		"order":       model.Order,
-	}
 	if err := database.DB.Model(&models.Model{}).
-		Create(data).Error; err != nil {
+		Create(&model).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
 		return
 	}
@@ -79,7 +68,7 @@ func (m *model) ListModel(c *gin.Context) {
 	}
 	//
 	var _models []models.Model
-	if err := db.Order("order asc").Limit(limit).Offset(offset).Scan(&_models).Error; err != nil {
+	if err := db.Order("`order` asc").Limit(limit).Offset(offset).Scan(&_models).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}

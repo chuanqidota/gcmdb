@@ -2,7 +2,6 @@ package params
 
 type PatchModelGroupIdBody struct {
 	GroupId uint `json:"group_id" binding:"required" label:"模型组ID"`
-	ModelId uint `json:"model_id" binding:"required" label:"模型ID"`
 }
 
 type PatchModelBody struct {

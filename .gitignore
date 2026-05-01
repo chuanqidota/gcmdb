@@ -33,3 +33,4 @@ log/
 
 # Docker
 docker-compose.override.yaml
+scripts/

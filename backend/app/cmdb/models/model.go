@@ -12,7 +12,7 @@ type Model struct {
 	Alias       string `gorm:"column:alias;type:string;size:255;unique;not null;comment:别名" json:"alias" binding:"required"`
 	Name        string `gorm:"column:name;type:string;size:255;unique;not null;comment:名称" json:"name" binding:"required"`
 	Description string `gorm:"column:description;type:text;comment:描述" json:"description"`
-	IsUsable    bool   `gorm:"column:is_usable;type:boolean;not null;default:true;comment:是否可用" json:"is_usable" binding:"required"`
+	IsUsable    bool   `gorm:"column:is_usable;type:boolean;not null;default:true;comment:是否可用" json:"is_usable"`
 	Icon        string `gorm:"column:icon;type:string;size:255;comment:图标" json:"icon"`
 	Order       uint   `gorm:"column:order;type:uint;default:0;comment:排序" json:"order"`
 }
@@ -36,7 +36,7 @@ func (m *Model) GetModelFieldGroups() ([]ModelFieldGroup, error) {
 	modelFieldGroups := make([]ModelFieldGroup, 0)
 	if err := database.DB.Model(&ModelFieldGroup{}).
 		Where(map[string]any{"model_id": m.ID}).
-		Order("order asc").
+		Order("`order` asc").
 		Scan(&modelFieldGroups).Error; err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (m *Model) GetModelFields() ([]ModelField, error) {
 	modelFields := make([]ModelField, 0)
 	if err := database.DB.Model(&ModelField{}).
 		Where(map[string]any{"model_id": m.ID}).
-		Order("order asc").
+		Order("`order` asc").
 		Scan(&modelFields).Error; err != nil {
 		return nil, err
 	}

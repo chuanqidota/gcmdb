@@ -34,7 +34,7 @@ func (mfg *ModelFieldGroup) GetModelFields() ([]ModelField, error) {
 	modelFields := make([]ModelField, 0)
 	if err := database.DB.Model(&ModelField{}).
 		Where(map[string]any{"field_group_id": mfg.ID}).
-		Order("order asc").
+		Order("`order` asc").
 		Scan(&modelFields).Error; err != nil {
 		return nil, err
 	}

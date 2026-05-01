@@ -34,12 +34,12 @@ func (v *verify) VerifyCreateInstance(modelId uint, data datatypes.JSON) (dataty
 	}
 	// 需要的字段
 	requiredFields := make([]string, 0)
-	filedAlias := make([]string, 0)
+	fieldAlias := make([]string, 0)
 	for _, modelField := range modelFields {
 		if modelField.IsRequired {
 			requiredFields = append(requiredFields, modelField.Alias)
 		}
-		filedAlias = append(filedAlias, modelField.Alias)
+		fieldAlias = append(fieldAlias, modelField.Alias)
 	}
 
 	// 验证字段是否必须
@@ -55,7 +55,7 @@ func (v *verify) VerifyCreateInstance(modelId uint, data datatypes.JSON) (dataty
 
 	// 删除多余字段
 	for key := range dataMap {
-		if !slices.Contains(filedAlias, key) {
+		if !slices.Contains(fieldAlias, key) {
 			delete(dataMap, key)
 		}
 	}

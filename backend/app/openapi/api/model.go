@@ -26,6 +26,7 @@ func (m *model) ModelRange(c *gin.Context) {
 		modelAll, err := utils.Model.ModelAll()
 		if err != nil {
 			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+			return
 		}
 		response.Success(c, "查询成功", modelAll)
 
@@ -34,6 +35,7 @@ func (m *model) ModelRange(c *gin.Context) {
 		modelSingle, err := utils.Model.ModelSingle(id)
 		if err != nil {
 			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+			return
 		}
 		response.Success(c, "查询成功", modelSingle)
 

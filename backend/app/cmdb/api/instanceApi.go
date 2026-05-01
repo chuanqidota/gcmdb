@@ -1,16 +1,19 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/app/cmdb/params"
 	"gcmdb/app/cmdb/utils"
 	"gcmdb/pkg/database"
+	"gcmdb/pkg/logger"
 	"gcmdb/pkg/response"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type instance struct {
@@ -49,7 +52,7 @@ func (i *instance) CreateInstance(c *gin.Context) {
 	// 异步创建实例关联
 	go func() {
 		if err := utils.InstanceRelation.CreateInstance(body.ModelId, instance.ID); err != nil {
-			fmt.Printf("创建实例关联失败-%s", err.Error())
+			logger.Error(fmt.Sprintf("创建实例关联失败-%s", err.Error()))
 		}
 	}()
 	response.Success(c, "创建成功", nil)
@@ -92,7 +95,11 @@ func (i *instance) RetrieveInstance(c *gin.Context) {
 	var instance models.Instance
 	if err := database.DB.Model(&models.Instance{}).
 		Where(map[string]any{"id": id}).
-		Scan(&instance).Error; err != nil {
+		First(&instance).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			response.Fail(c, "实例不存在")
+			return
+		}
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
@@ -144,26 +151,24 @@ func (i *instance) UpdateInstance(c *gin.Context) {
 //	@param c
 func (i *instance) DeleteInstance(c *gin.Context) {
 	id := c.Param("id")
-	_id, err := strconv.Atoi(id)
+	// 删除实例关系和实例（事务）
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.InstanceRelation{}).
+			Where(map[string]any{"source_id": id}).
+			Or(map[string]any{"target_id": id}).
+			Delete(&models.InstanceRelation{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&models.Instance{}).
+			Where(map[string]any{"id": id}).
+			Delete(&models.Instance{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
-		return
-	}
-	// 删除实例关系
-	if err := database.DB.Model(&models.InstanceRelation{}).
-		Where(map[string]any{"source_id": id}).
-		Or(map[string]any{"target_id": id}).
-		Delete(&models.InstanceRelation{}).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("删除实例关系失败-%s", err.Error()))
-		return
-	}
-	// 删除实例
-	if err := database.DB.Model(&models.Instance{}).
-		Where(map[string]any{"id": id}).
-		Delete(&models.Instance{}).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("删除实例失败-%s", err.Error()))
+		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
 		return
 	}
 	response.Success(c, "删除成功", nil)
-	_ = _id
 }

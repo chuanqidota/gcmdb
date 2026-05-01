@@ -30,8 +30,8 @@ type DirectSearch struct {
 
 type FulltextInstance struct {
 	Search     string `json:"search" binding:"required" label:"模糊搜索" `
-	Offset     int    `form:"offset" label:"分页offset"`
-	Limit      int    `form:"limit" label:"分页limit"`
+	Offset     int    `json:"offset" label:"分页offset"`
+	Limit      int    `json:"limit" label:"分页limit"`
 	ModelAlias string `json:"model_alias" label:"模型英文名,中间用逗号分割"`
 }
 
@@ -49,6 +49,6 @@ type SearchInstance struct {
 }
 
 type SourceTargetInstance struct {
-	Id    int64  `form:"id" binding:"required" label:"实例id"`
+	Id    uint   `form:"id" binding:"required" label:"实例id"`
 	Model string `form:"model" binding:"required" label:"源/目标模型英文名称"`
 }

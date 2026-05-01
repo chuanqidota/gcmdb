@@ -22,6 +22,10 @@ var ModelFieldGroup = new(modelFieldGroup)
 //	@param c
 func (m *modelFieldGroup) CreateModelFieldGroup(c *gin.Context) {
 	var body models.ModelFieldGroup
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
+		return
+	}
 	if err := database.DB.Model(&models.ModelFieldGroup{}).Create(&body).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
 		return

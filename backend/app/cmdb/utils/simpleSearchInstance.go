@@ -19,7 +19,6 @@ import (
 //	@return *resp.CommonList
 //	@return error
 func SimpleSearchInstance(modelId uint, listInstance params.ListInstance) (*resp.CommonList, error) {
-	// 参数
 	search := listInstance.Search
 	field := listInstance.Field
 	value := listInstance.Value
@@ -30,123 +29,79 @@ func SimpleSearchInstance(modelId uint, listInstance params.ListInstance) (*resp
 		limit = 10
 	}
 
-	if compare != "" {
-		if !params.ValidatorCompare(compare) {
-			return nil, fmt.Errorf("参数错误-compare")
-		}
-	}
-
-	// 校验字段名安全性
-	validFieldName := func(name string) bool {
-		for _, c := range name {
-			if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
-				return false
-			}
-		}
-		return name != ""
-	}
-
-	// 匿名函数-拼接条件
-	whereClause := func(fields []string) (string, []interface{}) {
-		var conditions []string
-		_params := make([]interface{}, len(fields))
-		for i, _field := range fields {
-			conditions = append(conditions, fmt.Sprintf("data->'$.%s' LIKE ?", _field))
-			_params[i] = fmt.Sprintf("%%%s%%", search)
-		}
-		query := strings.Join(conditions, " OR ")
-		return query, _params
+	if compare != "" && !params.ValidatorCompare(compare) {
+		return nil, fmt.Errorf("参数错误-compare")
 	}
 
 	baseQuery := func() *gorm.DB {
 		return database.DB.Model(&models.Instance{}).Where(map[string]any{"model_id": modelId})
 	}
 
-	results := make([]models.Instance, 0)
-	if search == "" || (field == "" && value == "") {
-		// 第一种情况,无任何条件
-		var count int64
-		if err := baseQuery().Count(&count).Error; err != nil {
-			return nil, fmt.Errorf("查询出错-%s", err.Error())
-		}
-		if err := baseQuery().Limit(limit).Offset(offset).Scan(&results).Error; err != nil {
-			return nil, fmt.Errorf("查询出错-%s", err.Error())
-		}
-		return &resp.CommonList{
-			Count:   count,
-			Results: results,
-		}, nil
-	} else if search != "" && (field == "" || value == "") {
-		// 第二种情况,只有search
+	db := baseQuery()
 
-		// 获取模型字段
+	// like 比较自动加 % 通配符
+	compareValue := value
+	if compare == "like" {
+		compareValue = "%" + value + "%"
+	}
+
+	// 搜索条件：在所有字段中模糊匹配
+	addSearchCondition := func(db *gorm.DB) *gorm.DB {
+		if search == "" {
+			return db
+		}
 		modelFields := make([]models.ModelField, 0)
 		if err := database.DB.Model(&models.ModelField{}).
 			Where(map[string]any{"model_id": modelId}).
 			Scan(&modelFields).Error; err != nil {
-			return nil, err
+			return db
 		}
-		fields := make([]string, 0)
-		for _, modelField := range modelFields {
-			fields = append(fields, modelField.Alias)
+		conditions := make([]string, 0, len(modelFields))
+		_params := make([]interface{}, 0, len(modelFields))
+		for _, mf := range modelFields {
+			conditions = append(conditions, fmt.Sprintf("data->>'$.%s' LIKE ?", mf.Alias))
+			_params = append(_params, "%"+search+"%")
 		}
-		// 拼接条件
-		query, _params := whereClause(fields)
-		db := baseQuery().Where(query, _params...)
-
-		var count int64
-		if err := db.Count(&count).Error; err != nil {
-			return nil, fmt.Errorf("查询出错-%s", err.Error())
-		}
-		if err := db.Limit(limit).Offset(offset).Scan(&results).Error; err != nil {
-			return nil, fmt.Errorf("查询出错-%s", err.Error())
-		}
-		return &resp.CommonList{
-			Count:   count,
-			Results: results,
-		}, nil
-	} else if search == "" && (field != "" && value != "" && compare != "") {
-		// 第三种情况,只有field和value
-		if !validFieldName(field) {
-			return nil, fmt.Errorf("非法字段名:%s", field)
-		}
-		condition := fmt.Sprintf("data->'$.%s' %s ?", field, compare)
-		db := baseQuery().Where(condition, value)
-
-		var count int64
-		if err := db.Count(&count).Error; err != nil {
-			return nil, fmt.Errorf("查询出错-%s", err.Error())
-		}
-		if err := db.Limit(limit).Offset(offset).Scan(&results).Error; err != nil {
-			return nil, fmt.Errorf("查询出错-%s", err.Error())
-		}
-		return &resp.CommonList{
-			Count:   count,
-			Results: results,
-		}, nil
-	} else if search != "" && (field != "" && value != "" && compare != "") {
-		// 第四种情况,search和field和value
-		if !validFieldName(field) {
-			return nil, fmt.Errorf("非法字段名:%s", field)
-		}
-		// 先精准搜索
-		condition := fmt.Sprintf("data->'$.%s' %s ?", field, compare)
-		db := baseQuery().Where(condition, value)
-		// 再模糊搜索
-		query, _params := whereClause([]string{field})
-		db = db.Where(query, _params...)
-
-		var count int64
-		if err := db.Count(&count).Error; err != nil {
-			return nil, fmt.Errorf("查询出错-%s", err.Error())
-		}
-		if err := db.Limit(limit).Offset(offset).Scan(&results).Error; err != nil {
-			return nil, fmt.Errorf("查询出错-%s", err.Error())
-		}
-		return &resp.CommonList{
-			Count:   count,
-			Results: results,
-		}, nil
+		return db.Where(strings.Join(conditions, " OR "), _params...)
 	}
-	return nil, fmt.Errorf("搜索不支持")
+
+	switch {
+	// 只有 field+value+compare
+	case search == "" && field != "" && value != "" && compare != "":
+		if !ValidFieldName(field) {
+			return nil, fmt.Errorf("非法字段名:%s", field)
+		}
+		db = db.Where(fmt.Sprintf("data->>'$.%s' %s ?", field, compare), compareValue)
+
+	// search + field+value+compare
+	case search != "" && field != "" && value != "" && compare != "":
+		if !ValidFieldName(field) {
+			return nil, fmt.Errorf("非法字段名:%s", field)
+		}
+		db = db.Where(fmt.Sprintf("data->>'$.%s' %s ?", field, compare), compareValue)
+		db = addSearchCondition(db)
+
+	// 只有 search（无 field/value）
+	case search != "" && (field == "" || value == ""):
+		db = addSearchCondition(db)
+
+	// 无任何条件：search=="" 且无 field/value（分支1）
+	default:
+		// 不加额外条件，列出全部
+	}
+
+	var count int64
+	if err := db.Count(&count).Error; err != nil {
+		return nil, fmt.Errorf("查询出错-%s", err.Error())
+	}
+
+	results := make([]models.Instance, 0)
+	if err := db.Limit(limit).Offset(offset).Scan(&results).Error; err != nil {
+		return nil, fmt.Errorf("查询出错-%s", err.Error())
+	}
+
+	return &resp.CommonList{
+		Count:   count,
+		Results: results,
+	}, nil
 }

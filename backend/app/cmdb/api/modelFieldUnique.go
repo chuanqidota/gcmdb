@@ -70,7 +70,7 @@ func (mfu *modelFieldUnique) RetrieveModelFieldUnique(c *gin.Context) {
 //	@param c
 func (mfu *modelFieldUnique) DeleteModelFieldUnique(c *gin.Context) {
 	id := c.Param("id")
-	if err := database.DB.Model(&models.ModelFieldUnique{}).
+	if err := database.DB.Unscoped().Model(&models.ModelFieldUnique{}).
 		Where(map[string]any{"id": id}).
 		Delete(&models.ModelFieldUnique{}).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))

@@ -73,6 +73,7 @@ func (m *modelRelation) ListModelRelation(c *gin.Context) {
 		result["source_display"], _ = modelRelation.SourceDisplay()
 		result["target_display"], _ = modelRelation.TargetDisplay()
 		result["type_display"], _ = modelRelation.TypeDisplay()
+		results = append(results, result)
 	}
 	count := len(results)
 	result := resp.CommonList{
@@ -94,7 +95,7 @@ func (m *modelRelation) DeleteModelRelation(c *gin.Context) {
 	if err := database.DB.Model(&models.ModelRelation{}).
 		Where(map[string]any{"id": id}).
 		Scan(&modelRelation).Error; err != nil {
-		fmt.Printf("查询出错-%s", err.Error())
+		response.Fail(c, fmt.Sprintf("查询出错-%s", err.Error()))
 		return
 	}
 	sourceModelId, targetModelId := modelRelation.SourceId, modelRelation.TargetId

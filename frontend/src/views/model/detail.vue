@@ -194,7 +194,7 @@ const loadData = async () => {
     const res = await retrieveModel(modelId)
     const d = res.data
     modelInfo.value = { id: d.id, alias: d.alias, name: d.name, description: d.description }
-    fieldGroups.value = (d.groups || []).map((g) => ({ id: g.groups.id, name: g.groups.name, order: g.groups.order }))
+    fieldGroups.value = (d.groups || []).map((g) => ({ id: g.group.id, name: g.group.name, order: g.group.order }))
     allFields.value = (d.groups || []).flatMap((g) => g.fields || [])
     const uRes = await listModelFieldUnique(modelId)
     uniqueConstraints.value = uRes.data || []

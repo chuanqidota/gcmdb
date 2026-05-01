@@ -4,6 +4,7 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	auditModels "gcmdb/app/audit/models"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/logger"
@@ -28,6 +29,7 @@ var migrateCmd = &cobra.Command{
 			&models.Instance{},
 			&models.InstanceRelation{},
 			&models.SearchDirectSql{},
+			&auditModels.AuditLog{},
 		)
 		if err != nil {
 			logger.Error("迁移出错:", err.Error())

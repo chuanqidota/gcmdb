@@ -42,47 +42,9 @@ func (i *instanceRelation) CreateInstanceRelation(c *gin.Context) {
 //	@param c
 func (i *instanceRelation) SourceTargetInstanceRelation(c *gin.Context) {
 	sourceId := c.Param("source_id")
-	modelInstances := make([]models.InstanceRelation, 0)
-	if err := database.DB.Model(&models.InstanceRelation{}).
-		Where(map[string]any{"source_id": sourceId}).
-		Scan(&modelInstances).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
-		return
-	}
-	// 匿名函数，模型ID对应的展示名称
-	modelIdToModelDisplay := func() map[uint]string {
-		var _models []models.Model
-		if err := database.DB.Model(&models.Model{}).
-			Scan(&_models).Error; err != nil {
-			return nil
-		}
-		results := make(map[uint]string)
-		for _, _model := range _models {
-			results[_model.ID] = _model.Name
-		}
-		return results
-	}
-	// 处理数据
-	_results := make(map[uint][]uint)
-	for _, modelInstance := range modelInstances {
-		_results[modelInstance.TargetModelId] = append(_results[modelInstance.TargetModelId], modelInstance.TargetInstanceId)
-	}
-	// 整理数据
-	results := make([]resp.ListInstanceRelation, 0)
-	modelIdToModelDisplayResult := modelIdToModelDisplay()
-	for modelId, instances := range _results {
-		modelDisplay, ok := modelIdToModelDisplayResult[modelId]
-		if !ok {
-			modelDisplay = strconv.Itoa(int(modelId))
-		}
-		results = append(results, resp.ListInstanceRelation{
-			ModelId:      modelId,
-			ModelDisplay: modelDisplay,
-			Count:        int64(len(instances)),
-			Instances:    instances,
-		})
-	}
-	response.Success(c, "查询成功", results)
+	i.listInstanceRelation(c, "source_id", sourceId, func(rel models.InstanceRelation) (uint, uint) {
+		return rel.TargetModelId, rel.TargetInstanceId
+	})
 }
 
 // TargetSourceInstanceRelation
@@ -92,36 +54,40 @@ func (i *instanceRelation) SourceTargetInstanceRelation(c *gin.Context) {
 //	@param c
 func (i *instanceRelation) TargetSourceInstanceRelation(c *gin.Context) {
 	targetId := c.Param("target_id")
+	i.listInstanceRelation(c, "target_id", targetId, func(rel models.InstanceRelation) (uint, uint) {
+		return rel.SourceModelId, rel.SourceInstanceId
+	})
+}
+
+// listInstanceRelation 通用实例关系查询
+func (i *instanceRelation) listInstanceRelation(c *gin.Context, whereField, whereValue string, extract func(models.InstanceRelation) (uint, uint)) {
 	modelInstances := make([]models.InstanceRelation, 0)
 	if err := database.DB.Model(&models.InstanceRelation{}).
-		Where(map[string]any{"target_id": targetId}).
+		Where(map[string]any{whereField: whereValue}).
 		Scan(&modelInstances).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
-	// 匿名函数，模型ID对应的展示名称
-	modelIdToModelDisplay := func() map[uint]string {
-		var _models []models.Model
-		if err := database.DB.Model(&models.Model{}).
-			Scan(&_models).Error; err != nil {
-			return nil
-		}
-		results := make(map[uint]string)
-		for _, _model := range _models {
-			results[_model.ID] = _model.Name
-		}
-		return results
+	// 查询模型ID对应的展示名称
+	var _models []models.Model
+	if err := database.DB.Model(&models.Model{}).Scan(&_models).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
 	}
-	// 处理数据
-	_results := make(map[uint][]uint)
-	for _, modelInstance := range modelInstances {
-		_results[modelInstance.SourceModelId] = append(_results[modelInstance.SourceModelId], modelInstance.SourceInstanceId)
+	modelDisplayMap := make(map[uint]string)
+	for _, _model := range _models {
+		modelDisplayMap[_model.ID] = _model.Name
 	}
-	// 整理数据
+	// 按模型分组
+	grouped := make(map[uint][]uint)
+	for _, rel := range modelInstances {
+		modelId, instanceId := extract(rel)
+		grouped[modelId] = append(grouped[modelId], instanceId)
+	}
+	// 整理结果
 	results := make([]resp.ListInstanceRelation, 0)
-	modelIdToModelDisplayResult := modelIdToModelDisplay()
-	for modelId, instances := range _results {
-		modelDisplay, ok := modelIdToModelDisplayResult[modelId]
+	for modelId, instances := range grouped {
+		modelDisplay, ok := modelDisplayMap[modelId]
 		if !ok {
 			modelDisplay = strconv.Itoa(int(modelId))
 		}
@@ -133,7 +99,6 @@ func (i *instanceRelation) TargetSourceInstanceRelation(c *gin.Context) {
 		})
 	}
 	response.Success(c, "查询成功", results)
-
 }
 
 // DeleteInstanceRelation

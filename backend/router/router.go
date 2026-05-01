@@ -1,6 +1,7 @@
 package router
 
 import (
+	auditApi "gcmdb/app/audit/api"
 	cmdbApi "gcmdb/app/cmdb/api"
 	openApi "gcmdb/app/openapi/api"
 	taskApi "gcmdb/app/tasks/api"
@@ -13,7 +14,7 @@ func Engine() *gin.Engine {
 	router := gin.Default()
 	v1 := router.Group("v1")
 
-	cmdb := v1.Group("cmdb").Use(middleware.CORSMiddleware()).Use(middleware.AuthMiddleware())
+	cmdb := v1.Group("cmdb").Use(middleware.CORSMiddleware()).Use(middleware.AuthMiddleware()).Use(middleware.AuditMiddleware())
 	{
 		// 模型分组
 		cmdb.POST("models-group", cmdbApi.ModelGroup.CreateModelGroup)       // 创建模型分组
@@ -39,7 +40,7 @@ func Engine() *gin.Engine {
 		cmdb.POST("models-relation-type", cmdbApi.ModelRelationType.CreateModelRelationType)    // 创建模型关系类型
 		cmdb.GET("models-relation-type", cmdbApi.ModelRelationType.ListModelRelationType)       // 模型关系类型查询
 		cmdb.PUT("models-relation-type/:id", cmdbApi.ModelRelationType.UpdateModelRelationType) // 修改模型关系类型
-		cmdb.DELETE("models-relation-type", cmdbApi.ModelRelationType.DeleteModelRelationType)  // 删除模型关系类型
+		cmdb.DELETE("models-relation-type/:id", cmdbApi.ModelRelationType.DeleteModelRelationType)  // 删除模型关系类型
 
 		// 模型字段分组
 		cmdb.POST("models-field-group", cmdbApi.ModelFieldGroup.CreateModelFieldGroup)       // 创建模型字段分组
@@ -82,6 +83,10 @@ func Engine() *gin.Engine {
 		cmdb.GET("search-direct-sql/:id", cmdbApi.SearchDirectSql.ExecuteSearchDirectSql)   // 执行直接查询sql
 		cmdb.PUT("search-direct-sql/:id", cmdbApi.SearchDirectSql.UpdateSearchDirectSql)    // 修改直接查询sql
 		cmdb.DELETE("search-direct-sql/:id", cmdbApi.SearchDirectSql.DeleteSearchDirectSql) // 删除直接查询sql
+
+		// 审计日志
+		cmdb.GET("audit-log", auditApi.Audit.ListAuditLog)                                    // 查询审计日志
+		cmdb.GET("audit-log/:resource_type/:resource_id", auditApi.Audit.RetrieveAuditLog)    // 查询资源审计历史
 
 		// 任务
 		cmdb.POST("sync-instance-relation", taskApi.InstanceRelation.SyncInstanceRelation) // 同步实例关系

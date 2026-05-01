@@ -7,9 +7,10 @@ import (
 
 type Config struct {
 	Server struct {
-		Host   string `mapstructure:"host"`
-		Port   int    `mapstructure:"port"`
-		ApiKey string `mapstructure:"api_key"`
+		Host         string `mapstructure:"host"`
+		Port         int    `mapstructure:"port"`
+		ApiKey       string `mapstructure:"api_key"`
+		AutoRelation bool   `mapstructure:"auto_relation"`
 	}
 	Database struct {
 		UserName string `mapstructure:"username"`

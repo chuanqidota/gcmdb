@@ -54,9 +54,8 @@ func (m *modelRelationType) ListModelRelationType(c *gin.Context) {
 	// 查询
 	db := database.DB.Model(&models.ModelRelationType{})
 	if search != "" {
-		db.Where("name like ?", "%"+search+"%").
-			Or("s2t like ?", "%"+search+"%").
-			Or("t2s like ?", "%"+search+"%")
+		db = db.Where("name like ? OR s2t like ? OR t2s like ?",
+			"%"+search+"%", "%"+search+"%", "%"+search+"%")
 	}
 	var count int64
 	if err := db.Count(&count).Error; err != nil {

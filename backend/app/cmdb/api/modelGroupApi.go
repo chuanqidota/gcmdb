@@ -53,9 +53,8 @@ func (m *modelGroup) ListModelGroup(c *gin.Context) {
 	// 查询
 	db := database.DB.Model(&models.ModelGroup{})
 	if search != "" {
-		db.Where("alias like ?", "%"+search+"%").
-			Or("name like ?", "%"+search+"%").
-			Or("description like ?", "%"+search+"%")
+		db = db.Where("alias like ? OR name like ? OR description like ?",
+			"%"+search+"%", "%"+search+"%", "%"+search+"%")
 	}
 	// 分页数量
 	var count int64
@@ -65,7 +64,7 @@ func (m *modelGroup) ListModelGroup(c *gin.Context) {
 	}
 	// 结果查询
 	var modelGroups []models.ModelGroup
-	if err := db.Order("order asc").Limit(limit).Offset(offset).Scan(&modelGroups).Error; err != nil {
+	if err := db.Order("`order` asc").Limit(limit).Offset(offset).Scan(&modelGroups).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}

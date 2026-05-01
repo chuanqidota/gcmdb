@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/app/cmdb/resp"
-	"gcmdb/pkg/database"
-	"gcmdb/pkg/response"
-
 	"gcmdb/app/cmdb/utils"
+	"gcmdb/pkg/database"
+	"gcmdb/pkg/logger"
+	"gcmdb/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -41,7 +41,7 @@ func (m *modelFieldRelation) CreateModelFieldRelation(c *gin.Context) {
 	// 异步增加实例关系
 	go func() {
 		if err := utils.InstanceRelation.CreateModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId); err != nil {
-			fmt.Printf("创建实例关系失败-%", err.Error())
+			logger.Error(fmt.Sprintf("创建实例关系失败-%s", err.Error()))
 		}
 	}()
 	response.Success(c, "创建成功", nil)
@@ -98,18 +98,18 @@ func (m *modelFieldRelation) DeleteModelFieldRelation(c *gin.Context) {
 	targetModelId := modelFieldRelation.TargetModelId
 	sourceFieldId := modelFieldRelation.SourceFieldId
 	targetFieldId := modelFieldRelation.TargetFieldId
+	// 删除模型字段关系
+	if err := database.DB.Unscoped().Model(&models.ModelFieldRelation{}).
+		Where(map[string]any{"id": id}).
+		Delete(&models.ModelFieldRelation{}).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
+		return
+	}
 	// 异步删除实例关系
 	go func() {
 		if err := utils.InstanceRelation.DeleteModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId); err != nil {
-			fmt.Printf("删除实例关系失败-%s", err.Error())
+			logger.Error(fmt.Sprintf("删除实例关系失败-%s", err.Error()))
 		}
 	}()
-	// 删除模型字段关系
-	if err := database.DB.Model(&models.ModelFieldRelation{}).
-		Where(map[string]any{"id": id}).
-		Delete(&models.ModelFieldRelation{}).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
-		return
-	}
-	response.Success(c, "执行成功", nil)
+	response.Success(c, "删除成功", nil)
 }

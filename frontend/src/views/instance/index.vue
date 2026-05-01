@@ -209,8 +209,13 @@ const handleDelete = async (row) => {
 
 const handleMulDelete = async () => {
   await ElMessageBox.confirm(`确定删除选中的 ${selectedIds.value.length} 条实例？`, '确认批量删除', { type: 'warning' })
-  await Promise.all(selectedIds.value.map((id) => deleteInstance(id)))
-  ElMessage.success('批量删除成功')
+  const results = await Promise.allSettled(selectedIds.value.map((id) => deleteInstance(id)))
+  const failed = results.filter(r => r.status === 'rejected')
+  if (failed.length) {
+    ElMessage.warning(`${failed.length} 条删除失败`)
+  } else {
+    ElMessage.success('批量删除成功')
+  }
   loadInstances()
 }
 

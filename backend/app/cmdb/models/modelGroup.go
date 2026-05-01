@@ -6,8 +6,8 @@ import "gcmdb/pkg/database"
 // @Description: 模型分组
 type ModelGroup struct {
 	BaseModel
-	Alias       string `gorm:"column:alias;type:string;size:255;unique;not null;comment:别名" json:"alias" binding:"requried"`
-	Name        string `gorm:"column:name;type:string;size:255;unique;not null;comment:名称" json:"name" binding:"requried"`
+	Alias       string `gorm:"column:alias;type:string;size:255;unique;not null;comment:别名" json:"alias" binding:"required"`
+	Name        string `gorm:"column:name;type:string;size:255;unique;not null;comment:名称" json:"name" binding:"required"`
 	Description string `gorm:"column:description;type:text;comment:描述" json:"description"`
 	Order       uint   `gorm:"column:order;type:uint;default:0;comment:排序" json:"order"`
 }
@@ -31,7 +31,7 @@ func (mg *ModelGroup) GetModels() ([]Model, error) {
 	models := make([]Model, 0)
 	if err := database.DB.Model(&Model{}).
 		Where("group_id = ?", mg.ID).
-		Order("order asc").
+		Order("`order` asc").
 		Scan(&models).Error; err != nil {
 		return nil, err
 	}
