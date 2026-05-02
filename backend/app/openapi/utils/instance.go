@@ -9,6 +9,7 @@ import (
 	"gcmdb/app/openapi/resp"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/logger"
+	pkgUtils "gcmdb/pkg/utils"
 	"strings"
 
 	"gorm.io/datatypes"
@@ -44,9 +45,8 @@ func (i *instance) CreateInstance(modelAlias string, data datatypes.JSON) error 
 	}
 	// 创建实例数据
 	createInstance := models.Instance{
-		ModelId:    modelId,
-		ModelAlias: modelAlias,
-		Data:       verifyData,
+		ModelId: modelId,
+		Data:    verifyData,
 	}
 
 	if err := database.DB.Model(&models.Instance{}).
@@ -92,9 +92,14 @@ func (i *instance) UpdateInstance(id uint, data datatypes.JSON) error {
 //	@param id
 //	@return error
 func (i *instance) DeleteInstance(modelAlias string, id uint) error {
+	// 通过 model_alias 查找 model_id
+	var modelId uint
+	if err := database.DB.Model(&models.Model{}).Select("id").Where("alias = ?", modelAlias).First(&modelId).Error; err != nil {
+		return fmt.Errorf("未找到模型:%s", modelAlias)
+	}
 	// 删除实例
 	if err := database.DB.Model(&models.Instance{}).
-		Where(map[string]any{"id": id, "model_alias": modelAlias}).
+		Where(map[string]any{"id": id, "model_id": modelId}).
 		Delete(&models.Instance{}).Error; err != nil {
 		return fmt.Errorf("删除失败-%s", err.Error())
 	}
@@ -116,9 +121,14 @@ func (i *instance) DeleteInstance(modelAlias string, id uint) error {
 //	@param ids 实例ID列表
 //	@return error
 func (i *instance) MulDeleteInstance(modelAlias string, ids []uint) error {
+	// 通过 model_alias 查找 model_id
+	var modelId uint
+	if err := database.DB.Model(&models.Model{}).Select("id").Where("alias = ?", modelAlias).First(&modelId).Error; err != nil {
+		return fmt.Errorf("未找到模型:%s", modelAlias)
+	}
 	// 删除实例
 	if err := database.DB.Model(&models.Instance{}).
-		Where(map[string]any{"id": ids, "model_alias": modelAlias}).
+		Where(map[string]any{"id": ids, "model_id": modelId}).
 		Delete(&models.Instance{}).Error; err != nil {
 		return fmt.Errorf("删除失败-%s", err.Error())
 	}
@@ -149,12 +159,8 @@ func (i *instance) DirectSearch(uuid string) (any, error) {
 		return nil, fmt.Errorf("查询失败:%s", err.Error())
 	}
 	sql := searchDirectSql.Sql
-	if sql == "" {
-		return nil, fmt.Errorf("sql语句为空")
-	}
-	upperSQL := strings.ToUpper(strings.TrimSpace(sql))
-	if !strings.HasPrefix(upperSQL, "SELECT") {
-		return nil, fmt.Errorf("仅支持SELECT查询语句")
+	if err := pkgUtils.ValidateSelectSQL(sql); err != nil {
+		return nil, err
 	}
 	var result interface{}
 	if err := database.DB.Raw(sql).Limit(1000).Scan(&result).Error; err != nil {
@@ -181,7 +187,7 @@ func (i *instance) FulltextInstance(body params.FulltextInstance) (int64, []resp
 	modelAlias := body.ModelAlias
 
 	query := database.DB.Table("instance i").
-		Select("i.id, i.model_id, i.model_alias, m.name as model_name, i.data").
+		Select("i.id, i.model_id, m.name as model_name, i.data").
 		Joins("LEFT JOIN model m ON i.model_id = m.id").
 		Where("m.is_usable = ?", true).
 		Where("JSON_SEARCH(i.data, 'one', ?) IS NOT NULL", "%"+search+"%")
@@ -229,12 +235,17 @@ func (i *instance) SearchInstance(body params.SearchInstance) (int64, any, error
 		return fmt.Sprintf("data->>'$.%s' "+expr, field), args
 	}
 
-	query := database.DB.Model(&models.Instance{}).Where(map[string]any{"model_alias": body.Model})
+	// 通过 model_alias 查找 model_id
+	var modelId uint
+	if err := database.DB.Model(&models.Model{}).Select("id").Where("alias = ?", body.Model).First(&modelId).Error; err != nil {
+		return 0, nil, fmt.Errorf("未找到模型:%s", body.Model)
+	}
+	query := database.DB.Model(&models.Instance{}).Where(map[string]any{"model_id": modelId})
 
 	// 指定查询字段
 	if len(body.Fields) > 0 {
-		baseCols := map[string]bool{"id": true, "model_id": true, "model_alias": true}
-		parts := []string{"id", "model_id", "model_alias"}
+		baseCols := map[string]bool{"id": true, "model_id": true}
+		parts := []string{"id", "model_id"}
 		for _, f := range body.Fields {
 			if !utils.ValidFieldName(f) {
 				return 0, nil, fmt.Errorf("非法字段名:%s", f)
@@ -275,7 +286,7 @@ func (i *instance) SearchInstance(body params.SearchInstance) (int64, any, error
 					if !ok {
 						continue
 					}
-					orQ := database.DB.Model(&models.Instance{}).Where("model_alias = ?", body.Model)
+					orQ := database.DB.Model(&models.Instance{}).Where("model_id = ?", modelId)
 					for orAct, orVal := range condMap {
 						op, ok := compares[orAct]
 						if !ok {

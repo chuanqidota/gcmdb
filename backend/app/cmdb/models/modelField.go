@@ -7,6 +7,7 @@ import (
 var allowedFieldTypes = map[string]bool{
 	"string": true, "number": true, "bool": true,
 	"date": true, "datetime": true, "json": true,
+	"enum": true,
 }
 
 func DefaultValueByType(fieldType string) any {
@@ -23,6 +24,8 @@ func DefaultValueByType(fieldType string) any {
 		return time.Now().Format(time.DateTime)
 	case "json":
 		return map[string]any{}
+	case "enum":
+		return ""
 	default:
 		return ""
 	}
@@ -41,6 +44,8 @@ type ModelField struct {
 	Alias        string `gorm:"column:alias;type:string;size:255;not null;uniqueIndex:idx_alias_model_id;comment:别名" json:"alias" binding:"required"`
 	Name         string `gorm:"column:name;type:string;size:255;not null;uniqueIndex:idx_name_model_id;comment:名称" json:"name" binding:"required"`
 	Type         string `gorm:"column:type;type:string;size:255;not null;comment:类型" json:"type" binding:"required"`
+	Description  string `gorm:"column:description;type:text;comment:描述" json:"description"`
+	Options      string `gorm:"column:options;type:text;comment:枚举选项JSON数组" json:"options"`
 	IsRequired   bool   `gorm:"column:is_required;type:boolean;not null;default:false;comment:是否必填" json:"is_required"`
 	Order        uint   `gorm:"column:order;type:uint;default:0;comment:排序" json:"order"`
 }

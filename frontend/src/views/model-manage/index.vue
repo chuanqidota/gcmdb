@@ -289,6 +289,10 @@
             <el-option v-for="t in fieldTypes" :key="t" :label="t" :value="t" />
           </el-select>
         </el-form-item>
+        <el-form-item v-if="fieldForm.type === 'enum'" label="选项" required>
+          <el-input v-model="fieldForm.options" type="textarea" :rows="2" placeholder='JSON数组，如 ["dev","staging","prod"]' />
+        </el-form-item>
+        <el-form-item label="描述"><el-input v-model="fieldForm.description" placeholder="字段描述" /></el-form-item>
         <el-form-item label="分组" required>
           <el-select v-model="fieldForm.field_group_id" style="width: 100%">
             <el-option v-for="g in detailData.fieldGroups" :key="g.id" :label="g.name" :value="g.id" />
@@ -378,7 +382,7 @@ import { createModelField, updateModelField, deleteModelField } from '../../api/
 import { createModelFieldGroup, updateModelFieldGroup, deleteModelFieldGroup } from '../../api/modelFieldGroup'
 import { listModelFieldUnique, createModelFieldUnique, deleteModelFieldUnique } from '../../api/modelFieldUnique'
 
-const fieldTypes = ['string', 'number', 'bool', 'date', 'datetime', 'json']
+const fieldTypes = ['string', 'number', 'bool', 'date', 'datetime', 'json', 'enum']
 
 // ===== 分组 =====
 const groups = ref([])
@@ -621,13 +625,13 @@ const handleDeleteFieldGroup = async (group) => {
 // ===== 字段 CRUD =====
 const fieldDialogVisible = ref(false)
 const editingField = ref(null)
-const fieldForm = ref({ alias: '', name: '', type: 'string', is_required: false, order: 0, field_group_id: null })
+const fieldForm = ref({ alias: '', name: '', type: 'string', description: '', options: '', is_required: false, order: 0, field_group_id: null })
 
 const showFieldDialog = (field) => {
   editingField.value = field || null
   fieldForm.value = field
-    ? { alias: field.alias, name: field.name, type: field.type, is_required: field.is_required, order: field.order, field_group_id: field.field_group_id }
-    : { alias: '', name: '', type: 'string', is_required: false, order: 0, field_group_id: selectedFieldGroup.value || detailData.value.fieldGroups[0]?.id }
+    ? { alias: field.alias, name: field.name, type: field.type, description: field.description || '', options: field.options || '', is_required: field.is_required, order: field.order, field_group_id: field.field_group_id }
+    : { alias: '', name: '', type: 'string', description: '', options: '', is_required: false, order: 0, field_group_id: selectedFieldGroup.value || detailData.value.fieldGroups[0]?.id }
   fieldDialogVisible.value = true
 }
 

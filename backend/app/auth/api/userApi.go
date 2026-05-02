@@ -18,8 +18,8 @@ var User = new(user)
 
 // ListUsers 管理员查看用户列表
 func (u *user) ListUsers(c *gin.Context) {
-	username, _ := c.Get("username")
-	if username != "admin" {
+	isAdmin, _ := c.Get("is_admin")
+	if !isAdmin.(bool) {
 		response.FailWithStatus(c, http.StatusForbidden, "仅管理员可操作")
 		return
 	}
@@ -35,8 +35,8 @@ func (u *user) ListUsers(c *gin.Context) {
 
 // CreateUser 管理员创建用户
 func (u *user) CreateUser(c *gin.Context) {
-	username, _ := c.Get("username")
-	if username != "admin" {
+	isAdmin, _ := c.Get("is_admin")
+	if !isAdmin.(bool) {
 		response.FailWithStatus(c, http.StatusForbidden, "仅管理员可操作")
 		return
 	}
@@ -78,8 +78,8 @@ func (u *user) CreateUser(c *gin.Context) {
 
 // PatchUser 管理员更新用户状态
 func (u *user) PatchUser(c *gin.Context) {
-	username, _ := c.Get("username")
-	if username != "admin" {
+	isAdmin, _ := c.Get("is_admin")
+	if !isAdmin.(bool) {
 		response.FailWithStatus(c, http.StatusForbidden, "仅管理员可操作")
 		return
 	}

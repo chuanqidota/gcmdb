@@ -10,6 +10,7 @@ import (
 type SessionData struct {
 	UserID    uint
 	Username  string
+	IsAdmin   bool
 	CreatedAt time.Time
 }
 
@@ -24,11 +25,12 @@ func generateID() string {
 	return hex.EncodeToString(b)
 }
 
-func Create(userID uint, username string) string {
+func Create(userID uint, username string, isAdmin bool) string {
 	sid := generateID()
 	store.Store(sid, &SessionData{
 		UserID:    userID,
 		Username:  username,
+		IsAdmin:   isAdmin,
 		CreatedAt: time.Now(),
 	})
 	return sid

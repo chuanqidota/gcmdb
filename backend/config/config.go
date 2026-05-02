@@ -1,17 +1,18 @@
 package config
 
 import (
-	"github.com/spf13/viper"
 	"log"
+	"os"
+
+	"github.com/spf13/viper"
 )
 
 type Config struct {
 	Server struct {
-		Host         string `mapstructure:"host"`
-		Port         int    `mapstructure:"port"`
-		ApiKey       string `mapstructure:"api_key"`
-		AutoRelation bool   `mapstructure:"auto_relation"`
-		SessionMaxAge int   `mapstructure:"session_max_age"`
+		Host          string `mapstructure:"host"`
+		Port          int    `mapstructure:"port"`
+		AutoRelation  bool   `mapstructure:"auto_relation"`
+		SessionMaxAge int    `mapstructure:"session_max_age"`
 	}
 	Database struct {
 		UserName string `mapstructure:"username"`
@@ -20,12 +21,21 @@ type Config struct {
 		Port     int    `mapstructure:"port"`
 		Name     string `mapstructure:"name"`
 	}
+	CORS struct {
+		AllowedOrigins []string `mapstructure:"allowed_origins"`
+	} `mapstructure:"cors"`
 }
 
 var Conf = new(Config)
 
 func Init() {
-	viper.SetConfigFile("./config/config.yaml")
+	// 支持 GCMDB_CONFIG 环境变量覆盖配置文件路径
+	configPath := os.Getenv("GCMDB_CONFIG")
+	if configPath == "" {
+		configPath = "./config/config.yaml"
+	}
+	viper.SetConfigFile(configPath)
+	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatalf("读取配置文件失败: %v", err)
 	}

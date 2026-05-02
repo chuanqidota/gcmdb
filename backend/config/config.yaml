@@ -1,7 +1,6 @@
 server:
   host: localhost
   port: 8080
-  api_key: ""
   auto_relation: true
   session_max_age: 604800
 database:
@@ -10,3 +9,5 @@ database:
   host: 127.0.0.1
   port: 3306
   name: gcmdb
+cors:
+  allowed_origins: []

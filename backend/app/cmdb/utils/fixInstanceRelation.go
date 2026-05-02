@@ -7,6 +7,7 @@ import (
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/logger"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // 维护实例关系
@@ -208,7 +209,7 @@ func (f *instanceRelation) CreateInstance(ModelId uint, instanceId uint) error {
 			continue
 		}
 		if err := database.DB.Model(&models.InstanceRelation{}).
-			CreateInBatches(instanceRelations, 100).Error; err != nil {
+			Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(instanceRelations, 100).Error; err != nil {
 			return fmt.Errorf("创建失败-%s", err.Error())
 		}
 	}
@@ -336,7 +337,7 @@ func (f *instanceRelation) SyncSourceModelInstanceRelation(modelId uint) error {
 				continue
 			}
 			if err := tx.Model(&models.InstanceRelation{}).
-				CreateInBatches(instanceRelations, 100).Error; err != nil {
+				Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(instanceRelations, 100).Error; err != nil {
 				logger.Error(fmt.Sprintf("插入失败-%s", err.Error()))
 				continue
 			}

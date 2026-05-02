@@ -49,6 +49,28 @@ func validateFieldValue(field models.ModelField, value any) error {
 		default:
 			return fmt.Errorf("字段%s类型应为JSON对象或数组", field.Alias)
 		}
+	case "enum":
+		s, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("字段%s类型应为字符串", field.Alias)
+		}
+		if field.Options != "" {
+			var options []string
+			if err := json.Unmarshal([]byte(field.Options), &options); err == nil {
+				if len(options) > 0 {
+					found := false
+					for _, opt := range options {
+						if opt == s {
+							found = true
+							break
+						}
+					}
+					if !found {
+						return fmt.Errorf("字段%s的值不在可选列表中", field.Alias)
+					}
+				}
+			}
+		}
 	}
 	return nil
 }

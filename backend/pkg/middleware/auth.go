@@ -28,6 +28,7 @@ func SessionAuthMiddleware() gin.HandlerFunc {
 		}
 		c.Set("user_id", data.UserID)
 		c.Set("username", data.Username)
+		c.Set("is_admin", data.IsAdmin)
 		c.Next()
 	}
 }
@@ -62,6 +63,7 @@ func OpenAPIAuthMiddleware() gin.HandlerFunc {
 			if data := session.Get(sid); data != nil {
 				c.Set("user_id", data.UserID)
 				c.Set("username", data.Username)
+				c.Set("is_admin", data.IsAdmin)
 				c.Next()
 				return
 			}
@@ -81,6 +83,7 @@ func OpenAPIAuthMiddleware() gin.HandlerFunc {
 		}
 		c.Set("user_id", user.ID)
 		c.Set("username", user.Username)
+		c.Set("is_admin", user.IsAdmin)
 		c.Next()
 	}
 }

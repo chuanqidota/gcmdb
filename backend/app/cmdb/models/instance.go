@@ -8,9 +8,9 @@ import (
 // @Description: 实例
 type Instance struct {
 	BaseModel
-	ModelId    uint           `gorm:"column:model_id;type:uint;not null;index;comment:模型id" json:"model_id" binding:"required"`
-	ModelAlias string         `gorm:"column:model_alias;type:string;size:255;not null;index;comment:模型别名" json:"model_alias" binding:"required"`
-	Data       datatypes.JSON `gorm:"column:data;type:json;comment:数据" json:"data" binding:"required"`
+	ModelId uint           `gorm:"column:model_id;type:uint;not null;index;comment:模型id" json:"model_id" binding:"required"`
+	Data    datatypes.JSON `gorm:"column:data;type:json;comment:数据" json:"data" binding:"required"`
+	Version int            `gorm:"column:version;default:1;comment:乐观锁版本号" json:"version"`
 }
 
 // TableName

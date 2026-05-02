@@ -46,7 +46,7 @@ func (l *login) Login(c *gin.Context) {
 		return
 	}
 	// 创建 session
-	sid := session.Create(user.ID, user.Username)
+	sid := session.Create(user.ID, user.Username, user.IsAdmin)
 	c.SetCookie(session.CookieName(), sid, config.Conf.Server.SessionMaxAge, "/", "", false, true)
 	response.Success(c, "登录成功", gin.H{
 		"user_id":  user.ID,
@@ -112,8 +112,8 @@ func (l *login) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	username, _ := c.Get("username")
-	if username != "admin" {
+	isAdmin, _ := c.Get("is_admin")
+	if !isAdmin.(bool) {
 		response.FailWithStatus(c, http.StatusForbidden, "仅管理员可重置密码")
 		return
 	}
@@ -141,18 +141,17 @@ func (l *login) ResetPassword(c *gin.Context) {
 // Me 当前用户信息
 func (l *login) Me(c *gin.Context) {
 	userID, _ := c.Get("user_id")
-	username, _ := c.Get("username")
 	var user models.User
 	if err := database.DB.Where("id = ?", userID).First(&user).Error; err != nil {
 		response.Fail(c, "用户不存在")
 		return
 	}
 	response.Success(c, "查询成功", gin.H{
-		"id":        user.ID,
-		"username":  user.Username,
-		"token":     user.Token,
-		"is_active": user.IsActive,
+		"id":         user.ID,
+		"username":   user.Username,
+		"token":      user.Token,
+		"is_active":  user.IsActive,
+		"is_admin":   user.IsAdmin,
 		"created_at": user.CreatedAt.Format(time.DateTime),
-		"_username":  username,
 	})
 }

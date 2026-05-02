@@ -47,9 +47,8 @@ func (i *instance) CreateInstance(c *gin.Context) {
 	}
 	// 创建实例
 	instance := models.Instance{
-		ModelId:    body.ModelId,
-		ModelAlias: body.ModelAlias,
-		Data:       verifyData,
+		ModelId: body.ModelId,
+		Data:    verifyData,
 	}
 	if err := database.DB.Model(&models.Instance{}).
 		Create(&instance).Error; err != nil {
@@ -115,7 +114,7 @@ func (i *instance) RetrieveInstance(c *gin.Context) {
 
 // UpdateInstance
 //
-//	@Description: 更新实例
+//	@Description: 更新实例（乐观锁）
 //	@receiver i
 //	@param c
 func (i *instance) UpdateInstance(c *gin.Context) {
@@ -137,14 +136,21 @@ func (i *instance) UpdateInstance(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
-	// 更新实例
-	if err := database.DB.Model(&models.Instance{}).
-		Where(map[string]any{"id": id}).
+	// 乐观锁更新：WHERE 加 version 条件，更新后 version+1
+	version := body.Version
+	result := database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"id": id, "version": version}).
 		Updates(map[string]any{
 			"updated_at": time.Now(),
 			"data":       verifyData,
-		}).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("更新失败-%s", err.Error()))
+			"version":    gorm.Expr("version + 1"),
+		})
+	if result.Error != nil {
+		response.Fail(c, fmt.Sprintf("更新失败-%s", result.Error.Error()))
+		return
+	}
+	if result.RowsAffected == 0 {
+		response.FailWithStatus(c, 409, "数据已被其他人修改，请刷新后重试")
 		return
 	}
 	response.Success(c, "执行成功", nil)
@@ -160,13 +166,13 @@ func (i *instance) DeleteInstance(c *gin.Context) {
 	id := c.Param("id")
 	// 删除实例关系和实例（事务）
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.InstanceRelation{}).
+		if err := tx.Unscoped().Model(&models.InstanceRelation{}).
 			Where(map[string]any{"source_id": id}).
 			Or(map[string]any{"target_id": id}).
 			Delete(&models.InstanceRelation{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&models.Instance{}).
+		if err := tx.Unscoped().Model(&models.Instance{}).
 			Where(map[string]any{"id": id}).
 			Delete(&models.Instance{}).Error; err != nil {
 			return err

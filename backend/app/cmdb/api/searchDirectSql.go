@@ -8,6 +8,7 @@ import (
 	"gcmdb/app/cmdb/resp"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
+	pkgUtils "gcmdb/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -32,9 +33,8 @@ func (sds *searchDirectSql) CreateSearchDirectSql(c *gin.Context) {
 		return
 	}
 	body.Uuid = strings.Replace(uuid.New().String(), "-", "", -1)
-	upperSQL := strings.ToUpper(strings.TrimSpace(body.Sql))
-	if !strings.HasPrefix(upperSQL, "SELECT") {
-		response.Fail(c, "仅支持SELECT查询语句")
+	if err := pkgUtils.ValidateSelectSQL(body.Sql); err != nil {
+		response.Fail(c, err.Error())
 		return
 	}
 	if err := database.DB.Model(&models.SearchDirectSql{}).Create(&body).Error; err != nil {
@@ -98,19 +98,8 @@ func (sds *searchDirectSql) ExecuteSearchDirectSql(c *gin.Context) {
 		return
 	}
 	sql := searchDirectSql.Sql
-	if sql == "" {
-		response.Fail(c, "sql语句为空")
-		return
-	}
-	upperSQL := strings.ToUpper(strings.TrimSpace(sql))
-	if !strings.HasPrefix(upperSQL, "SELECT") {
-		response.Fail(c, "仅支持SELECT查询语句")
-		return
-	}
-	if strings.Contains(upperSQL, "DROP ") || strings.Contains(upperSQL, "DELETE ") ||
-		strings.Contains(upperSQL, "UPDATE ") || strings.Contains(upperSQL, "INSERT ") ||
-		strings.Contains(upperSQL, "ALTER ") || strings.Contains(upperSQL, "TRUNCATE ") {
-		response.Fail(c, "不允许执行修改类SQL语句")
+	if err := pkgUtils.ValidateSelectSQL(sql); err != nil {
+		response.Fail(c, err.Error())
 		return
 	}
 	var result interface{}
@@ -155,7 +144,7 @@ func (sds *searchDirectSql) UpdateSearchDirectSql(c *gin.Context) {
 //	@param c
 func (sds *searchDirectSql) DeleteSearchDirectSql(c *gin.Context) {
 	id := c.Param("id")
-	if err := database.DB.Model(&models.SearchDirectSql{}).
+	if err := database.DB.Unscoped().Model(&models.SearchDirectSql{}).
 		Where(map[string]any{"id": id}).
 		Delete(&models.SearchDirectSql{}).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))

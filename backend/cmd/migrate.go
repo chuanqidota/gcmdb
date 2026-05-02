@@ -64,6 +64,7 @@ func seedAdmin() {
 		PasswordHash: string(hash),
 		Token:        uuid.New().String(),
 		IsActive:     true,
+		IsAdmin:      true,
 	}
 	if err := database.DB.Create(&admin).Error; err != nil {
 		logger.Error("创建 admin 用户失败:", err.Error())

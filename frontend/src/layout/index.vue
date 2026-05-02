@@ -45,7 +45,7 @@
           <el-icon><Notebook /></el-icon>
           <template #title>审计日志</template>
         </el-menu-item>
-        <el-menu-item v-if="username === 'admin'" index="/user-manage">
+        <el-menu-item v-if="isAdmin" index="/user-manage">
           <el-icon><User /></el-icon>
           <template #title>用户管理</template>
         </el-menu-item>
@@ -105,11 +105,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { HomeFilled, Grid, List, Search, Fold, Expand, Share, Document, Notebook, User } from '@element-plus/icons-vue'
 import { getMe, logout, changePassword } from '../api/auth'
+import { useUserStore } from '../stores/user'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 const isCollapsed = ref(false)
 const username = ref('')
+const isAdmin = ref(false)
 const pwdFormRef = ref(null)
 
 const pwdDialog = ref({
@@ -143,6 +146,11 @@ onMounted(async () => {
   try {
     const res = await getMe()
     username.value = res.data?.username || ''
+    isAdmin.value = res.data?.is_admin || false
+    userStore.username = username.value
+    userStore.isAdmin = isAdmin.value
+    userStore.token = res.data?.token || ''
+    userStore.userId = res.data?.id || null
   } catch {
     // will be redirected by 401 interceptor
   }

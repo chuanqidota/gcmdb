@@ -201,6 +201,9 @@
           <el-switch v-else-if="f.type === 'bool'" v-model="instanceForm[f.alias]" />
           <el-date-picker v-else-if="f.type === 'date'" v-model="instanceForm[f.alias]" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
           <el-date-picker v-else-if="f.type === 'datetime'" v-model="instanceForm[f.alias]" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
+          <el-select v-else-if="f.type === 'enum'" v-model="instanceForm[f.alias]" style="width: 100%">
+            <el-option v-for="opt in parseOptions(f.options)" :key="opt" :label="opt" :value="opt" />
+          </el-select>
           <el-input v-else v-model="instanceForm[f.alias]" type="textarea" :rows="3" placeholder="JSON 格式" />
         </el-form-item>
       </el-form>
@@ -254,6 +257,11 @@ const allModels = ref([])
 const modelRelations = ref([]) // 当前模型的模型关系列表
 
 const tableColumns = computed(() => modelFields.value.slice(0, 6))
+
+const parseOptions = (options) => {
+  if (!options) return []
+  try { return JSON.parse(options) } catch { return [] }
+}
 
 
 const filterNode = (value, data) => {
@@ -313,14 +321,22 @@ const showEditDialog = (row) => {
 }
 
 const handleSave = async () => {
-  if (editingInstance.value) {
-    await updateInstance(editingInstance.value.id, { data: instanceForm.value })
-  } else {
-    await createInstance({ model_id: currentModel.value.id, model_alias: currentModel.value.alias, data: instanceForm.value })
+  try {
+    if (editingInstance.value) {
+      await updateInstance(editingInstance.value.id, { data: instanceForm.value, version: editingInstance.value.version || 1 })
+    } else {
+      await createInstance({ model_id: currentModel.value.id, data: instanceForm.value })
+    }
+    dialogVisible.value = false
+    ElMessage.success('操作成功')
+    loadInstances()
+  } catch (err) {
+    // error shown by interceptor, but handle 409 specifically
+    if (err?.response?.status === 409) {
+      ElMessage.error('数据已被其他人修改，请刷新后重试')
+      loadInstances()
+    }
   }
-  dialogVisible.value = false
-  ElMessage.success('操作成功')
-  loadInstances()
 }
 
 const handleDelete = async (row) => {
