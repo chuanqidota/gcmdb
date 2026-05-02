@@ -55,6 +55,18 @@
           </el-icon>
           <span class="page-title">{{ route.meta.title }}</span>
         </div>
+        <el-dropdown @command="handleCommand">
+          <span class="user-dropdown">
+            <el-icon><User /></el-icon>
+            <span class="username">{{ username }}</span>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="token">查看 Token</el-dropdown-item>
+              <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </el-header>
       <el-main class="app-main">
         <router-view />
@@ -64,12 +76,43 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { HomeFilled, Grid, List, Search, Fold, Expand, Share, Document, Notebook } from '@element-plus/icons-vue'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { HomeFilled, Grid, List, Search, Fold, Expand, Share, Document, Notebook, User } from '@element-plus/icons-vue'
+import { getMe, logout } from '../api/auth'
 
 const route = useRoute()
+const router = useRouter()
 const isCollapsed = ref(false)
+const username = ref('')
+
+onMounted(async () => {
+  try {
+    const res = await getMe()
+    username.value = res.data?.username || ''
+  } catch {
+    // will be redirected by 401 interceptor
+  }
+})
+
+const handleCommand = async (cmd) => {
+  if (cmd === 'logout') {
+    await ElMessageBox.confirm('确定退出登录？', '确认', { type: 'warning' })
+    try { await logout() } catch {}
+    localStorage.removeItem('gcmdb_logged_in')
+    router.push('/login')
+    ElMessage.success('已退出登录')
+  } else if (cmd === 'token') {
+    try {
+      const res = await getMe()
+      const token = res.data?.token || ''
+      await ElMessageBox.alert(`Token: <code style="word-break:break-all">${token}</code>`, 'API Token', { dangerouslyUseHTMLString: true, confirmButtonText: '复制并关闭' })
+      navigator.clipboard.writeText(token)
+      ElMessage.success('已复制到剪贴板')
+    } catch {}
+  }
+}
 </script>
 
 <style scoped>
@@ -179,5 +222,29 @@ const isCollapsed = ref(false)
   background: var(--color-background);
   padding: 20px;
   overflow-y: auto;
+}
+
+.user-dropdown {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  transition: all 0.15s ease;
+}
+
+.user-dropdown:hover {
+  background: var(--color-muted);
+  color: var(--color-primary);
+}
+
+.username {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

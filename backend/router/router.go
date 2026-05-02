@@ -1,6 +1,7 @@
 package router
 
 import (
+	authApi "gcmdb/app/auth/api"
 	auditApi "gcmdb/app/audit/api"
 	cmdbApi "gcmdb/app/cmdb/api"
 	openApi "gcmdb/app/openapi/api"
@@ -12,9 +13,19 @@ import (
 
 func Engine() *gin.Engine {
 	router := gin.Default()
+
+	// 认证路由
+	auth := router.Group("v1/auth")
+	{
+		auth.POST("login", authApi.Login.Login)
+		auth.POST("logout", authApi.Login.Logout)
+		auth.GET("me", middleware.SessionAuthMiddleware(), authApi.Login.Me)
+	}
+
 	v1 := router.Group("v1")
 
-	cmdb := v1.Group("cmdb").Use(middleware.CORSMiddleware()).Use(middleware.AuthMiddleware()).Use(middleware.AuditMiddleware())
+	// CMDB 页面接口 — CORS + session 认证 + 审计
+	cmdb := v1.Group("cmdb").Use(middleware.CORSMiddleware()).Use(middleware.SessionAuthMiddleware()).Use(middleware.AuditMiddleware())
 	{
 		// 模型分组
 		cmdb.POST("models-group", cmdbApi.ModelGroup.CreateModelGroup)       // 创建模型分组
@@ -92,8 +103,9 @@ func Engine() *gin.Engine {
 		// 任务
 		cmdb.POST("sync-instance-relation", taskApi.InstanceRelation.SyncInstanceRelation) // 同步实例关系
 	}
-	// 对外开放接口
-	openapi := router.Group("openapi").Use(middleware.AuthMiddleware())
+
+	// 对外开放接口 — session 或 token 认证
+	openapi := router.Group("openapi").Use(middleware.OpenAPIAuthMiddleware())
 	{
 		openapi.GET("model/:range", openApi.Model.ModelRange)                                      // 模型操作
 		openapi.POST("instance/:action", openApi.Instance.InstanceAction)                          // 实例操作

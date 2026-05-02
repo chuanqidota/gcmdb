@@ -25,19 +25,23 @@
       </router-link>
     </div>
 
-    <!-- 模型实例分布 -->
-    <div class="dist-section">
-      <div class="section-title">模型实例分布</div>
-      <div class="model-dist">
-        <div v-for="m in modelStats" :key="m.id" class="model-dist-item">
-          <div class="model-dist-label">{{ m.name }}</div>
-          <div class="model-dist-bar-wrap">
-            <div class="model-dist-bar" :style="{ width: m.percent + '%' }"></div>
+    <!-- 模型分组概览 -->
+    <div class="section-title">模型分组</div>
+    <div class="group-grid">
+      <div v-for="g in groupCards" :key="g.id" class="group-card">
+        <div class="group-card-header">
+          <div class="group-icon" :style="{ background: g.bg }">
+            <el-icon :size="20" :color="g.color"><Grid /></el-icon>
           </div>
-          <div class="model-dist-count">{{ m.count }}</div>
+          <div class="group-name">{{ g.name }}</div>
         </div>
-        <el-empty v-if="!modelStats.length && !loading" description="暂无模型数据" :image-size="48" />
+        <div class="group-desc">{{ g.description || '暂无描述' }}</div>
+        <div class="group-meta">
+          <span class="group-count">{{ g.model_count }}</span>
+          <span class="group-count-label">个模型</span>
+        </div>
       </div>
+      <el-empty v-if="!groupCards.length && !loading" description="暂无模型分组" :image-size="48" />
     </div>
   </div>
 </template>
@@ -59,31 +63,46 @@ const shortcuts = [
   { label: '模型拓扑', desc: '可视化模型关系图', path: '/model-topology', icon: Share, color: '#7C3AED', bg: '#EDE9FE' },
 ]
 
-const modelStats = ref([])
+const groupCards = ref([])
+const groupColors = [
+  { color: '#2563EB', bg: '#DBEAFE' },
+  { color: '#059669', bg: '#D1FAE5' },
+  { color: '#D97706', bg: '#FEF3C7' },
+  { color: '#7C3AED', bg: '#EDE9FE' },
+  { color: '#DC2626', bg: '#FEE2E2' },
+  { color: '#0891B2', bg: '#CFFAFE' },
+]
 
 onMounted(async () => {
   const [g, m] = await Promise.all([
-    listModelGroup({ limit: 1 }),
+    listModelGroup({ limit: 1000 }),
     listModel({ limit: 1000 }),
   ])
+  const groups = g.data.results || []
   const models = m.data.results || []
 
-  // 并行获取每个模型的实例数
-  const countResults = await Promise.allSettled(
-    models.map(model => listInstance(model.id, { limit: 1 }))
-  )
-
-  let totalInstances = 0
-  const modelData = models.map((model, i) => {
-    const count = countResults[i].status === 'fulfilled' ? (countResults[i].value.data.count || 0) : 0
-    totalInstances += count
-    return { id: model.id, name: model.name, count }
+  // 统计每个分组的模型数量
+  const countMap = {}
+  models.forEach(model => {
+    countMap[model.group_id] = (countMap[model.group_id] || 0) + 1
   })
 
-  const max = Math.max(...modelData.map(m => m.count), 1)
-  modelStats.value = modelData
-    .sort((a, b) => b.count - a.count)
-    .map(m => ({ ...m, percent: Math.round((m.count / max) * 100) }))
+  groupCards.value = groups.map((group, i) => ({
+    ...group,
+    model_count: countMap[group.id] || 0,
+    ...groupColors[i % groupColors.length],
+  }))
+
+  // 统计卡片
+  let totalInstances = 0
+  if (models.length > 0) {
+    const countResults = await Promise.allSettled(
+      models.map(model => listInstance(model.id, { limit: 1 }))
+    )
+    countResults.forEach(r => {
+      if (r.status === 'fulfilled') totalInstances += r.value.data.count || 0
+    })
+  }
 
   statCards.value = [
     { label: '模型分组', value: g.data.count || 0, icon: Grid, color: '#2563EB', bg: '#DBEAFE' },
@@ -199,60 +218,73 @@ onMounted(async () => {
   color: var(--color-text-muted);
 }
 
-.dist-section {
+.group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.group-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: 20px;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.model-dist {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px 24px;
-  max-height: 400px;
-  overflow-y: auto;
+.group-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
-.model-dist-item {
+.group-card-header {
   display: flex;
   align-items: center;
   gap: 12px;
+  margin-bottom: 8px;
 }
 
-.model-dist-label {
-  width: 80px;
-  font-size: 13px;
-  color: var(--color-text-primary);
-  text-align: right;
-  flex-shrink: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.model-dist-bar-wrap {
-  flex: 1;
-  height: 20px;
-  background: var(--color-muted);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.model-dist-bar {
-  height: 100%;
-  background: var(--color-primary);
-  border-radius: 4px;
-  transition: width 0.4s ease;
-  min-width: 2px;
-}
-
-.model-dist-count {
+.group-icon {
   width: 40px;
-  font-size: 13px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.group-name {
+  font-size: 15px;
   font-weight: 600;
   color: var(--color-text-primary);
-  text-align: right;
-  flex-shrink: 0;
+}
+
+.group-desc {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.group-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.group-count {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.group-count-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 </style>

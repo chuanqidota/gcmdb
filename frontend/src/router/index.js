@@ -3,6 +3,12 @@ import Layout from '../layout/index.vue'
 
 const routes = [
   {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/login/index.vue'),
+    meta: { title: '登录' },
+  },
+  {
     path: '/',
     component: Layout,
     redirect: '/home',
@@ -21,6 +27,21 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+// 路由守卫
+router.beforeEach((to, from, next) => {
+  if (to.path === '/login') {
+    next()
+    return
+  }
+  // 检查登录状态
+  const isLoggedIn = localStorage.getItem('gcmdb_logged_in')
+  if (!isLoggedIn) {
+    next('/login')
+    return
+  }
+  next()
 })
 
 export default router

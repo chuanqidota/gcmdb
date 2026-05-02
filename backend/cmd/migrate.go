@@ -4,11 +4,15 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	authModels "gcmdb/app/auth/models"
 	auditModels "gcmdb/app/audit/models"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/logger"
+
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // migrateCmd represents the migrate command
@@ -18,6 +22,7 @@ var migrateCmd = &cobra.Command{
 	Long:  "自动迁移表 go run main.go migrate",
 	Run: func(cmd *cobra.Command, args []string) {
 		err := database.DB.AutoMigrate(
+			&authModels.User{},
 			&models.ModelGroup{},
 			&models.Model{},
 			&models.ModelRelation{},
@@ -33,22 +38,40 @@ var migrateCmd = &cobra.Command{
 		)
 		if err != nil {
 			logger.Error("迁移出错:", err.Error())
-		} else {
-			logger.Info("迁移成功")
+			return
 		}
+		logger.Info("迁移成功")
+
+		// 预置 admin 用户
+		seedAdmin()
 	},
+}
+
+func seedAdmin() {
+	var count int64
+	database.DB.Model(&authModels.User{}).Where("username = ?", "admin").Count(&count)
+	if count > 0 {
+		logger.Info("admin 用户已存在，跳过创建")
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+	if err != nil {
+		logger.Error("生成密码哈希失败:", err.Error())
+		return
+	}
+	admin := authModels.User{
+		Username:     "admin",
+		PasswordHash: string(hash),
+		Token:        uuid.New().String(),
+		IsActive:     true,
+	}
+	if err := database.DB.Create(&admin).Error; err != nil {
+		logger.Error("创建 admin 用户失败:", err.Error())
+		return
+	}
+	logger.Info("admin 用户创建成功, Token:", admin.Token)
 }
 
 func init() {
 	rootCmd.AddCommand(migrateCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// migrateCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// migrateCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
