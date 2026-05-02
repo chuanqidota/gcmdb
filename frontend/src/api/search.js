@@ -17,3 +17,6 @@ export const searchInstance = (data) => openapiRequest.post('/instance/search', 
 
 // 获取所有模型关系类型
 export const getModelRelationTypes = () => openapiRequest.get('/model/relation-type')
+
+// 获取所有模型关系
+export const getAllModelRelations = () => openapiRequest.get('/model/relation')

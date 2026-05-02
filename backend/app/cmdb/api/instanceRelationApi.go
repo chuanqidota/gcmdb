@@ -116,3 +116,31 @@ func (i *instanceRelation) DeleteInstanceRelation(c *gin.Context) {
 	}
 	response.Success(c, "删除成功", nil)
 }
+
+// DeleteInstanceRelationByKeys
+//
+//	@Description: 通过源/目标模型和实例ID删除实例关系
+//	@receiver i
+//	@param c
+func (i *instanceRelation) DeleteInstanceRelationByKeys(c *gin.Context) {
+	sourceModelId := c.Query("source_model_id")
+	targetModelId := c.Query("target_model_id")
+	sourceId := c.Query("source_id")
+	targetId := c.Query("target_id")
+	if sourceModelId == "" || targetModelId == "" || sourceId == "" || targetId == "" {
+		response.Fail(c, "参数不完整，需要 source_model_id, target_model_id, source_id, target_id")
+		return
+	}
+	if err := database.DB.Model(&models.InstanceRelation{}).
+		Where(map[string]any{
+			"source_model_id": sourceModelId,
+			"target_model_id": targetModelId,
+			"source_id":       sourceId,
+			"target_id":       targetId,
+		}).
+		Delete(&models.InstanceRelation{}).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
+		return
+	}
+	response.Success(c, "删除成功", nil)
+}

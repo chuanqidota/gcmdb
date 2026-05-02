@@ -121,3 +121,17 @@ func (m *model) ModelRelationTypeAll() ([]models.ModelRelationType, error) {
 	}
 	return types, nil
 }
+
+// ModelRelationAll
+//
+//	@Description: 查询所有模型关系
+//	@receiver m
+//	@return []models.ModelRelation
+//	@return error
+func (m *model) ModelRelationAll() ([]models.ModelRelation, error) {
+	relations := make([]models.ModelRelation, 0)
+	if err := database.DB.Model(&models.ModelRelation{}).Scan(&relations).Error; err != nil {
+		return nil, err
+	}
+	return relations, nil
+}

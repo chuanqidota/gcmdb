@@ -76,6 +76,7 @@ func Engine() *gin.Engine {
 		cmdb.GET("source-target-relation/:source_id", cmdbApi.InstanceRelation.SourceTargetInstanceRelation) // 源到目标的实例关系
 		cmdb.GET("target-source-relation/:target_id", cmdbApi.InstanceRelation.TargetSourceInstanceRelation) // 目标到源的实例关系
 		cmdb.DELETE("instance-relation/:id", cmdbApi.InstanceRelation.DeleteInstanceRelation)                // 删除实例关系
+		cmdb.DELETE("instance-relation-by-keys", cmdbApi.InstanceRelation.DeleteInstanceRelationByKeys)    // 通过源/目标删除实例关系
 
 		// 直接查询sql
 		cmdb.POST("search-direct-sql", cmdbApi.SearchDirectSql.CreateSearchDirectSql)       // 创建直接查询sql

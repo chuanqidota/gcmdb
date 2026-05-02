@@ -21,18 +21,17 @@
           <el-icon><HomeFilled /></el-icon>
           <template #title>首页</template>
         </el-menu-item>
-        <el-sub-menu index="model-mgmt">
-          <template #title>
-            <el-icon><Grid /></el-icon>
-            <span>模型管理</span>
-          </template>
-          <el-menu-item index="/model-group">模型分组</el-menu-item>
-          <el-menu-item index="/model">模型列表</el-menu-item>
-          <el-menu-item index="/model-relation-type">关系类型</el-menu-item>
-        </el-sub-menu>
-        <el-menu-item index="/model-relation">
+        <el-menu-item index="/model-manage">
+          <el-icon><Grid /></el-icon>
+          <template #title>模型管理</template>
+        </el-menu-item>
+        <el-menu-item index="/model-relation-type">
           <el-icon><Connection /></el-icon>
-          <template #title>模型关系</template>
+          <template #title>关系类型</template>
+        </el-menu-item>
+        <el-menu-item index="/model-topology">
+          <el-icon><Share /></el-icon>
+          <template #title>模型拓扑</template>
         </el-menu-item>
         <el-menu-item index="/instance">
           <el-icon><List /></el-icon>
@@ -67,7 +66,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Grid, Connection, List, Search, Fold, Expand } from '@element-plus/icons-vue'
+import { HomeFilled, Grid, Connection, List, Search, Fold, Expand, Share } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapsed = ref(false)
