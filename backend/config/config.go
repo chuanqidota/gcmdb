@@ -11,6 +11,7 @@ type Config struct {
 		Port         int    `mapstructure:"port"`
 		ApiKey       string `mapstructure:"api_key"`
 		AutoRelation bool   `mapstructure:"auto_relation"`
+		SessionMaxAge int   `mapstructure:"session_max_age"`
 	}
 	Database struct {
 		UserName string `mapstructure:"username"`
@@ -18,11 +19,6 @@ type Config struct {
 		Host     string `mapstructure:"host"`
 		Port     int    `mapstructure:"port"`
 		Name     string `mapstructure:"name"`
-	}
-	ElasticSearch struct {
-		Url      string `mapstructure:"url"`
-		UserName string `mapstructure:"username"`
-		Password string `mapstructure:"password"`
 	}
 }
 

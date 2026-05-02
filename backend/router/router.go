@@ -20,6 +20,13 @@ func Engine() *gin.Engine {
 		auth.POST("login", authApi.Login.Login)
 		auth.POST("logout", authApi.Login.Logout)
 		auth.GET("me", middleware.SessionAuthMiddleware(), authApi.Login.Me)
+		auth.POST("change-password", middleware.SessionAuthMiddleware(), authApi.Login.ChangePassword)
+		auth.POST("reset-password", middleware.SessionAuthMiddleware(), authApi.Login.ResetPassword)
+
+		// 用户管理（管理员）
+		auth.GET("users", middleware.SessionAuthMiddleware(), authApi.User.ListUsers)
+		auth.POST("users", middleware.SessionAuthMiddleware(), authApi.User.CreateUser)
+		auth.PATCH("users/:id", middleware.SessionAuthMiddleware(), authApi.User.PatchUser)
 	}
 
 	v1 := router.Group("v1")

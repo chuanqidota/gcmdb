@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"gcmdb/config"
 	"gcmdb/pkg/database"
-	"gcmdb/pkg/es"
 	"gcmdb/pkg/logger"
 	"gcmdb/router"
 	"github.com/spf13/cobra"
@@ -52,7 +51,6 @@ func init() {
 	logger.Init()
 	config.Init()
 	database.Init()
-	es.Init()
 }
 
 func Run() {

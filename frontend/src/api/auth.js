@@ -25,3 +25,10 @@ authRequest.interceptors.response.use(
 export const login = (data) => authRequest.post('/login', data)
 export const logout = () => authRequest.post('/logout')
 export const getMe = () => authRequest.get('/me')
+export const changePassword = (data) => authRequest.post('/change-password', data)
+export const resetPassword = (data) => authRequest.post('/reset-password', data)
+
+// 用户管理（管理员）
+export const listUsers = () => authRequest.get('/users')
+export const createUser = (data) => authRequest.post('/users', data)
+export const patchUser = (id, data) => authRequest.patch(`/users/${id}`, data)

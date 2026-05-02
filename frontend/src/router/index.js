@@ -20,6 +20,7 @@ const routes = [
       { path: 'search', name: 'Search', component: () => import('../views/search/index.vue'), meta: { title: '综合检索' } },
       { path: 'model-topology', name: 'ModelTopology', component: () => import('../views/model-topology/index.vue'), meta: { title: '模型拓扑' } },
       { path: 'audit', name: 'Audit', component: () => import('../views/audit/index.vue'), meta: { title: '审计日志' } },
+      { path: 'user-manage', name: 'UserManage', component: () => import('../views/user-manage/index.vue'), meta: { title: '用户管理' } },
     ],
   },
 ]

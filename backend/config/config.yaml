@@ -3,13 +3,10 @@ server:
   port: 8080
   api_key: ""
   auto_relation: true
+  session_max_age: 604800
 database:
   username: root
   password: jinang123
   host: 127.0.0.1
   port: 3306
   name: gcmdb
-elasticSearch:
-  url: http://localhost:9200
-  username: ""
-  password: ""

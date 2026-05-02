@@ -21,7 +21,12 @@ var Audit = new(audit)
 func (a *audit) ListAuditLog(c *gin.Context) {
 	var query struct {
 		ResourceType string `form:"resource_type"`
+		ResourceID   string `form:"resource_id"`
 		Action       string `form:"action"`
+		Username     string `form:"username"`
+		Keyword      string `form:"keyword"`
+		StartTime    string `form:"start_time"`
+		EndTime      string `form:"end_time"`
 		Limit        int    `form:"limit"`
 		Offset       int    `form:"offset"`
 	}
@@ -37,8 +42,24 @@ func (a *audit) ListAuditLog(c *gin.Context) {
 	if query.ResourceType != "" {
 		db = db.Where("resource_type = ?", query.ResourceType)
 	}
+	if query.ResourceID != "" {
+		db = db.Where("resource_id = ?", query.ResourceID)
+	}
 	if query.Action != "" {
 		db = db.Where("action = ?", query.Action)
+	}
+	if query.Username != "" {
+		db = db.Where("username = ?", query.Username)
+	}
+	if query.Keyword != "" {
+		like := "%" + query.Keyword + "%"
+		db = db.Where("path LIKE ? OR request_body LIKE ? OR resource_id LIKE ?", like, like, like)
+	}
+	if query.StartTime != "" {
+		db = db.Where("created_at >= ?", query.StartTime)
+	}
+	if query.EndTime != "" {
+		db = db.Where("created_at <= ?", query.EndTime)
 	}
 
 	var count int64

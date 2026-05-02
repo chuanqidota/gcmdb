@@ -45,6 +45,10 @@
           <el-icon><Notebook /></el-icon>
           <template #title>审计日志</template>
         </el-menu-item>
+        <el-menu-item v-if="username === 'admin'" index="/user-manage">
+          <el-icon><User /></el-icon>
+          <template #title>用户管理</template>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -63,6 +67,7 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="token">查看 Token</el-dropdown-item>
+              <el-dropdown-item command="password">修改密码</el-dropdown-item>
               <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -73,6 +78,25 @@
       </el-main>
     </el-container>
   </el-container>
+
+  <!-- 修改密码对话框 -->
+  <el-dialog v-model="pwdDialog.visible" title="修改密码" width="400px" :close-on-click-modal="false">
+    <el-form ref="pwdFormRef" :model="pwdDialog.form" :rules="pwdRules" label-width="80px">
+      <el-form-item label="当前密码" prop="old_password">
+        <el-input v-model="pwdDialog.form.old_password" type="password" show-password />
+      </el-form-item>
+      <el-form-item label="新密码" prop="new_password">
+        <el-input v-model="pwdDialog.form.new_password" type="password" show-password />
+      </el-form-item>
+      <el-form-item label="确认密码" prop="confirm_password">
+        <el-input v-model="pwdDialog.form.confirm_password" type="password" show-password />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="pwdDialog.visible = false">取消</el-button>
+      <el-button type="primary" :loading="pwdDialog.loading" @click="submitChangePassword">确定</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -80,12 +104,40 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { HomeFilled, Grid, List, Search, Fold, Expand, Share, Document, Notebook, User } from '@element-plus/icons-vue'
-import { getMe, logout } from '../api/auth'
+import { getMe, logout, changePassword } from '../api/auth'
 
 const route = useRoute()
 const router = useRouter()
 const isCollapsed = ref(false)
 const username = ref('')
+const pwdFormRef = ref(null)
+
+const pwdDialog = ref({
+  visible: false,
+  loading: false,
+  form: { old_password: '', new_password: '', confirm_password: '' },
+})
+
+const pwdRules = {
+  old_password: [{ required: true, message: '请输入当前密码', trigger: 'blur' }],
+  new_password: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '密码至少6位', trigger: 'blur' },
+  ],
+  confirm_password: [
+    { required: true, message: '请确认新密码', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (value !== pwdDialog.value.form.new_password) {
+          callback(new Error('两次密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur',
+    },
+  ],
+}
 
 onMounted(async () => {
   try {
@@ -111,6 +163,26 @@ const handleCommand = async (cmd) => {
       navigator.clipboard.writeText(token)
       ElMessage.success('已复制到剪贴板')
     } catch {}
+  } else if (cmd === 'password') {
+    pwdDialog.value.form = { old_password: '', new_password: '', confirm_password: '' }
+    pwdDialog.value.visible = true
+  }
+}
+
+const submitChangePassword = async () => {
+  await pwdFormRef.value.validate()
+  pwdDialog.value.loading = true
+  try {
+    await changePassword({
+      old_password: pwdDialog.value.form.old_password,
+      new_password: pwdDialog.value.form.new_password,
+    })
+    ElMessage.success('密码修改成功')
+    pwdDialog.value.visible = false
+  } catch {
+    // error shown by interceptor
+  } finally {
+    pwdDialog.value.loading = false
   }
 }
 </script>

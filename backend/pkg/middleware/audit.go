@@ -2,8 +2,10 @@ package middleware
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	auditModels "gcmdb/app/audit/models"
+	cmdbModels "gcmdb/app/cmdb/models"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/logger"
 	"io"
@@ -14,17 +16,18 @@ import (
 
 // resourceMap URL路径片段 → 资源类型映射
 var resourceMap = map[string]string{
-	"models-group":          "model_group",
-	"models-field-group":    "model_field_group",
-	"models-field-unique":   "model_field_unique",
-	"models-field-relation": "model_field_relation",
-	"models-field":          "model_field",
-	"models-relation-type":  "model_relation_type",
-	"models-relation":       "model_relation",
-	"models":                "model",
-	"instance":              "instance",
-	"instance-relation":     "instance_relation",
-	"search-direct-sql":     "search_direct_sql",
+	"models-group":           "model_group",
+	"models-field-group":     "model_field_group",
+	"models-field-unique":    "model_field_unique",
+	"models-field-relation":  "model_field_relation",
+	"models-field":           "model_field",
+	"models-relation-type":   "model_relation_type",
+	"models-relation":        "model_relation",
+	"models":                 "model",
+	"instance":               "instance",
+	"instance-relation":      "instance_relation",
+	"instance-relation-by-keys": "instance_relation",
+	"search-direct-sql":      "search_direct_sql",
 	"sync-instance-relation": "task",
 }
 
@@ -34,6 +37,20 @@ var actionMap = map[string]string{
 	"PUT":    "update",
 	"PATCH":  "update",
 	"DELETE": "delete",
+}
+
+// modelRegistry 资源类型 → GORM 模型工厂，用于查询变更前数据
+var modelRegistry = map[string]func() any{
+	"model_group":          func() any { return &cmdbModels.ModelGroup{} },
+	"model":                func() any { return &cmdbModels.Model{} },
+	"model_field_group":    func() any { return &cmdbModels.ModelFieldGroup{} },
+	"model_field":          func() any { return &cmdbModels.ModelField{} },
+	"model_field_unique":   func() any { return &cmdbModels.ModelFieldUnique{} },
+	"model_field_relation": func() any { return &cmdbModels.ModelFieldRelation{} },
+	"model_relation":       func() any { return &cmdbModels.ModelRelation{} },
+	"model_relation_type":  func() any { return &cmdbModels.ModelRelationType{} },
+	"instance":             func() any { return &cmdbModels.Instance{} },
+	"instance_relation":    func() any { return &cmdbModels.InstanceRelation{} },
 }
 
 // AuditMiddleware 审计中间件，拦截写操作并记录到 audit_log 表
@@ -59,20 +76,35 @@ func AuditMiddleware() gin.HandlerFunc {
 			bodyBytes, err := io.ReadAll(c.Request.Body)
 			if err == nil && len(bodyBytes) > 0 {
 				requestBody = string(bodyBytes)
-				// 截断过长的请求体
 				if len(requestBody) > 10000 {
 					requestBody = requestBody[:10000] + "...(truncated)"
 				}
-				// 恢复请求体供 handler 使用
 				c.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 			}
+		}
+
+		// 解析资源信息
+		resourceType, resourceID := parseResource(c)
+
+		// update/delete 操作：在执行前查询旧数据
+		var beforeData string
+		if action == "update" || action == "delete" {
+			beforeData = queryBeforeData(c, resourceType, resourceID)
 		}
 
 		// 执行后续 handler
 		c.Next()
 
+		// 获取操作人
+		username := c.GetString("username")
+
+		// 确定 afterData：create/update 使用请求体
+		var afterData string
+		if action == "create" || action == "update" {
+			afterData = requestBody
+		}
+
 		// handler 执行完毕，异步写入审计日志
-		resourceType, resourceID := parseResource(c)
 		statusCode := c.Writer.Status()
 		sourceIP := c.ClientIP()
 		userAgent := c.Request.UserAgent()
@@ -80,14 +112,17 @@ func AuditMiddleware() gin.HandlerFunc {
 		go func() {
 			auditLog := auditModels.AuditLog{
 				ResourceType: resourceType,
-				ResourceID:  resourceID,
-				Action:      action,
-				Method:      method,
-				Path:        c.Request.URL.Path,
-				RequestBody: requestBody,
-				SourceIP:    sourceIP,
-				UserAgent:   userAgent,
-				StatusCode:  statusCode,
+				ResourceID:   resourceID,
+				Action:       action,
+				Method:       method,
+				Path:         c.Request.URL.Path,
+				RequestBody:  requestBody,
+				Username:     username,
+				BeforeData:   beforeData,
+				AfterData:    afterData,
+				SourceIP:     sourceIP,
+				UserAgent:    userAgent,
+				StatusCode:   statusCode,
 			}
 			if err := database.DB.Create(&auditLog).Error; err != nil {
 				logger.Error(fmt.Sprintf("审计日志写入失败: %s", err.Error()))
@@ -96,11 +131,54 @@ func AuditMiddleware() gin.HandlerFunc {
 	}
 }
 
+// queryBeforeData 查询变更前的数据并序列化为 JSON
+func queryBeforeData(c *gin.Context, resourceType, resourceID string) string {
+	factory, ok := modelRegistry[resourceType]
+	if !ok {
+		return ""
+	}
+
+	model := factory()
+
+	// 特殊处理：instance-relation-by-keys 通过复合键查询
+	if strings.Contains(c.Request.URL.Path, "instance-relation-by-keys") {
+		sourceModelId := c.Query("source_model_id")
+		targetModelId := c.Query("target_model_id")
+		sourceId := c.Query("source_id")
+		targetId := c.Query("target_id")
+		if sourceModelId == "" || targetModelId == "" || sourceId == "" || targetId == "" {
+			return ""
+		}
+		err := database.DB.Where(map[string]any{
+			"source_model_id": sourceModelId,
+			"target_model_id": targetModelId,
+			"source_id":       sourceId,
+			"target_id":       targetId,
+		}).First(model).Error
+		if err != nil {
+			return ""
+		}
+	} else if resourceID != "" {
+		// 按 ID 查询
+		if err := database.DB.Where("id = ?", resourceID).First(model).Error; err != nil {
+			return ""
+		}
+	} else {
+		return ""
+	}
+
+	data, err := json.Marshal(model)
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
 // parseResource 从请求路径和参数中解析资源类型和资源ID
 func parseResource(c *gin.Context) (resourceType, resourceID string) {
 	path := c.Request.URL.Path
 
-	// 遍历 resourceMap 匹配路径片段
+	// 遍历 resourceMap 匹配路径片段（优先匹配长路径）
 	for fragment, resType := range resourceMap {
 		if strings.Contains(path, fragment) {
 			resourceType = resType
