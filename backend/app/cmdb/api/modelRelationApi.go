@@ -26,6 +26,26 @@ func (m *modelRelation) CreateModelRelation(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
+	// 禁止自关联
+	if body.SourceId == body.TargetId {
+		response.Fail(c, "源模型和目标模型不能相同")
+		return
+	}
+	// 校验源模型和目标模型存在
+	var srcCount, tgtCount int64
+	database.DB.Model(&models.Model{}).Where(map[string]any{"id": body.SourceId}).Count(&srcCount)
+	database.DB.Model(&models.Model{}).Where(map[string]any{"id": body.TargetId}).Count(&tgtCount)
+	if srcCount == 0 || tgtCount == 0 {
+		response.Fail(c, "关联模型不存在")
+		return
+	}
+	// 校验关系类型存在
+	var typeCount int64
+	database.DB.Model(&models.ModelRelationType{}).Where(map[string]any{"id": body.TypeId}).Count(&typeCount)
+	if typeCount == 0 {
+		response.Fail(c, "关系类型不存在")
+		return
+	}
 	// 判断是否存在
 	var modelRelationCount int64
 	if err := database.DB.Model(&models.ModelRelation{}).

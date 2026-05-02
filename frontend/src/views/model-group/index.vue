@@ -63,7 +63,7 @@
       </el-col>
     </el-row>
 
-    <el-dialog v-model="dialogVisible" :title="editingGroup ? '编辑分组' : '新增分组'" width="460px">
+    <el-dialog v-model="dialogVisible" :title="editingGroup ? '编辑分组' : '新增分组'" width="420px">
       <el-form :model="form" label-width="70px">
         <el-form-item label="别名" required>
           <el-input v-model="form.alias" :disabled="!!editingGroup" placeholder="英文标识，如 datacenter" />

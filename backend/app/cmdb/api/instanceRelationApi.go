@@ -26,6 +26,31 @@ func (i *instanceRelation) CreateInstanceRelation(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
 		return
 	}
+	// 校验源模型和目标模型存在
+	var srcModelCount, tgtModelCount int64
+	database.DB.Model(&models.Model{}).Where(map[string]any{"id": body.SourceModelId}).Count(&srcModelCount)
+	database.DB.Model(&models.Model{}).Where(map[string]any{"id": body.TargetModelId}).Count(&tgtModelCount)
+	if srcModelCount == 0 || tgtModelCount == 0 {
+		response.Fail(c, "关联模型不存在")
+		return
+	}
+	// 校验源实例和目标实例存在
+	var srcInstCount, tgtInstCount int64
+	database.DB.Model(&models.Instance{}).Where(map[string]any{"id": body.SourceInstanceId}).Count(&srcInstCount)
+	database.DB.Model(&models.Instance{}).Where(map[string]any{"id": body.TargetInstanceId}).Count(&tgtInstCount)
+	if srcInstCount == 0 || tgtInstCount == 0 {
+		response.Fail(c, "关联实例不存在")
+		return
+	}
+	// 校验模型关系存在
+	var relCount int64
+	database.DB.Model(&models.ModelRelation{}).
+		Where("(source_id = ? AND target_id = ?) OR (source_id = ? AND target_id = ?)", body.SourceModelId, body.TargetModelId, body.TargetModelId, body.SourceModelId).
+		Count(&relCount)
+	if relCount == 0 {
+		response.Fail(c, "两个模型之间未定义模型关系")
+		return
+	}
 	var result models.InstanceRelation
 	if err := database.DB.Model(&models.InstanceRelation{}).
 		FirstOrCreate(&result, body).Error; err != nil {

@@ -23,7 +23,7 @@
     </el-table>
   </el-card>
 
-  <el-dialog v-model="dialogVisible" title="新增模型关系" width="480px">
+  <el-dialog v-model="dialogVisible" title="新增模型关系" width="420px">
     <el-form :model="form" label-width="70px">
       <el-form-item label="源模型" required>
         <el-select v-model="form.source_id" placeholder="选择源模型" style="width: 100%" filterable>

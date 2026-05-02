@@ -6,9 +6,52 @@ import (
 	"gcmdb/app/cmdb/models"
 	"gcmdb/pkg/database"
 	"gorm.io/datatypes"
+	"regexp"
 	"slices"
 	"strings"
 )
+
+var dateRegexp = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+var datetimeRegexp = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$`)
+
+// validateFieldValue 校验字段值是否匹配字段类型
+func validateFieldValue(field models.ModelField, value any) error {
+	if value == nil {
+		return nil // nil 值由 required 检查处理
+	}
+	switch field.Type {
+	case "number":
+		switch value.(type) {
+		case float64, float32, int, int64, uint, uint64:
+			// JSON number 解码为 float64
+		default:
+			return fmt.Errorf("字段%s类型应为number", field.Alias)
+		}
+	case "bool":
+		if _, ok := value.(bool); !ok {
+			return fmt.Errorf("字段%s类型应为bool", field.Alias)
+		}
+	case "date":
+		s, ok := value.(string)
+		if !ok || !dateRegexp.MatchString(s) {
+			return fmt.Errorf("字段%s格式应为YYYY-MM-DD", field.Alias)
+		}
+	case "datetime":
+		s, ok := value.(string)
+		if !ok || !datetimeRegexp.MatchString(s) {
+			return fmt.Errorf("字段%s格式应为YYYY-MM-DD HH:mm:ss", field.Alias)
+		}
+	case "json":
+		// JSON 类型接受 object 和 array
+		switch value.(type) {
+		case map[string]any, []any:
+			// ok
+		default:
+			return fmt.Errorf("字段%s类型应为JSON对象或数组", field.Alias)
+		}
+	}
+	return nil
+}
 
 // 校验实例能否被调整
 type verify struct {
@@ -61,11 +104,22 @@ func (v *verify) VerifyCreateInstance(modelId uint, data datatypes.JSON) (dataty
 	}
 
 	// 补充字段
+	fieldMap := make(map[string]models.ModelField)
 	for _, modelField := range modelFields {
+		fieldMap[modelField.Alias] = modelField
 		if _, ok := dataMap[modelField.Alias]; !ok {
 			defaultVal := models.DefaultValueByType(modelField.Type)
 			if defaultVal != nil {
 				dataMap[modelField.Alias] = defaultVal
+			}
+		}
+	}
+
+	// 校验字段类型
+	for key, value := range dataMap {
+		if f, ok := fieldMap[key]; ok {
+			if err := validateFieldValue(f, value); err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -141,6 +195,25 @@ func (v *verify) VerifyUpdateInstance(id uint, data datatypes.JSON) (datatypes.J
 	for key, value := range instanceData {
 		if _, ok := dataMap[key]; !ok {
 			dataMap[key] = value
+		}
+	}
+
+	// 校验字段类型
+	modelFields := make([]models.ModelField, 0)
+	if err := database.DB.Model(&models.ModelField{}).
+		Where(map[string]any{"model_id": instance.ModelId}).
+		Scan(&modelFields).Error; err != nil {
+		return nil, fmt.Errorf("查询失败-%s", err.Error())
+	}
+	fieldMap := make(map[string]models.ModelField)
+	for _, f := range modelFields {
+		fieldMap[f.Alias] = f
+	}
+	for key, value := range dataMap {
+		if f, ok := fieldMap[key]; ok {
+			if err := validateFieldValue(f, value); err != nil {
+				return nil, err
+			}
 		}
 	}
 

@@ -28,6 +28,18 @@ func (m *model) CreateModel(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
+	// 校验 alias 唯一
+	var count int64
+	if err := database.DB.Model(&models.Model{}).
+		Where(map[string]any{"alias": model.Alias}).
+		Count(&count).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
+	if count > 0 {
+		response.Fail(c, fmt.Sprintf("已存在别名「%s」的模型", model.Alias))
+		return
+	}
 	if err := database.DB.Model(&models.Model{}).
 		Create(&model).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
@@ -44,7 +56,7 @@ func (m *model) CreateModel(c *gin.Context) {
 //	@param c
 func (m *model) ListModel(c *gin.Context) {
 	// 参数校验
-	var query params.CommonQuery
+	var query params.ListModelQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
@@ -59,6 +71,12 @@ func (m *model) ListModel(c *gin.Context) {
 	if search != "" {
 		db = db.Where("alias like ? OR name like ? OR description like ?",
 			"%"+search+"%", "%"+search+"%", "%"+search+"%")
+	}
+	// 分组筛选
+	if query.Ungrouped {
+		db = db.Where("group_id = ?", 0)
+	} else if query.GroupId != nil {
+		db = db.Where("group_id = ?", *query.GroupId)
 	}
 	// 分页数量
 	var count int64
@@ -238,8 +256,13 @@ func (m *model) DeleteModel(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("该模型存在实例，无法删除"))
 		return
 	}
-	// 删除模型字段、字段分组、模型（事务）
+	// 删除模型字段、字段分组、唯一约束、模型（事务）
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Model(&models.ModelFieldUnique{}).
+			Where(map[string]any{"model_id": modelId}).
+			Delete(&models.ModelFieldUnique{}).Error; err != nil {
+			return err
+		}
 		if err := tx.Unscoped().Model(&models.ModelField{}).
 			Where(map[string]any{"model_id": modelId}).
 			Delete(&models.ModelField{}).Error; err != nil {

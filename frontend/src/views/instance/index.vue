@@ -173,7 +173,7 @@
     </el-row>
 
     <!-- 新建实例关系对话框 -->
-    <el-dialog v-model="relDialogVisible" title="新建实例关系" width="500px">
+    <el-dialog v-model="relDialogVisible" title="新建实例关系" width="420px">
       <el-form :model="relForm" label-width="80px">
         <el-form-item label="当前实例">
           <el-input :model-value="relForm.source_display" disabled />
@@ -193,7 +193,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="dialogVisible" :title="editingInstance ? '编辑实例' : '新增实例'" width="600px">
+    <el-dialog v-model="dialogVisible" :title="editingInstance ? '编辑实例' : '新增实例'" width="520px">
       <el-form :model="instanceForm" label-width="100px" class="instance-form">
         <el-form-item v-for="f in modelFields" :key="f.alias" :label="f.name" :required="f.is_required">
           <el-input v-if="f.type === 'string'" v-model="instanceForm[f.alias]" :placeholder="f.alias" />
@@ -650,7 +650,7 @@ onMounted(buildTree)
 
 <style scoped>
 .instance-page {
-  height: calc(100vh - 140px);
+  height: var(--page-height);
 }
 
 .model-tree-card {
@@ -772,7 +772,7 @@ onMounted(buildTree)
 }
 
 .tab-direction.target {
-  color: #F59E0B;
+  color: var(--color-warning);
 }
 
 .tab-badge {

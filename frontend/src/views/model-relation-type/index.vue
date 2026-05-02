@@ -23,7 +23,7 @@
     </el-table>
   </el-card>
 
-  <el-dialog v-model="dialogVisible" :title="editing ? '编辑关系类型' : '新增关系类型'" width="440px">
+  <el-dialog v-model="dialogVisible" :title="editing ? '编辑关系类型' : '新增关系类型'" width="420px">
     <el-form :model="form" label-width="70px">
       <el-form-item label="名称" required>
         <el-input v-model="form.name" placeholder="如：运行、部署、依赖" />

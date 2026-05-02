@@ -35,6 +35,24 @@ func (m *modelField) CreateModelField(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("不支持的字段类型:%s, 支持:string/number/bool/date/datetime/json", body.Type))
 		return
 	}
+	// 校验模型存在
+	var modelCount int64
+	if err := database.DB.Model(&models.Model{}).Where(map[string]any{"id": body.ModelId}).Count(&modelCount).Error; err != nil || modelCount == 0 {
+		response.Fail(c, "关联模型不存在")
+		return
+	}
+	// 校验同模型下 alias 唯一
+	var aliasCount int64
+	if err := database.DB.Model(&models.ModelField{}).
+		Where(map[string]any{"model_id": body.ModelId, "alias": body.Alias}).
+		Count(&aliasCount).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
+	if aliasCount > 0 {
+		response.Fail(c, fmt.Sprintf("模型下已存在别名「%s」的字段", body.Alias))
+		return
+	}
 	data := map[string]any{
 		"created_at":     time.Now(),
 		"updated_at":     time.Now(),
@@ -51,23 +69,21 @@ func (m *modelField) CreateModelField(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
 		return
 	}
-	// 增加字段维护实例关系
-	go func(fieldType, field string, modelId uint) {
-		value := models.DefaultValueByType(fieldType)
-		var valueStr string
-		switch v := value.(type) {
-		case string:
-			valueStr = fmt.Sprintf("'%s'", v)
-		default:
-			valueStr = fmt.Sprintf("%v", v)
-		}
-		expr := gorm.Expr(fmt.Sprintf("JSON_SET(data, '$.%s', %s)", field, valueStr))
-		if err := database.DB.Model(&models.Instance{}).
-			Where(map[string]any{"model_id": modelId}).
-			Update("data", expr).Error; err != nil {
-			logger.Error(fmt.Sprintf("更新字段失败-%s", err.Error()))
-		}
-	}(body.Type, body.Alias, body.ModelId)
+	// 同步为已有实例补充新字段默认值
+	value := models.DefaultValueByType(body.Type)
+	var valueStr string
+	switch v := value.(type) {
+	case string:
+		valueStr = fmt.Sprintf("'%s'", v)
+	default:
+		valueStr = fmt.Sprintf("%v", v)
+	}
+	expr := gorm.Expr(fmt.Sprintf("JSON_SET(data, '$.%s', %s)", body.Alias, valueStr))
+	if err := database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"model_id": body.ModelId}).
+		Update("data", expr).Error; err != nil {
+		logger.Error(fmt.Sprintf("更新字段失败-%s", err.Error()))
+	}
 
 	response.Success(c, "执行成功", nil)
 }
@@ -169,15 +185,13 @@ func (m *modelField) DeleteModelField(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
 		return
 	}
-	// 删除实例里面的字段
-	go func(alias string, modelId uint) {
-		expr := gorm.Expr(fmt.Sprintf("JSON_REMOVE(data, '$.%s')", alias))
-		if err := database.DB.Model(&models.Instance{}).
-			Where(map[string]any{"model_id": modelId}).
-			Update("data", expr).Error; err != nil {
-			logger.Error(fmt.Sprintf("删除字段失败-%s", err.Error()))
-		}
-	}(alias, modelId)
+	// 同步删除实例中的字段数据
+	expr := gorm.Expr(fmt.Sprintf("JSON_REMOVE(data, '$.%s')", alias))
+	if err := database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"model_id": modelId}).
+		Update("data", expr).Error; err != nil {
+		logger.Error(fmt.Sprintf("删除字段失败-%s", err.Error()))
+	}
 
 	response.Success(c, "执行成功", nil)
 }

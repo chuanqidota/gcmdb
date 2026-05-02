@@ -26,6 +26,13 @@ func (m *modelFieldGroup) CreateModelFieldGroup(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
+	// 校验模型存在
+	var modelCount int64
+	database.DB.Model(&models.Model{}).Where(map[string]any{"id": body.ModelId}).Count(&modelCount)
+	if modelCount == 0 {
+		response.Fail(c, "关联模型不存在")
+		return
+	}
 	if err := database.DB.Model(&models.ModelFieldGroup{}).Create(&body).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
 		return

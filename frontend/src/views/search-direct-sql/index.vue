@@ -39,7 +39,7 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="editing ? '编辑查询' : '新增查询'" width="600px">
+    <el-dialog v-model="dialogVisible" :title="editing ? '编辑查询' : '新增查询'" width="520px">
       <el-form :model="form" label-width="60px">
         <el-form-item label="名称" required>
           <el-input v-model="form.name" placeholder="查询名称" />

@@ -1,5 +1,5 @@
 <template>
-  <el-card shadow="never">
+  <el-card>
     <template #header>
       <div class="card-header">
         <span>审计日志</span>

@@ -27,6 +27,18 @@ func (m *modelRelationType) CreateModelRelationType(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
+	// 校验 name 唯一
+	var count int64
+	if err := database.DB.Model(&models.ModelRelationType{}).
+		Where(map[string]any{"name": body.Name}).
+		Count(&count).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		return
+	}
+	if count > 0 {
+		response.Fail(c, fmt.Sprintf("已存在名为「%s」的关系类型", body.Name))
+		return
+	}
 	if err := database.DB.Model(&models.ModelRelationType{}).Create(&body).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
 		return

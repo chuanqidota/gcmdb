@@ -1,6 +1,6 @@
 <template>
   <div class="model-detail" v-loading="loading">
-    <el-page-header @back="router.push('/model')" style="margin-bottom: 24px">
+    <el-page-header @back="router.push('/model')" class="page-header-gap">
       <template #content>
         <div class="page-header-content">
           <span class="model-name">{{ modelInfo.name }}</span>
@@ -71,7 +71,7 @@
           </el-table>
         </el-card>
 
-        <el-card style="margin-top: 16px">
+        <el-card class="mt-16">
           <template #header>
             <div class="card-header">
               <span>唯一约束</span>
@@ -100,7 +100,7 @@
     </el-row>
   </div>
 
-  <el-dialog v-model="groupDialogVisible" :title="editingGroup ? '编辑分组' : '新增分组'" width="400px">
+  <el-dialog v-model="groupDialogVisible" :title="editingGroup ? '编辑分组' : '新增分组'" width="420px">
     <el-form :model="groupForm" label-width="60px">
       <el-form-item label="名称" required><el-input v-model="groupForm.name" placeholder="分组名称" /></el-form-item>
     </el-form>
@@ -110,7 +110,7 @@
     </template>
   </el-dialog>
 
-  <el-dialog v-model="fieldDialogVisible" :title="editingField ? '编辑字段' : '新增字段'" width="500px">
+  <el-dialog v-model="fieldDialogVisible" :title="editingField ? '编辑字段' : '新增字段'" width="520px">
     <el-form :model="fieldForm" label-width="70px">
       <el-form-item label="别名" required>
         <el-input v-model="fieldForm.alias" :disabled="!!editingField" placeholder="英文标识，如 hostname" />
@@ -137,7 +137,7 @@
     </template>
   </el-dialog>
 
-  <el-dialog v-model="uniqueDialogVisible" title="新增唯一约束" width="440px">
+  <el-dialog v-model="uniqueDialogVisible" title="新增唯一约束" width="420px">
     <el-form :model="uniqueForm" label-width="60px">
       <el-form-item label="字段" required>
         <el-select v-model="uniqueForm.fields" multiple style="width: 100%" placeholder="选择构成唯一约束的字段">
@@ -339,5 +339,13 @@ onMounted(loadData)
 
 .group-item:hover .group-item-actions {
   opacity: 1;
+}
+
+.page-header-gap {
+  margin-bottom: 24px;
+}
+
+.mt-16 {
+  margin-top: 16px;
 }
 </style>

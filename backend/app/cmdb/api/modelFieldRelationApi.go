@@ -28,22 +28,43 @@ func (m *modelFieldRelation) CreateModelFieldRelation(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
 		return
 	}
+	// 校验源模型存在
+	var srcModelCount, tgtModelCount int64
+	database.DB.Model(&models.Model{}).Where(map[string]any{"id": body.SourceModelId}).Count(&srcModelCount)
+	database.DB.Model(&models.Model{}).Where(map[string]any{"id": body.TargetModelId}).Count(&tgtModelCount)
+	if srcModelCount == 0 || tgtModelCount == 0 {
+		response.Fail(c, "关联模型不存在")
+		return
+	}
+	// 校验字段归属
+	var srcField, tgtField models.ModelField
+	if err := database.DB.Model(&models.ModelField{}).Where(map[string]any{"id": body.SourceFieldId, "model_id": body.SourceModelId}).Scan(&srcField).Error; err != nil || srcField.ID == 0 {
+		response.Fail(c, "源字段不属于源模型")
+		return
+	}
+	if err := database.DB.Model(&models.ModelField{}).Where(map[string]any{"id": body.TargetFieldId, "model_id": body.TargetModelId}).Scan(&tgtField).Error; err != nil || tgtField.ID == 0 {
+		response.Fail(c, "目标字段不属于目标模型")
+		return
+	}
+	// 校验模型关系存在
+	var relCount int64
+	database.DB.Model(&models.ModelRelation{}).
+		Where("(source_id = ? AND target_id = ?) OR (source_id = ? AND target_id = ?)", body.SourceModelId, body.TargetModelId, body.TargetModelId, body.SourceModelId).
+		Count(&relCount)
+	if relCount == 0 {
+		response.Fail(c, "两个模型之间未定义模型关系")
+		return
+	}
 	var results models.ModelFieldRelation
 	if err := database.DB.Model(&models.ModelFieldRelation{}).
 		FirstOrCreate(&results, body).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
 		return
 	}
-	sourceModelId := body.SourceModelId
-	targetModelId := body.TargetModelId
-	sourceFieldId := body.SourceFieldId
-	targetFieldId := body.TargetFieldId
-	// 异步增加实例关系
-	go func() {
-		if err := utils.InstanceRelation.CreateModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId); err != nil {
-			logger.Error(fmt.Sprintf("创建实例关系失败-%s", err.Error()))
-		}
-	}()
+	// 同步创建实例关系
+	if err := utils.InstanceRelation.CreateModelFieldRelation(body.SourceModelId, body.TargetModelId, body.SourceFieldId, body.TargetFieldId); err != nil {
+		logger.Error(fmt.Sprintf("创建实例关系失败-%s", err.Error()))
+	}
 	response.Success(c, "创建成功", nil)
 }
 
@@ -105,11 +126,9 @@ func (m *modelFieldRelation) DeleteModelFieldRelation(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
 		return
 	}
-	// 异步删除实例关系
-	go func() {
-		if err := utils.InstanceRelation.DeleteModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId); err != nil {
-			logger.Error(fmt.Sprintf("删除实例关系失败-%s", err.Error()))
-		}
-	}()
+	// 同步删除实例关系
+	if err := utils.InstanceRelation.DeleteModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId); err != nil {
+		logger.Error(fmt.Sprintf("删除实例关系失败-%s", err.Error()))
+	}
 	response.Success(c, "删除成功", nil)
 }

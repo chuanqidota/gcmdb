@@ -29,6 +29,26 @@
         <el-button type="primary" class="search-btn" @click="doFulltextSearch" :loading="ft.loading">搜索</el-button>
       </div>
 
+      <!-- 实例搜索：模型选择 + 操作按钮（与全文检索同款居中布局） -->
+      <div v-if="activeTab === 'instance'" class="instance-search-box">
+        <el-select
+          v-model="inst.modelId"
+          placeholder="选择模型开始搜索..."
+          filterable
+          class="instance-model-select"
+          @change="onModelChange"
+        >
+          <el-option
+            v-for="m in allModels"
+            :key="m.id"
+            :label="`${m.name} (${m.alias})`"
+            :value="m.id"
+          />
+        </el-select>
+        <el-button type="primary" class="search-btn" @click="doInstanceSearch" :loading="inst.loading" :disabled="!inst.modelId">搜索</el-button>
+        <el-button class="search-btn" @click="resetInstance">重置</el-button>
+      </div>
+
       <!-- 模型浏览 -->
       <div v-if="activeTab === 'model'" class="search-box">
         <el-input
@@ -75,29 +95,9 @@
         </div>
       </template>
 
-      <!-- 实例搜索：模型选择 + 条件构建器 + 结果 -->
+      <!-- 实例搜索：条件构建器 + 结果 -->
       <template v-if="activeTab === 'instance'">
-        <!-- 模型选择 + 操作栏 -->
-        <div class="instance-model-bar">
-          <span class="model-bar-label">模型</span>
-          <el-select
-            v-model="inst.modelId"
-            placeholder="选择模型..."
-            filterable
-            class="instance-model-select"
-            @change="onModelChange"
-          >
-            <el-option
-              v-for="m in allModels"
-              :key="m.id"
-              :label="`${m.name} (${m.alias})`"
-              :value="m.id"
-            />
-          </el-select>
-          <el-button type="primary" @click="doInstanceSearch" :loading="inst.loading" :disabled="!inst.modelId">搜索</el-button>
-          <el-button @click="resetInstance">重置</el-button>
-        </div>
-        <!-- 条件构建器（主要输入区） -->
+        <!-- 条件构建器 -->
         <div v-if="inst.modelId" class="condition-builder">
           <div v-for="(c, i) in inst.conditions" :key="i" class="condition-row">
             <el-select v-model="c.field" placeholder="字段" class="cond-field">
@@ -519,7 +519,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: calc(100vh - 120px);
+  min-height: var(--page-height);
 }
 
 /* ===== Tab 栏 ===== */
@@ -599,6 +599,39 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
+/* 实例搜索：复用全文检索的 hero 居中布局 */
+.instance-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 640px;
+}
+
+.instance-search-box .instance-model-select {
+  flex: 1;
+}
+
+.instance-search-box .instance-model-select :deep(.el-input__wrapper) {
+  border-radius: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 4px 20px;
+  height: 40px;
+  transition: box-shadow 0.2s ease;
+}
+
+.instance-search-box .instance-model-select :deep(.el-input__wrapper:focus-within) {
+  box-shadow: 0 2px 16px rgba(37, 99, 235, 0.15);
+}
+
+.instance-search-box .search-btn {
+  border-radius: 24px;
+  padding: 0 28px;
+  height: 40px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
 /* ===== 结果区 ===== */
 .results-area {
   width: 100%;
@@ -637,32 +670,7 @@ onMounted(async () => {
   margin-top: 16px;
 }
 
-/* 实例搜索模型选择栏 */
-.instance-model-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-  padding: 12px 16px;
-  background: var(--color-muted);
-  border-radius: var(--radius-md);
-}
-
-.model-bar-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
-}
-
-.instance-model-select {
-  flex: 1;
-  min-width: 200px;
-}
-
-.instance-model-select :deep(.el-input__wrapper) {
-  height: 40px;
-}
+/* 条件构建器外层间距 */
 
 /* 条件构建器 */
 .condition-builder {

@@ -3,7 +3,7 @@
     <el-row :gutter="16" class="main-row">
       <!-- 左侧：分组列表 -->
       <el-col :span="5" class="left-panel">
-        <el-card class="group-card" shadow="never">
+        <el-card class="group-card">
           <template #header>
             <div class="card-header">
               <span>模型分组</span>
@@ -29,13 +29,13 @@
               </div>
             </div>
             <div
-              v-if="ungroupedModels.length"
+              v-if="ungroupedCount"
               class="group-item"
               :class="{ active: selectedGroupId === 'ungrouped' }"
               @click="selectedGroupId = 'ungrouped'"
             >
               <span class="group-item-name">未分组</span>
-              <span class="group-item-count">{{ ungroupedModels.length }}</span>
+              <span class="group-item-count">{{ ungroupedCount }}</span>
             </div>
           </div>
         </el-card>
@@ -44,7 +44,7 @@
       <!-- 右侧：模型列表 + 详情展开 -->
       <el-col :span="19" class="right-panel">
         <!-- 模型表格 -->
-        <el-card shadow="never">
+        <el-card>
           <template #header>
             <div class="card-header">
               <div class="header-left">
@@ -58,7 +58,7 @@
               </el-button>
             </div>
           </template>
-          <el-table :data="filteredModels" stripe v-loading="modelsLoading" @row-click="onRowClick" row-class-name="model-row">
+          <el-table :data="models" stripe v-loading="modelsLoading" @row-click="onRowClick" row-class-name="model-row">
             <el-table-column prop="id" label="ID" width="60" />
             <el-table-column prop="alias" label="别名" width="130" />
             <el-table-column prop="name" label="名称" width="140" />
@@ -83,7 +83,7 @@
         </el-card>
 
         <!-- 详情展开面板 -->
-        <el-card v-if="expandedModelId" class="detail-card" shadow="never">
+        <el-card v-if="expandedModelId" class="detail-card">
           <template #header>
             <div class="card-header">
               <div class="detail-header">
@@ -121,7 +121,7 @@
                   </div>
                 </el-col>
                 <el-col :span="18">
-                  <div class="card-header" style="margin-bottom: 12px">
+                  <div class="card-header section-header">
                     <span>字段列表</span>
                     <el-button size="small" type="primary" @click="showFieldDialog()"><el-icon><Plus /></el-icon>新增字段</el-button>
                   </div>
@@ -152,7 +152,7 @@
 
             <!-- 唯一约束 Tab -->
             <el-tab-pane label="唯一约束" name="uniques">
-              <div class="card-header" style="margin-bottom: 12px">
+              <div class="card-header section-header">
                 <span>唯一约束</span>
                 <el-button size="small" type="primary" @click="showUniqueDialog()"><el-icon><Plus /></el-icon>新增</el-button>
               </div>
@@ -175,7 +175,7 @@
 
             <!-- 模型关系 Tab -->
             <el-tab-pane label="模型关系" name="relations">
-              <div class="card-header" style="margin-bottom: 12px">
+              <div class="card-header section-header">
                 <span>模型关系</span>
                 <el-button size="small" type="primary" @click="showRelationDialog()"><el-icon><Plus /></el-icon>新增关系</el-button>
               </div>
@@ -195,7 +195,7 @@
 
             <!-- 关系类型 Tab -->
             <el-tab-pane label="关系类型" name="relationTypes">
-              <div class="card-header" style="margin-bottom: 12px">
+              <div class="card-header section-header">
                 <span>关系类型</span>
                 <el-button size="small" type="primary" @click="showRtDialog()"><el-icon><Plus /></el-icon>新增</el-button>
               </div>
@@ -219,7 +219,7 @@
     </el-row>
 
     <!-- 分组对话框 -->
-    <el-dialog v-model="groupDialogVisible" :title="editingGroup ? '编辑分组' : '新增分组'" width="460px">
+    <el-dialog v-model="groupDialogVisible" :title="editingGroup ? '编辑分组' : '新增分组'" width="420px">
       <el-form :model="groupForm" label-width="70px">
         <el-form-item label="别名" required><el-input v-model="groupForm.alias" :disabled="!!editingGroup" placeholder="英文标识，如 datacenter" /></el-form-item>
         <el-form-item label="名称" required><el-input v-model="groupForm.name" placeholder="中文名称" /></el-form-item>
@@ -254,7 +254,7 @@
     </el-dialog>
 
     <!-- 移动分组对话框 -->
-    <el-dialog v-model="moveGroupDialogVisible" title="移动分组" width="400px">
+    <el-dialog v-model="moveGroupDialogVisible" title="移动分组" width="420px">
       <el-form label-width="70px">
         <el-form-item label="目标分组">
           <el-select v-model="moveToGroupId" placeholder="选择目标分组" style="width: 100%">
@@ -269,7 +269,7 @@
     </el-dialog>
 
     <!-- 字段分组对话框 -->
-    <el-dialog v-model="fieldGroupDialogVisible" :title="editingFieldGroup ? '编辑字段分组' : '新增字段分组'" width="400px">
+    <el-dialog v-model="fieldGroupDialogVisible" :title="editingFieldGroup ? '编辑字段分组' : '新增字段分组'" width="420px">
       <el-form :model="fieldGroupForm" label-width="60px">
         <el-form-item label="名称" required><el-input v-model="fieldGroupForm.name" placeholder="分组名称" /></el-form-item>
       </el-form>
@@ -280,7 +280,7 @@
     </el-dialog>
 
     <!-- 字段对话框 -->
-    <el-dialog v-model="fieldDialogVisible" :title="editingField ? '编辑字段' : '新增字段'" width="500px">
+    <el-dialog v-model="fieldDialogVisible" :title="editingField ? '编辑字段' : '新增字段'" width="520px">
       <el-form :model="fieldForm" label-width="70px">
         <el-form-item label="别名" required><el-input v-model="fieldForm.alias" :disabled="!!editingField" placeholder="英文标识，如 hostname" /></el-form-item>
         <el-form-item label="名称" required><el-input v-model="fieldForm.name" placeholder="中文名称" /></el-form-item>
@@ -304,7 +304,7 @@
     </el-dialog>
 
     <!-- 唯一约束对话框 -->
-    <el-dialog v-model="uniqueDialogVisible" title="新增唯一约束" width="440px">
+    <el-dialog v-model="uniqueDialogVisible" title="新增唯一约束" width="420px">
       <el-form :model="uniqueForm" label-width="60px">
         <el-form-item label="字段" required>
           <el-select v-model="uniqueForm.fields" multiple style="width: 100%" placeholder="选择构成唯一约束的字段">
@@ -320,7 +320,7 @@
     </el-dialog>
 
     <!-- 关系对话框 -->
-    <el-dialog v-model="relationDialogVisible" title="新增模型关系" width="480px">
+    <el-dialog v-model="relationDialogVisible" title="新增模型关系" width="420px">
       <el-form :model="relationForm" label-width="70px">
         <el-form-item label="源模型" required>
           <el-select v-model="relationForm.source_id" placeholder="选择源模型" style="width: 100%" filterable>
@@ -346,7 +346,7 @@
     </el-dialog>
 
     <!-- 关系类型对话框 -->
-    <el-dialog v-model="rtDialogVisible" :title="rtEditing ? '编辑关系类型' : '新增关系类型'" width="440px">
+    <el-dialog v-model="rtDialogVisible" :title="rtEditing ? '编辑关系类型' : '新增关系类型'" width="420px">
       <el-form :model="rtForm" label-width="70px">
         <el-form-item label="名称" required>
           <el-input v-model="rtForm.name" placeholder="如：运行、部署、依赖" />
@@ -367,7 +367,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, Search, Close, CircleCheckFilled } from '@element-plus/icons-vue'
 import { listModelGroup, createModelGroup, patchModelGroup, deleteModelGroup } from '../../api/modelGroup'
@@ -383,7 +383,7 @@ const fieldTypes = ['string', 'number', 'bool', 'date', 'datetime', 'json']
 // ===== 分组 =====
 const groups = ref([])
 const selectedGroupId = ref(null)
-const ungroupedModels = ref([])
+const ungroupedCount = ref(0)
 
 const loadGroups = async () => {
   const res = await listModelGroup({ limit: 1000 })
@@ -440,20 +440,28 @@ const total = ref(0)
 const loadModels = async () => {
   modelsLoading.value = true
   try {
-    const res = await listModel({ search: search.value, limit: pageSize.value, offset: (page.value - 1) * pageSize.value })
+    const params = { search: search.value, limit: pageSize.value, offset: (page.value - 1) * pageSize.value }
+    if (selectedGroupId.value === 'ungrouped') {
+      params.ungrouped = true
+    } else if (selectedGroupId.value !== null) {
+      params.group_id = selectedGroupId.value
+    }
+    const res = await listModel(params)
     models.value = res.data.results || []
     total.value = res.data.count || 0
-    // 更新未分组列表
-    ungroupedModels.value = models.value.filter(m => !m.group_id)
   } finally {
     modelsLoading.value = false
   }
 }
 
-const filteredModels = computed(() => {
-  if (selectedGroupId.value === null) return models.value
-  if (selectedGroupId.value === 'ungrouped') return models.value.filter(m => !m.group_id)
-  return models.value.filter(m => m.group_id === selectedGroupId.value)
+const loadUngroupedCount = async () => {
+  const res = await listModel({ ungrouped: true, limit: 1 })
+  ungroupedCount.value = res.data.count || 0
+}
+
+watch(selectedGroupId, () => {
+  page.value = 1
+  loadModels()
 })
 
 // 模型对话框
@@ -479,6 +487,7 @@ const handleSaveModel = async () => {
   modelDialogVisible.value = false
   ElMessage.success('操作成功')
   loadModels()
+  loadUngroupedCount()
 }
 
 const handleDeleteModel = async (row) => {
@@ -487,6 +496,7 @@ const handleDeleteModel = async (row) => {
   ElMessage.success('删除成功')
   if (expandedModelId.value === row.id) expandedModelId.value = null
   loadModels()
+  loadUngroupedCount()
 }
 
 // 移动分组
@@ -506,6 +516,7 @@ const handleMoveGroup = async () => {
   moveGroupDialogVisible.value = false
   ElMessage.success('移动成功')
   loadModels()
+  loadUngroupedCount()
 }
 
 // ===== 模型详情展开 =====
@@ -731,13 +742,13 @@ const handleRtDelete = async (row) => {
 
 // ===== 初始化 =====
 onMounted(async () => {
-  await Promise.all([loadGroups(), loadModels(), loadRelationOptions()])
+  await Promise.all([loadGroups(), loadModels(), loadUngroupedCount(), loadRelationOptions()])
 })
 </script>
 
 <style scoped>
 .model-manage-page {
-  height: calc(100vh - 56px - 40px);
+  height: var(--page-height);
 }
 
 .main-row {
@@ -755,7 +766,7 @@ onMounted(async () => {
 .group-card :deep(.el-card__body) {
   padding: 8px 12px;
   overflow-y: auto;
-  max-height: calc(100vh - 56px - 40px - 120px);
+  max-height: calc(var(--page-height) - 120px);
 }
 
 .right-panel {

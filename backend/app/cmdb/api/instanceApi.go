@@ -32,6 +32,13 @@ func (i *instance) CreateInstance(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
+	// 校验模型存在
+	var modelCount int64
+	database.DB.Model(&models.Model{}).Where(map[string]any{"id": body.ModelId}).Count(&modelCount)
+	if modelCount == 0 {
+		response.Fail(c, "关联模型不存在")
+		return
+	}
 	// 验证参数
 	verifyData, err := utils.Verify.VerifyCreateInstance(body.ModelId, body.Data)
 	if err != nil {

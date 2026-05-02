@@ -249,14 +249,14 @@ async function loadModelDetail(id) {
 <style scoped>
 .topology-page {
   display: flex;
-  height: calc(100vh - 56px - 40px);
+  height: var(--page-height);
   position: relative;
   overflow: hidden;
 }
 
 .graph-container {
   flex: 1;
-  background: #F8FAFC;
+  background: var(--color-background);
   border-radius: var(--radius-md);
 }
 
