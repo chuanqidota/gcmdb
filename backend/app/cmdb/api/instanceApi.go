@@ -136,21 +136,13 @@ func (i *instance) UpdateInstance(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
-	// 乐观锁更新：WHERE 加 version 条件，更新后 version+1
-	version := body.Version
-	result := database.DB.Model(&models.Instance{}).
-		Where(map[string]any{"id": id, "version": version}).
+	if err := database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"id": id}).
 		Updates(map[string]any{
 			"updated_at": time.Now(),
 			"data":       verifyData,
-			"version":    gorm.Expr("version + 1"),
-		})
-	if result.Error != nil {
-		response.Fail(c, fmt.Sprintf("更新失败-%s", result.Error.Error()))
-		return
-	}
-	if result.RowsAffected == 0 {
-		response.FailWithStatus(c, 409, "数据已被其他人修改，请刷新后重试")
+		}).Error; err != nil {
+		response.Fail(c, fmt.Sprintf("更新失败-%s", err.Error()))
 		return
 	}
 	response.Success(c, "执行成功", nil)

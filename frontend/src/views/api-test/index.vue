@@ -112,15 +112,12 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ArrowRight, ArrowDown, Delete, Plus, CopyDocument } from '@element-plus/icons-vue'
-import { getAllModels, getModelGroups, getModelRelationTypes, getAllModelRelations, getModelDetail } from '../../api/search'
+import { getAllModels, getModelDetail } from '../../api/search'
 import { listSearchDirectSql } from '../../api/searchDirectSql'
 import openapiRequest from '../../api/openapiRequest'
 
 // ===== 数据源 =====
 const allModels = ref([])
-const allGroups = ref([])
-const allRelationTypes = ref([])
-const allRelations = ref([])
 const savedSqls = ref([])
 const modelFields = ref([])
 
@@ -130,13 +127,10 @@ const endpointGroups = reactive([
     name: '模型查询',
     collapsed: false,
     endpoints: [
-      { key: 'model-all', name: '获取所有模型', method: 'GET', path: '/openapi/model/all', params: [] },
-      { key: 'model-group', name: '获取所有分组', method: 'GET', path: '/openapi/model/group', params: [] },
-      { key: 'model-relation-type', name: '获取关系类型', method: 'GET', path: '/openapi/model/relation-type', params: [] },
-      { key: 'model-relation', name: '获取所有关系', method: 'GET', path: '/openapi/model/relation', params: [] },
+      { key: 'model-all', name: '获取所有模型', method: 'GET', path: '/model/all', params: [] },
       {
-        key: 'model-single', name: '获取模型详情', method: 'GET', path: '/openapi/model/single',
-        params: [{ key: 'id', label: '模型', type: 'select', required: true, source: 'models', placeholder: '选择模型' }]
+        key: 'model-single', name: '获取模型详情', method: 'GET', path: '/model/single',
+        params: [{ key: 'alias', label: '模型', type: 'select', required: true, source: 'models', placeholder: '选择模型' }]
       },
     ]
   },
@@ -145,7 +139,7 @@ const endpointGroups = reactive([
     collapsed: false,
     endpoints: [
       {
-        key: 'instance-fulltext', name: '全文搜索', method: 'POST', path: '/openapi/instance/fulltext',
+        key: 'instance-fulltext', name: '全文搜索', method: 'GET', path: '/instance/fulltext',
         params: [
           { key: 'search', label: '搜索词', type: 'input', required: true },
           { key: 'model_alias', label: '模型过滤', type: 'multi-select', source: 'models', placeholder: '可选，不选则搜索全部' },
@@ -154,7 +148,7 @@ const endpointGroups = reactive([
         ]
       },
       {
-        key: 'instance-search', name: '结构化搜索', method: 'POST', path: '/openapi/instance/search',
+        key: 'instance-search', name: '结构化搜索', method: 'GET', path: '/instance/search',
         params: [
           { key: 'model', label: '模型', type: 'select', required: true, source: 'models', placeholder: '选择模型' },
           { key: 'fields', label: '返回字段', type: 'multi-select', source: 'fields', placeholder: '不选则返回全部' },
@@ -165,23 +159,36 @@ const endpointGroups = reactive([
         ]
       },
       {
-        key: 'instance-source', name: '查询源实例', method: 'POST', path: '/openapi/instance/source',
+        key: 'instance-source', name: '查询源实例', method: 'GET', path: '/instance/source',
         params: [
           { key: 'id', label: '目标实例ID', type: 'input', required: true },
           { key: 'model', label: '源模型', type: 'select', source: 'models', placeholder: '选择源模型' },
         ]
       },
       {
-        key: 'instance-target', name: '查询目标实例', method: 'POST', path: '/openapi/instance/target',
+        key: 'instance-target', name: '查询目标实例', method: 'GET', path: '/instance/target',
         params: [
           { key: 'id', label: '源实例ID', type: 'input', required: true },
           { key: 'model', label: '目标模型', type: 'select', source: 'models', placeholder: '选择目标模型' },
         ]
       },
       {
-        key: 'instance-direct', name: '执行保存的SQL', method: 'POST', path: '/openapi/instance/direct',
+        key: 'instance-direct', name: '执行保存的SQL', method: 'GET', path: '/instance/direct',
         params: [
           { key: 'uuid', label: '查询', type: 'select', source: 'sqls', required: true, placeholder: '选择已保存的查询' },
+        ]
+      },
+      {
+        key: 'instance-detail', name: '实例详情', method: 'GET', path: '/instance/detail',
+        params: [
+          { key: 'id', label: '实例ID', type: 'input', required: true, placeholder: '输入实例ID' },
+        ]
+      },
+      {
+        key: 'instance-topology', name: '拓扑关系', method: 'GET', path: '/instance/topology',
+        params: [
+          { key: 'id', label: '实例ID', type: 'input', required: true, placeholder: '输入实例ID' },
+          { key: 'model', label: '模型过滤', type: 'select', source: 'models', placeholder: '可选，不选则返回全部' },
         ]
       },
     ]
@@ -261,7 +268,7 @@ watch(() => paramValues.model, async (alias) => {
   const model = allModels.value.find(m => m.alias === alias)
   if (model) {
     try {
-      const res = await getModelDetail(model.id)
+      const res = await getModelDetail(model.alias)
       modelFields.value = (res.data?.model_fields || [])
     } catch {
       modelFields.value = []
@@ -278,35 +285,54 @@ const buildRequest = () => {
   let url = ep.path
   let body = null
 
-  if (ep.key === 'model-single') {
-    url = `${ep.path}?id=${paramValues.id || ''}`
-  } else if (ep.key === 'instance-source' || ep.key === 'instance-target') {
-    // source/target 用 query params
-    url = `${ep.path}?id=${paramValues.id || ''}&model=${paramValues.model || ''}`
-  } else if (ep.key === 'instance-fulltext') {
-    body = { search: paramValues.search || '' }
-    if (paramValues.model_alias?.length) body.model_alias = paramValues.model_alias.join(',')
-    if (paramValues.limit) body.limit = paramValues.limit
-    if (paramValues.offset) body.offset = paramValues.offset
-  } else if (ep.key === 'instance-search') {
-    body = { model: paramValues.model || '' }
-    if (paramValues.fields?.length) body.fields = paramValues.fields
-    const condition = {}
-    if (conditions.value.length) {
-      condition.where = conditions.value.filter(c => c.field && c.op).map(c => {
-        let val = c.value
-        if (c.op === 'in') {
-          val = val.split(',').map(v => v.trim())
-        }
-        return { [c.op]: { [c.field]: val } }
-      })
+  if (method === 'GET') {
+    // 所有 GET 接口统一用 query params
+    const params = new URLSearchParams()
+    for (const p of ep.params) {
+      const val = paramValues[p.key]
+      if (p.type === 'condition-builder') {
+        // 条件构建器：序列化为 JSON
+        const where = conditions.value.filter(c => c.field && c.op).map(c => {
+          let v = c.value
+          if (c.op === 'in') v = v.split(',').map(s => s.trim())
+          return { [c.op]: { [c.field]: v } }
+        })
+        if (where.length) params.set('where', JSON.stringify(where))
+      } else if (p.type === 'multi-select') {
+        if (val?.length) params.set(p.key, val.join(','))
+      } else if (p.type === 'number') {
+        if (val !== undefined && val !== null && val !== '') params.set(p.key, String(val))
+      } else {
+        if (val) params.set(p.key, val)
+      }
     }
-    if (paramValues.order) condition.order = [paramValues.order]
-    if (paramValues.limit) condition.limit = paramValues.limit
-    if (paramValues.offset) condition.offset = paramValues.offset
-    if (Object.keys(condition).length) body.__condition = condition
-  } else if (ep.key === 'instance-direct') {
-    body = { uuid: paramValues.uuid || '' }
+    const qs = params.toString()
+    if (qs) url = `${ep.path}?${qs}`
+  } else {
+    // POST 接口
+    if (ep.key === 'instance-fulltext') {
+      body = { search: paramValues.search || '' }
+      if (paramValues.model_alias?.length) body.model_alias = paramValues.model_alias.join(',')
+      if (paramValues.limit) body.limit = paramValues.limit
+      if (paramValues.offset) body.offset = paramValues.offset
+    } else if (ep.key === 'instance-search') {
+      body = { model: paramValues.model || '' }
+      if (paramValues.fields?.length) body.fields = paramValues.fields
+      const condition = {}
+      if (conditions.value.length) {
+        condition.where = conditions.value.filter(c => c.field && c.op).map(c => {
+          let val = c.value
+          if (c.op === 'in') val = val.split(',').map(v => v.trim())
+          return { [c.op]: { [c.field]: val } }
+        })
+      }
+      if (paramValues.order) condition.order = [paramValues.order]
+      if (paramValues.limit) condition.limit = paramValues.limit
+      if (paramValues.offset) condition.offset = paramValues.offset
+      if (Object.keys(condition).length) body.__condition = condition
+    } else if (ep.key === 'instance-direct') {
+      body = { uuid: paramValues.uuid || '' }
+    }
   }
 
   return { url, body, method }
@@ -374,17 +400,11 @@ const formatJson = (data) => {
 
 // ===== 初始化 =====
 onMounted(async () => {
-  const [modelsRes, groupsRes, typesRes, relationsRes, sqlRes] = await Promise.allSettled([
+  const [modelsRes, sqlRes] = await Promise.allSettled([
     getAllModels(),
-    getModelGroups(),
-    getModelRelationTypes(),
-    getAllModelRelations(),
     listSearchDirectSql({ limit: 1000 }),
   ])
   allModels.value = modelsRes.status === 'fulfilled' ? (modelsRes.value.data || []) : []
-  allGroups.value = groupsRes.status === 'fulfilled' ? (groupsRes.value.data || []) : []
-  allRelationTypes.value = typesRes.status === 'fulfilled' ? (typesRes.value.data || []) : []
-  allRelations.value = relationsRes.status === 'fulfilled' ? (relationsRes.value.data || []) : []
   savedSqls.value = sqlRes.status === 'fulfilled' ? (sqlRes.value.data?.results || []) : []
 })
 </script>

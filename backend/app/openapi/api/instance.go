@@ -1,10 +1,13 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"gcmdb/app/openapi/params"
 	"gcmdb/app/openapi/utils"
 	"gcmdb/pkg/response"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,6 +24,8 @@ var Instance = new(instance)
 //	@param c
 func (i *instance) InstanceAction(c *gin.Context) {
 	action := c.Param("action")
+	isGet := c.Request.Method == "GET"
+
 	switch action {
 	case "create": // 创建
 		var createBody params.CreateInstance
@@ -71,26 +76,47 @@ func (i *instance) InstanceAction(c *gin.Context) {
 		response.Success(c, "执行成功", nil)
 
 	case "direct": // 直接sql
-		var uuid params.DirectSearch
-		if err := c.ShouldBindJSON(&uuid); err != nil {
-			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+		var uuid string
+		if isGet {
+			uuid = c.Query("uuid")
+		} else {
+			var body params.DirectSearch
+			if err := c.ShouldBindJSON(&body); err != nil {
+				response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+				return
+			}
+			uuid = body.Uuid
+		}
+		if uuid == "" {
+			response.Fail(c, "参数uuid不能为空")
 			return
 		}
-		result, err := utils.Instance.DirectSearch(uuid.Uuid)
+		result, err := utils.Instance.DirectSearch(uuid)
 		if err != nil {
-			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 			return
 		}
 		response.Success(c, "执行成功", result)
 
 	case "fulltext": // 全文检索
 		var body params.FulltextInstance
-		if err := c.ShouldBindJSON(&body); err != nil {
-			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+		if isGet {
+			body.Search = c.Query("search")
+			body.ModelAlias = c.Query("model_alias")
+			body.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", "10"))
+			body.Offset, _ = strconv.Atoi(c.DefaultQuery("offset", "0"))
+		} else {
+			if err := c.ShouldBindJSON(&body); err != nil {
+				response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+				return
+			}
+		}
+		if body.Search == "" {
+			response.Fail(c, "参数search不能为空")
 			return
 		}
 		if count, result, err := utils.Instance.FulltextInstance(body); err != nil {
-			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 			return
 		} else {
 			response.Success(c, "执行成功", map[string]any{
@@ -101,9 +127,33 @@ func (i *instance) InstanceAction(c *gin.Context) {
 
 	case "search": // 搜索
 		var body params.SearchInstance
-		if err := c.ShouldBindJSON(&body); err != nil {
-			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
-			return
+		if isGet {
+			body.Model = c.Query("model")
+			if body.Model == "" {
+				response.Fail(c, "参数model不能为空")
+				return
+			}
+			if fields := c.QueryArray("fields"); len(fields) > 0 {
+				body.Fields = fields
+			} else if f := c.Query("fields"); f != "" {
+				body.Fields = strings.Split(f, ",")
+			}
+			body.Condition.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", "10"))
+			body.Condition.Offset, _ = strconv.Atoi(c.DefaultQuery("offset", "0"))
+			if order := c.Query("order"); order != "" {
+				body.Condition.Order = []string{order}
+			}
+			if whereStr := c.Query("where"); whereStr != "" {
+				var where []map[string]any
+				if err := json.Unmarshal([]byte(whereStr), &where); err == nil {
+					body.Condition.Where = where
+				}
+			}
+		} else {
+			if err := c.ShouldBindJSON(&body); err != nil {
+				response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+				return
+			}
 		}
 		count, results, err := utils.Instance.SearchInstance(body)
 		if err != nil {
@@ -140,6 +190,33 @@ func (i *instance) InstanceAction(c *gin.Context) {
 			return
 		}
 		response.Success(c, "执行成功", result)
+
+	case "detail": // 查询单个实例详情
+		idStr := c.Query("id")
+		if idStr == "" {
+			response.Fail(c, "参数id不能为空")
+			return
+		}
+		result, err := utils.Instance.DetailInstance(idStr)
+		if err != nil {
+			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+			return
+		}
+		response.Success(c, "查询成功", result)
+
+	case "topology": // 查询实例拓扑关系
+		idStr := c.Query("id")
+		if idStr == "" {
+			response.Fail(c, "参数id不能为空")
+			return
+		}
+		modelAlias := c.Query("model")
+		result, err := utils.Instance.TopologyInstance(idStr, modelAlias)
+		if err != nil {
+			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+			return
+		}
+		response.Success(c, "查询成功", result)
 
 	default:
 		response.Fail(c, fmt.Sprintf("路径参数不对,不可以为:%+v", action))

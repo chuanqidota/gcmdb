@@ -323,19 +323,15 @@ const showEditDialog = (row) => {
 const handleSave = async () => {
   try {
     if (editingInstance.value) {
-      await updateInstance(editingInstance.value.id, { data: instanceForm.value, version: editingInstance.value.version || 1 })
+      await updateInstance(editingInstance.value.id, { data: instanceForm.value })
     } else {
       await createInstance({ model_id: currentModel.value.id, data: instanceForm.value })
     }
     dialogVisible.value = false
     ElMessage.success('操作成功')
     loadInstances()
-  } catch (err) {
-    // error shown by interceptor, but handle 409 specifically
-    if (err?.response?.status === 409) {
-      ElMessage.error('数据已被其他人修改，请刷新后重试')
-      loadInstances()
-    }
+  } catch {
+    // error shown by interceptor
   }
 }
 

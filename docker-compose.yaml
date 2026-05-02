@@ -19,18 +19,6 @@ services:
     ports:
       - "6379:6379"
 
-  # es
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
-    environment:
-      - node.name=es01
-      - cluster.name=docker-cluster
-      - discovery.type=single-node
-    ports:
-      - "9200:9200"
-    volumes:
-      - es_data:/usr/share/elasticsearch/data
-
   # 后端
   gcmdb:
     restart: always
@@ -60,4 +48,3 @@ services:
 
 volumes:
   mysql_data:
-  es_data:

@@ -2,6 +2,7 @@ FROM golang:1.21.6 AS builder
 RUN go env -w GO111MODULE=on \
     && go env -w CGO_ENABLED=0 \
     && go env -w GOOS=linux \
+    && go env -w GOARCH=amd64 \
     && go env -w GOPROXY=https://goproxy.cn,direct
 RUN mkdir -p /opt/data/
 WORKDIR /opt/data/

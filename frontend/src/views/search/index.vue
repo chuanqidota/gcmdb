@@ -319,7 +319,8 @@ async function onModelChange(id) {
   inst.value.page = 1
   if (!id) return
   try {
-    const res = await getModelDetail(id)
+    const m = allModels.value.find(x => x.id === id)
+    const res = await getModelDetail(m?.alias || id)
     inst.value.fields = res.data?.model_fields || []
   } catch {
     inst.value.fields = []
@@ -437,7 +438,7 @@ async function toggleFields(m) {
   if (modelFieldsCache.value[m.id]) return
   modelFieldsCache.value[m.id] = { fieldGroups: [], uniqueAliases: [], loading: true }
   try {
-    const res = await getModelDetail(m.id)
+    const res = await getModelDetail(m.alias)
     const data = res.data || {}
     const fields = data.model_fields || []
     const groups = data.model_field_groups || []

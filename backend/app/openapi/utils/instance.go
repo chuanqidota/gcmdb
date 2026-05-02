@@ -10,7 +10,9 @@ import (
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/logger"
 	pkgUtils "gcmdb/pkg/utils"
+	"strconv"
 	"strings"
+	"time"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -445,4 +447,164 @@ func (i *instance) queryRelatedInstance(id uint, modelAlias, direction string) (
 		return nil, fmt.Errorf("查询出错-%s", err.Error())
 	}
 	return instances, nil
+}
+
+// DetailInstance
+//
+//	@Description: 查询单个实例详情
+//	@receiver i
+//	@param idStr 实例ID字符串
+//	@return *resp.DetailInstance
+//	@return error
+func (i *instance) DetailInstance(idStr string) (*resp.DetailInstance, error) {
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("无效的实例ID:%s", idStr)
+	}
+	var inst models.Instance
+	if err := database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"id": uint(id)}).
+		First(&inst).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("实例不存在:%d", id)
+		}
+		return nil, fmt.Errorf("查询失败-%s", err.Error())
+	}
+	var m models.Model
+	database.DB.Model(&models.Model{}).Where(map[string]any{"id": inst.ModelId}).First(&m)
+	return &resp.DetailInstance{
+		ID:         inst.ID,
+		ModelId:    inst.ModelId,
+		ModelName:  m.Name,
+		ModelAlias: m.Alias,
+		Data:       inst.Data,
+		CreatedAt:  time.Time(inst.CreatedAt).Format(time.DateTime),
+		UpdatedAt:  time.Time(inst.UpdatedAt).Format(time.DateTime),
+	}, nil
+}
+
+// TopologyInstance
+//
+//	@Description: 查询实例拓扑关系（上下游）
+//	@receiver i
+//	@param idStr 实例ID字符串
+//	@return *resp.TopologyInfo
+//	@return error
+func (i *instance) TopologyInstance(idStr string, modelAlias string) (*resp.TopologyInfo, error) {
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("无效的实例ID:%s", idStr)
+	}
+	// 查询实例
+	var inst models.Instance
+	if err := database.DB.Model(&models.Instance{}).
+		Where(map[string]any{"id": uint(id)}).
+		First(&inst).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("实例不存在:%d", id)
+		}
+		return nil, fmt.Errorf("查询失败-%s", err.Error())
+	}
+	var m models.Model
+	database.DB.Model(&models.Model{}).Where(map[string]any{"id": inst.ModelId}).First(&m)
+
+	detail := resp.DetailInstance{
+		ID:         inst.ID,
+		ModelId:    inst.ModelId,
+		ModelName:  m.Name,
+		ModelAlias: m.Alias,
+		Data:       inst.Data,
+		CreatedAt:  time.Time(inst.CreatedAt).Format(time.DateTime),
+		UpdatedAt:  time.Time(inst.UpdatedAt).Format(time.DateTime),
+	}
+
+	// 查询下游（当前实例作为 source）
+	downstream, err := i.queryTopologyRelations(uint(id), "target", modelAlias)
+	if err != nil {
+		return nil, err
+	}
+	// 查询上游（当前实例作为 target）
+	upstream, err := i.queryTopologyRelations(uint(id), "source", modelAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp.TopologyInfo{
+		Instance:   detail,
+		Upstream:   upstream,
+		Downstream: downstream,
+	}, nil
+}
+
+// queryTopologyRelations 查询拓扑关系, direction="target"查下游, "source"查上游
+func (i *instance) queryTopologyRelations(instanceId uint, direction string, modelAlias string) ([]resp.TopologyRelation, error) {
+	type relRow struct {
+		InstanceId uint
+		ModelId    uint
+		ModelName  string
+		ModelAlias string
+		TypeId     uint
+		S2T        string
+		T2S        string
+		Data       datatypes.JSON
+	}
+
+	// 可选模型过滤
+	var filterModelId uint
+	if modelAlias != "" {
+		if err := database.DB.Model(&models.Model{}).Select("id").Where("alias = ?", modelAlias).First(&filterModelId).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, fmt.Errorf("未找到模型:%s", modelAlias)
+			}
+			return nil, fmt.Errorf("查询模型失败-%s", err.Error())
+		}
+	}
+
+	var rows []relRow
+	// direction="target": 当前实例是source，查target（下游）
+	// direction="source": 当前实例是target，查source（上游）
+	if direction == "target" {
+		q := database.DB.Table("instance_relation ir").
+			Select("ir.target_id as instance_id, m.id as model_id, m.name as model_name, m.alias as model_alias, mrt.id as type_id, mrt.s2t, mrt.t2s, i.data").
+			Joins("INNER JOIN instance i ON i.id = ir.target_id").
+			Joins("INNER JOIN model m ON m.id = ir.target_model_id").
+			Joins("LEFT JOIN model_relation_type mrt ON mrt.id = (SELECT type_id FROM model_relation WHERE (source_id = ir.source_model_id AND target_id = ir.target_model_id) OR (source_id = ir.target_model_id AND target_id = ir.source_model_id) LIMIT 1)").
+			Where("ir.source_id = ?", instanceId)
+		if filterModelId > 0 {
+			q = q.Where("ir.target_model_id = ?", filterModelId)
+		}
+		if err := q.Scan(&rows).Error; err != nil {
+			return nil, fmt.Errorf("查询下游关系失败-%s", err.Error())
+		}
+	} else {
+		q := database.DB.Table("instance_relation ir").
+			Select("ir.source_id as instance_id, m.id as model_id, m.name as model_name, m.alias as model_alias, mrt.id as type_id, mrt.s2t, mrt.t2s, i.data").
+			Joins("INNER JOIN instance i ON i.id = ir.source_id").
+			Joins("INNER JOIN model m ON m.id = ir.source_model_id").
+			Joins("LEFT JOIN model_relation_type mrt ON mrt.id = (SELECT type_id FROM model_relation WHERE (source_id = ir.source_model_id AND target_id = ir.target_model_id) OR (source_id = ir.target_model_id AND target_id = ir.source_model_id) LIMIT 1)").
+			Where("ir.target_id = ?", instanceId)
+		if filterModelId > 0 {
+			q = q.Where("ir.source_model_id = ?", filterModelId)
+		}
+		if err := q.Scan(&rows).Error; err != nil {
+			return nil, fmt.Errorf("查询上游关系失败-%s", err.Error())
+		}
+	}
+
+	result := make([]resp.TopologyRelation, 0, len(rows))
+	for _, r := range rows {
+		relType := r.S2T
+		if direction == "source" {
+			relType = r.T2S
+		}
+		result = append(result, resp.TopologyRelation{
+			InstanceId:   r.InstanceId,
+			ModelId:      r.ModelId,
+			ModelName:    r.ModelName,
+			ModelAlias:   r.ModelAlias,
+			RelationType: relType,
+			Data:         r.Data,
+		})
+	}
+	return result, nil
 }

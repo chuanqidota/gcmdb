@@ -197,7 +197,7 @@ onMounted(async () => {
     const model = allModels.find(m => String(m.id) === nodeId)
     if (model) {
       selectedModel.value = model
-      loadModelDetail(model.id)
+      loadModelDetail(model.alias)
     }
   })
 
@@ -214,19 +214,20 @@ onBeforeUnmount(() => {
   }
 })
 
-async function loadModelDetail(id) {
+async function loadModelDetail(alias) {
   detailLoading.value = true
   detailFields.value = []
   detailRelations.value = []
   try {
-    const res = await getModelDetail(id)
+    const res = await getModelDetail(alias)
     const data = res.data || {}
+    const modelId = data.model?.id
     detailFields.value = data.model_fields || []
 
     // 解析关系
     const relations = data.model_relations || []
     detailRelations.value = relations.map(rel => {
-      const isSource = rel.source_id === id
+      const isSource = rel.source_id === modelId
       const targetId = isSource ? rel.target_id : rel.source_id
       const targetModel = allModels.find(m => m.id === targetId)
       const relType = allRelationTypes.find(t => t.id === rel.type_id)

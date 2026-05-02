@@ -27,6 +27,7 @@ frontend/.env.*.local
 *.log
 log/
 log/*
+backend/log/*
 
 # Env
 .env
@@ -35,3 +36,4 @@ log/*
 # Docker
 docker-compose.override.yaml
 scripts/
+backend/log/gcmdb.log

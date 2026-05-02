@@ -115,7 +115,8 @@ func Engine() *gin.Engine {
 	openapi := router.Group("openapi").Use(middleware.OpenAPIAuthMiddleware())
 	{
 		openapi.GET("model/:range", openApi.Model.ModelRange)                                      // 模型操作
-		openapi.POST("instance/:action", openApi.Instance.InstanceAction)                          // 实例操作
+		openapi.GET("instance/:action", openApi.Instance.InstanceAction)                           // 实例查询
+		openapi.POST("instance/:action", openApi.Instance.InstanceAction)                          // 实例写入
 		openapi.POST("instance-relation/:action", openApi.InstanceRelation.InstanceRelationAction) // 实例关系操作
 	}
 

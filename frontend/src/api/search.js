@@ -7,7 +7,7 @@ export const getAllModels = () => openapiRequest.get('/model/all')
 export const getModelGroups = () => openapiRequest.get('/model/group')
 
 // 获取单个模型详情（含字段、分组、关联等）
-export const getModelDetail = (id) => openapiRequest.get('/model/single', { params: { id } })
+export const getModelDetail = (alias) => openapiRequest.get('/model/single', { params: { alias } })
 
 // 全文检索
 export const fulltextSearch = (data) => openapiRequest.post('/instance/fulltext', data)

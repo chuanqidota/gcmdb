@@ -55,8 +55,8 @@ func (m *model) ModelRange(c *gin.Context) {
 		response.Success(c, "查询成功", relations)
 
 	case "single": // 查询指定模型信息
-		id := c.Query("id")
-		modelSingle, err := utils.Model.ModelSingle(id)
+		alias := c.Query("alias")
+		modelSingle, err := utils.Model.ModelSingle(alias)
 		if err != nil {
 			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 			return
