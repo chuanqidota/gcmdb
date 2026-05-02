@@ -45,6 +45,10 @@
           <el-icon><Notebook /></el-icon>
           <template #title>审计日志</template>
         </el-menu-item>
+        <el-menu-item index="/api-test">
+          <el-icon><Monitor /></el-icon>
+          <template #title>API 测试</template>
+        </el-menu-item>
         <el-menu-item v-if="isAdmin" index="/user-manage">
           <el-icon><User /></el-icon>
           <template #title>用户管理</template>
@@ -103,7 +107,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { HomeFilled, Grid, List, Search, Fold, Expand, Share, Document, Notebook, User } from '@element-plus/icons-vue'
+import { HomeFilled, Grid, List, Search, Fold, Expand, Share, Document, Notebook, User, Monitor } from '@element-plus/icons-vue'
 import { getMe, logout, changePassword } from '../api/auth'
 import { useUserStore } from '../stores/user'
 
