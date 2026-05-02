@@ -27,6 +27,20 @@ func (m *model) ModelAll() ([]models.Model, error) {
 	return _models, nil
 }
 
+// ModelGroupAll
+//
+//	@Description: 查询所有模型分组
+//	@receiver m
+//	@return []models.ModelGroup
+//	@return error
+func (m *model) ModelGroupAll() ([]models.ModelGroup, error) {
+	groups := make([]models.ModelGroup, 0)
+	if err := database.DB.Model(&models.ModelGroup{}).Order("`order` asc").Scan(&groups).Error; err != nil {
+		return nil, err
+	}
+	return groups, nil
+}
+
 // ModelSingle
 //
 //	@Description: 查询单个模型
@@ -92,4 +106,18 @@ func (m *model) ModelSingle(id string) (*resp.ModelInfo, error) {
 		ModelField:         modelFields,
 	}
 	return result, nil
+}
+
+// ModelRelationTypeAll
+//
+//	@Description: 查询所有模型关系类型
+//	@receiver m
+//	@return []models.ModelRelationType
+//	@return error
+func (m *model) ModelRelationTypeAll() ([]models.ModelRelationType, error) {
+	types := make([]models.ModelRelationType, 0)
+	if err := database.DB.Model(&models.ModelRelationType{}).Scan(&types).Error; err != nil {
+		return nil, err
+	}
+	return types, nil
 }

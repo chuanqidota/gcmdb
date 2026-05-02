@@ -21,32 +21,12 @@
           clearable
           @keyup.enter="doFulltextSearch"
           class="search-input"
-          size="large"
         />
         <el-select v-model="ft.modelAlias" placeholder="全部模型" clearable filterable class="search-model-select">
           <el-option label="全部模型" value="" />
           <el-option v-for="m in allModels" :key="m.id" :label="m.name" :value="m.alias" />
         </el-select>
-        <el-button type="primary" size="large" class="search-btn" @click="doFulltextSearch" :loading="ft.loading">搜索</el-button>
-      </div>
-
-      <!-- 实例搜索：仅模型选择 -->
-      <div v-if="activeTab === 'instance'" class="search-box">
-        <el-select
-          v-model="inst.modelId"
-          placeholder="选择模型进行实例搜索..."
-          filterable
-          size="large"
-          class="search-input"
-          @change="onModelChange"
-        >
-          <el-option
-            v-for="m in allModels"
-            :key="m.id"
-            :label="`${m.name} (${m.alias})`"
-            :value="m.id"
-          />
-        </el-select>
+        <el-button type="primary" class="search-btn" @click="doFulltextSearch" :loading="ft.loading">搜索</el-button>
       </div>
 
       <!-- 模型浏览 -->
@@ -56,7 +36,6 @@
           placeholder="搜索模型名称、别名..."
           clearable
           class="search-input"
-          size="large"
         >
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
@@ -96,15 +75,35 @@
         </div>
       </template>
 
-      <!-- 实例搜索：条件构建器 + 结果 -->
-      <template v-if="activeTab === 'instance' && inst.modelId">
+      <!-- 实例搜索：模型选择 + 条件构建器 + 结果 -->
+      <template v-if="activeTab === 'instance'">
+        <!-- 模型选择 + 操作栏 -->
+        <div class="instance-model-bar">
+          <span class="model-bar-label">模型</span>
+          <el-select
+            v-model="inst.modelId"
+            placeholder="选择模型..."
+            filterable
+            class="instance-model-select"
+            @change="onModelChange"
+          >
+            <el-option
+              v-for="m in allModels"
+              :key="m.id"
+              :label="`${m.name} (${m.alias})`"
+              :value="m.id"
+            />
+          </el-select>
+          <el-button type="primary" @click="doInstanceSearch" :loading="inst.loading" :disabled="!inst.modelId">搜索</el-button>
+          <el-button @click="resetInstance">重置</el-button>
+        </div>
         <!-- 条件构建器（主要输入区） -->
-        <div class="condition-builder">
+        <div v-if="inst.modelId" class="condition-builder">
           <div v-for="(c, i) in inst.conditions" :key="i" class="condition-row">
-            <el-select v-model="c.field" placeholder="字段" size="small" class="cond-field">
+            <el-select v-model="c.field" placeholder="字段" class="cond-field">
               <el-option v-for="f in inst.fields" :key="f.alias" :label="f.name" :value="f.alias" />
             </el-select>
-            <el-select v-model="c.op" size="small" class="cond-op">
+            <el-select v-model="c.op" class="cond-op">
               <el-option label="=" value="eq" />
               <el-option label="!=" value="ne" />
               <el-option label=">" value="gt" />
@@ -116,24 +115,21 @@
               <el-option label="结尾是" value="endswith" />
               <el-option label="在列表" value="in" />
             </el-select>
-            <el-input v-model="c.val" placeholder="值" size="small" class="cond-val" />
-            <el-button size="small" :icon="Delete" circle @click="inst.conditions.splice(i, 1)" />
+            <el-input v-model="c.val" placeholder="值" class="cond-val" />
+            <el-button :icon="Delete" circle @click="inst.conditions.splice(i, 1)" />
           </div>
           <div class="condition-actions">
-            <el-button size="small" @click="inst.conditions.push({ field: '', op: 'eq', val: '' })">+ 条件</el-button>
-            <el-button size="small" type="primary" @click="doInstanceSearch" :loading="inst.loading">搜索</el-button>
-            <el-button size="small" @click="resetInstance">重置</el-button>
+            <el-button @click="inst.conditions.push({ field: '', op: 'eq', val: '' })">+ 添加条件</el-button>
           </div>
         </div>
         <div class="result-count" v-if="inst.count > 0">找到 <strong>{{ inst.count }}</strong> 条实例</div>
         <el-table :data="inst.results" stripe v-loading="inst.loading" size="small">
-          <el-table-column prop="id" label="ID" width="80" />
           <el-table-column
             v-for="col in inst.columns"
             :key="col"
             :prop="col"
-            :label="col"
-            min-width="120"
+            :label="inst.columnLabelMap[col] || col"
+            :min-width="calcColWidth(inst.columnLabelMap[col] || col)"
             show-overflow-tooltip
           />
         </el-table>
@@ -152,58 +148,70 @@
 
       <!-- 模型浏览结果 -->
       <template v-if="activeTab === 'model'">
-        <div class="model-list">
-          <template v-for="m in filteredModels" :key="m.id">
-            <div
-              class="model-card"
-              :class="{ expanded: expandedModelId === m.id }"
-              @click="toggleFields(m)"
-            >
-              <div class="model-card-header">
-                <div class="model-card-info">
-                  <span class="model-card-name">{{ m.name }}</span>
-                  <el-tag size="small" type="info">{{ m.alias }}</el-tag>
+        <div v-for="group in groupedModels" :key="group.id" class="model-group-section">
+          <div class="model-group-header">{{ group.name }}</div>
+          <div class="model-list">
+            <template v-for="m in group.models" :key="m.id">
+              <div
+                class="model-card"
+                :class="{ expanded: expandedModelId === m.id }"
+                @click="toggleFields(m)"
+              >
+                <div class="model-card-header">
+                  <div class="model-card-info">
+                    <span class="model-card-name">{{ m.name }}</span>
+                    <el-tag size="small" type="info">{{ m.alias }}</el-tag>
+                  </div>
+                  <el-icon class="expand-icon" :class="{ rotated: expandedModelId === m.id }"><ArrowDown /></el-icon>
                 </div>
-                <el-icon class="expand-icon" :class="{ rotated: expandedModelId === m.id }"><ArrowDown /></el-icon>
+                <div v-if="m.description" class="model-card-desc">{{ m.description }}</div>
               </div>
-              <div v-if="m.description" class="model-card-desc">{{ m.description }}</div>
-            </div>
-            <!-- 字段表内联展开（按分组） -->
-            <div v-if="expandedModelId === m.id" class="fields-inline">
-              <template v-if="modelFieldsCache[m.id]?.loading">
-                <div class="fields-loading">加载中...</div>
-              </template>
-              <template v-else-if="modelFieldsCache[m.id]?.fieldGroups?.length">
-                <div v-for="group in modelFieldsCache[m.id].fieldGroups" :key="group.name" class="field-group">
-                  <div class="field-group-title">{{ group.name || '未分组' }}</div>
-                  <el-table :data="group.fields" stripe size="small" :show-header="group._showHeader">
-                    <el-table-column prop="alias" label="别名" width="150">
-                      <template #default="{ row }">
-                        <span>{{ row.alias }}</span>
-                        <el-tag v-if="modelFieldsCache[m.id]?.uniqueAliases?.includes(row.alias)" size="small" type="warning" class="unique-tag">唯一</el-tag>
-                      </template>
-                    </el-table-column>
-                    <el-table-column prop="name" label="名称" width="150" />
-                    <el-table-column prop="type" label="类型" width="100">
-                      <template #default="{ row }">
-                        <el-tag size="small" :type="typeTag[row.type] || 'info'">{{ row.type }}</el-tag>
-                      </template>
-                    </el-table-column>
-                    <el-table-column prop="is_required" label="必填" width="80" align="center">
-                      <template #default="{ row }">
-                        <el-icon v-if="row.is_required" color="var(--color-destructive)"><CircleCheckFilled /></el-icon>
-                        <span v-else>-</span>
-                      </template>
-                    </el-table-column>
-                    <el-table-column prop="order" label="排序" width="80" align="center" />
-                  </el-table>
+              <!-- 字段表内联展开（按分组） -->
+              <div v-if="expandedModelId === m.id" class="fields-inline">
+                <template v-if="modelFieldsCache[m.id]?.loading">
+                  <div class="fields-loading">加载中...</div>
+                </template>
+                <template v-else-if="modelFieldsCache[m.id]?.fieldGroups?.length">
+                  <div v-for="group in modelFieldsCache[m.id].fieldGroups" :key="group.name" class="field-group">
+                    <div class="field-group-title">{{ group.name || '未分组' }}</div>
+                    <el-table :data="group.fields" stripe size="small" :show-header="group._showHeader">
+                      <el-table-column prop="alias" label="别名" width="150">
+                        <template #default="{ row }">
+                          <span>{{ row.alias }}</span>
+                          <el-tag v-if="modelFieldsCache[m.id]?.uniqueAliases?.includes(row.alias)" size="small" type="warning" class="unique-tag">唯一</el-tag>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="name" label="名称" width="150" />
+                      <el-table-column prop="type" label="类型" width="100">
+                        <template #default="{ row }">
+                          <el-tag size="small" :type="typeTag[row.type] || 'info'">{{ row.type }}</el-tag>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="is_required" label="必填" width="80" align="center">
+                        <template #default="{ row }">
+                          <el-icon v-if="row.is_required" color="var(--color-destructive)"><CircleCheckFilled /></el-icon>
+                          <span v-else>-</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="order" label="排序" width="80" align="center" />
+                    </el-table>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="fields-loading">暂无字段</div>
+                </template>
+                <!-- 模型关系 -->
+                <div v-if="modelFieldsCache[m.id]?.relations?.length" class="model-relations">
+                  <div class="relations-title">模型关系</div>
+                  <div v-for="rel in modelFieldsCache[m.id].relations" :key="rel.id" class="relation-item">
+                    <span class="relation-type">{{ resolveRelation(rel).typeLabel }}</span>
+                    <span class="relation-target">{{ resolveRelation(rel).targetName }}</span>
+                    <span v-if="resolveRelation(rel).description" class="relation-desc">{{ resolveRelation(rel).description }}</span>
+                  </div>
                 </div>
-              </template>
-              <template v-else>
-                <div class="fields-loading">暂无字段</div>
-              </template>
-            </div>
-          </template>
+              </div>
+            </template>
+          </div>
         </div>
       </template>
     </div>
@@ -213,7 +221,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { Search, Delete, CircleCheckFilled, ArrowDown } from '@element-plus/icons-vue'
-import { getAllModels, getModelDetail, fulltextSearch, searchInstance } from '../../api/search'
+import { getAllModels, getModelGroups, getModelRelationTypes, getModelDetail, fulltextSearch, searchInstance } from '../../api/search'
 
 const typeTag = { string: '', number: 'success', bool: 'warning', date: 'info', datetime: 'info', json: 'danger' }
 
@@ -295,6 +303,7 @@ const inst = ref({
   conditions: [],
   results: [],
   columns: [],
+  columnLabelMap: {},
   count: 0,
   page: 1,
   pageSize: 10,
@@ -347,6 +356,12 @@ async function doInstanceSearch() {
     inst.value.count = res.data?.count || 0
     if (inst.value.results.length) {
       inst.value.columns = Object.keys(inst.value.results[0]).filter(k => !['model_id', 'model_alias'].includes(k))
+      // 构建列标签映射: alias → "name(alias)"
+      const labelMap = { id: 'ID' }
+      for (const f of inst.value.fields) {
+        labelMap[f.alias] = f.name ? `${f.name}(${f.alias})` : f.alias
+      }
+      inst.value.columnLabelMap = labelMap
     }
   } catch {
     inst.value.results = []
@@ -356,10 +371,20 @@ async function doInstanceSearch() {
   }
 }
 
+function calcColWidth(label) {
+  // 中文字符按 14px，英文/数字按 8px，加上 padding
+  let w = 0
+  for (const ch of label) {
+    w += /[一-鿿]/.test(ch) ? 14 : 8
+  }
+  return Math.max(w + 24, 80)
+}
+
 function resetInstance() {
   inst.value.conditions = []
   inst.value.results = []
   inst.value.columns = []
+  inst.value.columnLabelMap = {}
   inst.value.count = 0
   inst.value.page = 1
 }
@@ -367,17 +392,40 @@ function resetInstance() {
 // ===== 模型浏览 =====
 const modelSearch = ref('')
 const expandedModelId = ref(null)
-// 缓存: { [modelId]: { fieldGroups, uniqueAliases, loading } }
+const allModelGroups = ref([])
+const allRelationTypes = ref([])
+// 缓存: { [modelId]: { fieldGroups, uniqueAliases, relations, loading } }
 const modelFieldsCache = ref({})
 
-const filteredModels = computed(() => {
+const groupedModels = computed(() => {
   const kw = modelSearch.value.toLowerCase()
-  if (!kw) return allModels.value
-  return allModels.value.filter(m =>
-    m.name.toLowerCase().includes(kw) ||
-    m.alias.toLowerCase().includes(kw) ||
-    (m.description || '').toLowerCase().includes(kw)
-  )
+  const filtered = kw
+    ? allModels.value.filter(m =>
+        m.name.toLowerCase().includes(kw) ||
+        m.alias.toLowerCase().includes(kw) ||
+        (m.description || '').toLowerCase().includes(kw))
+    : allModels.value
+
+  const groupMap = new Map()
+  for (const g of allModelGroups.value) {
+    groupMap.set(g.id, { ...g, models: [] })
+  }
+  const ungrouped = { id: 0, name: '未分组', alias: '', models: [] }
+
+  for (const m of filtered) {
+    if (m.group_id && groupMap.has(m.group_id)) {
+      groupMap.get(m.group_id).models.push(m)
+    } else {
+      ungrouped.models.push(m)
+    }
+  }
+
+  const result = []
+  for (const g of groupMap.values()) {
+    if (g.models.length) result.push(g)
+  }
+  if (ungrouped.models.length) result.push(ungrouped)
+  return result
 })
 
 async function toggleFields(m) {
@@ -430,18 +478,38 @@ async function toggleFields(m) {
     modelFieldsCache.value[m.id] = {
       fieldGroups,
       uniqueAliases: [...uniqueSet],
+      relations: data.model_relations || [],
       loading: false,
     }
   } catch {
-    modelFieldsCache.value[m.id] = { fieldGroups: [], uniqueAliases: [], loading: false }
+    modelFieldsCache.value[m.id] = { fieldGroups: [], uniqueAliases: [], relations: [], loading: false }
+  }
+}
+
+function resolveRelation(rel) {
+  const isSource = rel.source_id === expandedModelId.value
+  const targetId = isSource ? rel.target_id : rel.source_id
+  const targetModel = allModels.value.find(m => m.id === targetId)
+  const relType = allRelationTypes.value.find(t => t.id === rel.type_id)
+  const direction = isSource ? 's2t' : 't2s'
+  return {
+    targetName: targetModel ? `${targetModel.name}(${targetModel.alias})` : `#${targetId}`,
+    typeLabel: relType ? relType[direction] : '',
+    description: rel.description || '',
   }
 }
 
 // ===== 初始化 =====
 onMounted(async () => {
   try {
-    const res = await getAllModels()
-    allModels.value = (res.data || []).filter(m => m.is_usable !== false)
+    const [modelsRes, groupsRes, typesRes] = await Promise.all([
+      getAllModels(),
+      getModelGroups(),
+      getModelRelationTypes(),
+    ])
+    allModels.value = (modelsRes.data || []).filter(m => m.is_usable !== false)
+    allModelGroups.value = groupsRes.data || []
+    allRelationTypes.value = typesRes.data || []
   } catch {}
 })
 </script>
@@ -506,6 +574,7 @@ onMounted(async () => {
   border-radius: 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   padding: 4px 20px;
+  height: 40px;
   transition: box-shadow 0.2s ease;
 }
 
@@ -519,11 +588,13 @@ onMounted(async () => {
 
 .search-model-select :deep(.el-input__wrapper) {
   border-radius: 24px;
+  height: 40px;
 }
 
 .search-btn {
   border-radius: 24px;
   padding: 0 28px;
+  height: 40px;
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -566,6 +637,33 @@ onMounted(async () => {
   margin-top: 16px;
 }
 
+/* 实例搜索模型选择栏 */
+.instance-model-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  background: var(--color-muted);
+  border-radius: var(--radius-md);
+}
+
+.model-bar-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.instance-model-select {
+  flex: 1;
+  min-width: 200px;
+}
+
+.instance-model-select :deep(.el-input__wrapper) {
+  height: 40px;
+}
+
 /* 条件构建器 */
 .condition-builder {
   margin-bottom: 16px;
@@ -582,11 +680,11 @@ onMounted(async () => {
 }
 
 .cond-field {
-  width: 150px;
+  width: 180px;
 }
 
 .cond-op {
-  width: 110px;
+  width: 120px;
 }
 
 .cond-val {
@@ -597,6 +695,20 @@ onMounted(async () => {
   display: flex;
   gap: 8px;
   margin-top: 4px;
+}
+
+/* 模型分组 */
+.model-group-section {
+  margin-bottom: 24px;
+}
+
+.model-group-header {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--color-primary);
 }
 
 /* 模型列表 */
@@ -693,5 +805,42 @@ onMounted(async () => {
 .unique-tag {
   margin-left: 6px;
   vertical-align: middle;
+}
+
+/* 模型关系 */
+.model-relations {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.relations-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+
+.relation-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.relation-type {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.relation-target {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.relation-desc {
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
 </style>

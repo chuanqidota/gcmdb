@@ -30,6 +30,22 @@ func (m *model) ModelRange(c *gin.Context) {
 		}
 		response.Success(c, "查询成功", modelAll)
 
+	case "group": // 查询所有模型分组
+		groups, err := utils.Model.ModelGroupAll()
+		if err != nil {
+			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+			return
+		}
+		response.Success(c, "查询成功", groups)
+
+	case "relation-type": // 查询所有模型关系类型
+		types, err := utils.Model.ModelRelationTypeAll()
+		if err != nil {
+			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+			return
+		}
+		response.Success(c, "查询成功", types)
+
 	case "single": // 查询指定模型信息
 		id := c.Query("id")
 		modelSingle, err := utils.Model.ModelSingle(id)
@@ -40,7 +56,7 @@ func (m *model) ModelRange(c *gin.Context) {
 		response.Success(c, "查询成功", modelSingle)
 
 	default:
-		response.Fail(c, fmt.Sprintf("参数:%+v不在[all,single]范围内", _range))
+		response.Fail(c, fmt.Sprintf("参数:%+v不在[all,single,group,relation-type]范围内", _range))
 	}
 
 }
