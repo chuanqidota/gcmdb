@@ -1,5 +1,6 @@
 <template>
   <div class="home">
+    <!-- 统计卡片 -->
     <div class="stats-grid">
       <div class="stat-card" v-for="s in statCards" :key="s.label">
         <div class="stat-icon" :style="{ background: s.bg }">
@@ -12,6 +13,7 @@
       </div>
     </div>
 
+    <!-- 快捷入口 -->
     <div class="section-title">快捷入口</div>
     <div class="shortcuts-grid">
       <router-link v-for="item in shortcuts" :key="item.path" :to="item.path" class="shortcut-card">
@@ -22,51 +24,87 @@
         <div class="shortcut-desc">{{ item.desc }}</div>
       </router-link>
     </div>
+
+    <!-- 模型实例分布 -->
+    <div class="dist-section">
+      <div class="section-title">模型实例分布</div>
+      <div class="model-dist">
+        <div v-for="m in modelStats" :key="m.id" class="model-dist-item">
+          <div class="model-dist-label">{{ m.name }}</div>
+          <div class="model-dist-bar-wrap">
+            <div class="model-dist-bar" :style="{ width: m.percent + '%' }"></div>
+          </div>
+          <div class="model-dist-count">{{ m.count }}</div>
+        </div>
+        <el-empty v-if="!modelStats.length && !loading" description="暂无模型数据" :image-size="48" />
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { Grid, List, Connection, Search } from '@element-plus/icons-vue'
+import { ref, onMounted } from 'vue'
+import { Grid, List, Search, Share } from '@element-plus/icons-vue'
 import { listModelGroup } from '../../api/modelGroup'
 import { listModel } from '../../api/model'
-import { listModelRelationType } from '../../api/modelRelationType'
+import { listInstance } from '../../api/instance'
 
-const stats = ref({ groups: 0, models: 0, relationTypes: 0 })
-
-const statCards = computed(() => [
-  { label: '模型分组', value: stats.value.groups, icon: Grid, color: '#2563EB', bg: '#DBEAFE' },
-  { label: '模型数量', value: stats.value.models, icon: List, color: '#059669', bg: '#D1FAE5' },
-  { label: '关系类型', value: stats.value.relationTypes, icon: Connection, color: '#D97706', bg: '#FEF3C7' },
-])
+const loading = ref(true)
+const statCards = ref([])
 
 const shortcuts = [
-  { label: '模型分组', desc: '管理模型分组', path: '/model-group', icon: Grid, color: '#2563EB', bg: '#DBEAFE' },
-  { label: '模型列表', desc: '查看所有模型', path: '/model', icon: List, color: '#059669', bg: '#D1FAE5' },
-  { label: '模型关系', desc: '管理模型间关系', path: '/model-relation', icon: Connection, color: '#D97706', bg: '#FEF3C7' },
-  { label: 'SQL 查询', desc: '执行自定义查询', path: '/search-direct-sql', icon: Search, color: '#DC2626', bg: '#FEE2E2' },
+  { label: '综合检索', desc: '搜索 CMDB 中的资源', path: '/search', icon: Search, color: '#2563EB', bg: '#DBEAFE' },
+  { label: '实例管理', desc: '管理各模型的实例数据', path: '/instance', icon: List, color: '#059669', bg: '#D1FAE5' },
+  { label: '模型管理', desc: '配置模型、字段和关系', path: '/model-manage', icon: Grid, color: '#D97706', bg: '#FEF3C7' },
+  { label: '模型拓扑', desc: '可视化模型关系图', path: '/model-topology', icon: Share, color: '#7C3AED', bg: '#EDE9FE' },
 ]
 
+const modelStats = ref([])
+
 onMounted(async () => {
-  const [g, m, r] = await Promise.all([
+  const [g, m] = await Promise.all([
     listModelGroup({ limit: 1 }),
-    listModel({ limit: 1 }),
-    listModelRelationType({ limit: 1 }),
+    listModel({ limit: 1000 }),
   ])
-  stats.value = { groups: g.data.count, models: m.data.count, relationTypes: r.data.count }
+  const models = m.data.results || []
+
+  // 并行获取每个模型的实例数
+  const countResults = await Promise.allSettled(
+    models.map(model => listInstance(model.id, { limit: 1 }))
+  )
+
+  let totalInstances = 0
+  const modelData = models.map((model, i) => {
+    const count = countResults[i].status === 'fulfilled' ? (countResults[i].value.data.count || 0) : 0
+    totalInstances += count
+    return { id: model.id, name: model.name, count }
+  })
+
+  const max = Math.max(...modelData.map(m => m.count), 1)
+  modelStats.value = modelData
+    .sort((a, b) => b.count - a.count)
+    .map(m => ({ ...m, percent: Math.round((m.count / max) * 100) }))
+
+  statCards.value = [
+    { label: '模型分组', value: g.data.count || 0, icon: Grid, color: '#2563EB', bg: '#DBEAFE' },
+    { label: '模型数量', value: m.data.count || 0, icon: Grid, color: '#059669', bg: '#D1FAE5' },
+    { label: '实例总数', value: totalInstances, icon: List, color: '#D97706', bg: '#FEF3C7' },
+  ]
+
+  loading.value = false
 })
 </script>
 
 <style scoped>
 .home {
-  max-width: 1100px;
+  max-width: 1200px;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 
 .stat-card {
@@ -119,6 +157,7 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
+  margin-bottom: 28px;
 }
 
 .shortcut-card {
@@ -158,5 +197,62 @@ onMounted(async () => {
 .shortcut-desc {
   font-size: 12px;
   color: var(--color-text-muted);
+}
+
+.dist-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.model-dist {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 24px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.model-dist-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.model-dist-label {
+  width: 80px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  text-align: right;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-dist-bar-wrap {
+  flex: 1;
+  height: 20px;
+  background: var(--color-muted);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.model-dist-bar {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+  min-width: 2px;
+}
+
+.model-dist-count {
+  width: 40px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  text-align: right;
+  flex-shrink: 0;
 }
 </style>

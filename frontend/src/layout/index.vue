@@ -21,29 +21,29 @@
           <el-icon><HomeFilled /></el-icon>
           <template #title>首页</template>
         </el-menu-item>
-        <el-menu-item index="/model-manage">
-          <el-icon><Grid /></el-icon>
-          <template #title>模型管理</template>
-        </el-menu-item>
-        <el-menu-item index="/model-relation-type">
-          <el-icon><Connection /></el-icon>
-          <template #title>关系类型</template>
-        </el-menu-item>
-        <el-menu-item index="/model-topology">
-          <el-icon><Share /></el-icon>
-          <template #title>模型拓扑</template>
+        <el-menu-item index="/search">
+          <el-icon><Search /></el-icon>
+          <template #title>综合检索</template>
         </el-menu-item>
         <el-menu-item index="/instance">
           <el-icon><List /></el-icon>
           <template #title>实例管理</template>
         </el-menu-item>
+        <el-menu-item index="/model-manage">
+          <el-icon><Grid /></el-icon>
+          <template #title>模型管理</template>
+        </el-menu-item>
+        <el-menu-item index="/model-topology">
+          <el-icon><Share /></el-icon>
+          <template #title>模型拓扑</template>
+        </el-menu-item>
         <el-menu-item index="/search-direct-sql">
-          <el-icon><Search /></el-icon>
+          <el-icon><Document /></el-icon>
           <template #title>SQL 查询</template>
         </el-menu-item>
-        <el-menu-item index="/search">
-          <el-icon><Search /></el-icon>
-          <template #title>综合检索</template>
+        <el-menu-item index="/audit">
+          <el-icon><Notebook /></el-icon>
+          <template #title>审计日志</template>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -66,7 +66,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Grid, Connection, List, Search, Fold, Expand, Share } from '@element-plus/icons-vue'
+import { HomeFilled, Grid, List, Search, Fold, Expand, Share, Document, Notebook } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapsed = ref(false)

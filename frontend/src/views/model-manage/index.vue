@@ -192,6 +192,27 @@
                 </el-table-column>
               </el-table>
             </el-tab-pane>
+
+            <!-- 关系类型 Tab -->
+            <el-tab-pane label="关系类型" name="relationTypes">
+              <div class="card-header" style="margin-bottom: 12px">
+                <span>关系类型</span>
+                <el-button size="small" type="primary" @click="showRtDialog()"><el-icon><Plus /></el-icon>新增</el-button>
+              </div>
+              <el-table :data="relationTypes" stripe size="small">
+                <el-table-column prop="id" label="ID" width="60" />
+                <el-table-column prop="name" label="名称" width="140" />
+                <el-table-column prop="s2t" label="源 → 目标" />
+                <el-table-column prop="t2s" label="目标 → 源" />
+                <el-table-column prop="created_at" label="创建时间" width="170" />
+                <el-table-column label="操作" width="120">
+                  <template #default="{ row }">
+                    <el-button link type="primary" size="small" @click="showRtDialog(row)">编辑</el-button>
+                    <el-button link type="danger" size="small" @click="handleRtDelete(row)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-tab-pane>
           </el-tabs>
         </el-card>
       </el-col>
@@ -308,7 +329,7 @@
         </el-form-item>
         <el-form-item label="目标模型" required>
           <el-select v-model="relationForm.target_id" placeholder="选择目标模型" style="width: 100%" filterable>
-            <el-option v-for="m in allModelsForSelect" :key="m.id" :label="`${m.name} (${m.alias})`" :value="m.id" />
+            <el-option v-for="m in targetModelOptions" :key="m.id" :label="`${m.name} (${m.alias})`" :value="m.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="关系类型" required>
@@ -323,6 +344,25 @@
         <el-button type="primary" @click="handleSaveRelation">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 关系类型对话框 -->
+    <el-dialog v-model="rtDialogVisible" :title="rtEditing ? '编辑关系类型' : '新增关系类型'" width="440px">
+      <el-form :model="rtForm" label-width="70px">
+        <el-form-item label="名称" required>
+          <el-input v-model="rtForm.name" placeholder="如：运行、部署、依赖" />
+        </el-form-item>
+        <el-form-item label="源→目标" required>
+          <el-input v-model="rtForm.s2t" placeholder="如：运行在" />
+        </el-form-item>
+        <el-form-item label="目标→源" required>
+          <el-input v-model="rtForm.t2s" placeholder="如：被运行于" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="rtDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleRtSave">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -333,7 +373,7 @@ import { Plus, Edit, Delete, Search, Close, CircleCheckFilled } from '@element-p
 import { listModelGroup, createModelGroup, patchModelGroup, deleteModelGroup } from '../../api/modelGroup'
 import { listModel, createModel, updateModel, deleteModel, retrieveModel, patchModelGroupId } from '../../api/model'
 import { listModelRelation, createModelRelation, deleteModelRelation } from '../../api/modelRelation'
-import { listModelRelationType } from '../../api/modelRelationType'
+import { listModelRelationType, createModelRelationType, updateModelRelationType, deleteModelRelationType } from '../../api/modelRelationType'
 import { createModelField, updateModelField, deleteModelField } from '../../api/modelField'
 import { createModelFieldGroup, updateModelFieldGroup, deleteModelFieldGroup } from '../../api/modelFieldGroup'
 import { listModelFieldUnique, createModelFieldUnique, deleteModelFieldUnique } from '../../api/modelFieldUnique'
@@ -626,6 +666,12 @@ const relationDialogVisible = ref(false)
 const relationForm = ref({ source_id: null, target_id: null, type_id: null, description: '' })
 const relationTypes = ref([])
 
+const targetModelOptions = computed(() => {
+  const sourceId = expandedModelId.value
+  const existingTargetIds = new Set((detailData.value.relations || []).map(r => r.target_id))
+  return allModelsForSelect.value.filter(m => m.id !== sourceId && !existingTargetIds.has(m.id))
+})
+
 const loadRelationOptions = async () => {
   const [m, t] = await Promise.all([
     listModel({ limit: 1000 }),
@@ -652,6 +698,35 @@ const handleDeleteRelation = async (row) => {
   await deleteModelRelation(row.id)
   ElMessage.success('删除成功')
   loadRelations(expandedModelId.value)
+}
+
+// ===== 关系类型 CRUD =====
+const rtDialogVisible = ref(false)
+const rtEditing = ref(null)
+const rtForm = ref({ name: '', s2t: '', t2s: '' })
+
+const showRtDialog = (row) => {
+  rtEditing.value = row || null
+  rtForm.value = row ? { name: row.name, s2t: row.s2t, t2s: row.t2s } : { name: '', s2t: '', t2s: '' }
+  rtDialogVisible.value = true
+}
+
+const handleRtSave = async () => {
+  if (rtEditing.value) {
+    await updateModelRelationType(rtEditing.value.id, rtForm.value)
+  } else {
+    await createModelRelationType(rtForm.value)
+  }
+  rtDialogVisible.value = false
+  ElMessage.success('操作成功')
+  loadRelationOptions()
+}
+
+const handleRtDelete = async (row) => {
+  await ElMessageBox.confirm(`确定删除「${row.name}」？`, '确认删除', { type: 'warning' })
+  await deleteModelRelationType(row.id)
+  ElMessage.success('删除成功')
+  loadRelationOptions()
 }
 
 // ===== 初始化 =====

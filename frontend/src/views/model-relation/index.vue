@@ -27,12 +27,12 @@
     <el-form :model="form" label-width="70px">
       <el-form-item label="源模型" required>
         <el-select v-model="form.source_id" placeholder="选择源模型" style="width: 100%" filterable>
-          <el-option v-for="m in modelOptions" :key="m.id" :label="`${m.name} (${m.alias})`" :value="m.id" />
+          <el-option v-for="m in sourceModelOptions" :key="m.id" :label="`${m.name} (${m.alias})`" :value="m.id" />
         </el-select>
       </el-form-item>
       <el-form-item label="目标模型" required>
         <el-select v-model="form.target_id" placeholder="选择目标模型" style="width: 100%" filterable>
-          <el-option v-for="m in modelOptions" :key="m.id" :label="`${m.name} (${m.alias})`" :value="m.id" />
+          <el-option v-for="m in targetModelOptions" :key="m.id" :label="`${m.name} (${m.alias})`" :value="m.id" />
         </el-select>
       </el-form-item>
       <el-form-item label="关系类型" required>
@@ -52,7 +52,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { listModelRelation, createModelRelation, deleteModelRelation } from '../../api/modelRelation'
@@ -65,6 +65,20 @@ const dialogVisible = ref(false)
 const modelOptions = ref([])
 const typeOptions = ref([])
 const form = ref({ source_id: null, target_id: null, type_id: null, description: '' })
+
+const sourceModelOptions = computed(() => {
+  const targetId = form.value.target_id
+  if (!targetId) return modelOptions.value
+  const existingSourceIds = new Set(list.value.filter(r => r.target_id === targetId).map(r => r.source_id))
+  return modelOptions.value.filter(m => m.id !== targetId && !existingSourceIds.has(m.id))
+})
+
+const targetModelOptions = computed(() => {
+  const sourceId = form.value.source_id
+  if (!sourceId) return modelOptions.value
+  const existingTargetIds = new Set(list.value.filter(r => r.source_id === sourceId).map(r => r.target_id))
+  return modelOptions.value.filter(m => m.id !== sourceId && !existingTargetIds.has(m.id))
+})
 
 const loadData = async () => {
   loading.value = true
