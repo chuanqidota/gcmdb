@@ -5,9 +5,9 @@ server:
   session_max_age: 604800
 database:
   username: root
-  password: jinang123
+  password: root
   host: 127.0.0.1
-  port: 3306
+  port: 13306
   name: gcmdb
 cors:
   allowed_origins: []

@@ -14,6 +14,7 @@ FROM alpine:3
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /opt/data
 COPY --from=builder /opt/data/gcmdb .
+COPY --from=builder /opt/data/config/ ./config/
 RUN chmod +x gcmdb
 EXPOSE 8080
 

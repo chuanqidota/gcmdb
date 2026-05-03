@@ -4,10 +4,10 @@ services:
     image: mysql:8
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-jinang123}
+      MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: gcmdb
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -29,10 +29,12 @@ services:
     ports:
       - "8080:8080"
     environment:
+      GCMDB_SERVER_HOST: "0.0.0.0"
+      GCMDB_SERVER_PORT: "8080"
       GCMDB_DATABASE_HOST: mysql
       GCMDB_DATABASE_PORT: "3306"
       GCMDB_DATABASE_USERNAME: root
-      GCMDB_DATABASE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-jinang123}
+      GCMDB_DATABASE_PASSWORD: root
       GCMDB_DATABASE_NAME: gcmdb
       TZ: Asia/Shanghai  # 增加时区
     depends_on:
