@@ -99,17 +99,24 @@ cors:
 token_cache_ttl: 5           # Token 缓存 TTL（分钟）
 ```
 
-Docker 部署时，环境变量会覆盖配置文件（前缀 `GCMDB_`，`.` 替换为 `_`）：
+### 环境变量
 
-| 环境变量 | 对应配置 | Docker 默认值 |
-|----------|----------|---------------|
-| `GCMDB_SERVER_HOST` | `server.host` | `0.0.0.0` |
-| `GCMDB_SERVER_PORT` | `server.port` | `8080` |
-| `GCMDB_DATABASE_HOST` | `database.host` | `mysql` |
-| `GCMDB_DATABASE_PORT` | `database.port` | `3306` |
-| `GCMDB_DATABASE_USERNAME` | `database.username` | `root` |
-| `GCMDB_DATABASE_PASSWORD` | `database.password` | `root` |
-| `GCMDB_DATABASE_NAME` | `database.name` | `gcmdb` |
+数据库连接支持**环境变量优先、配置文件兜底**的策略：
+
+1. 优先读取环境变量
+2. 环境变量未设置时，使用 `config.yaml` 中的值
+
+| 环境变量 | 说明 | 配置文件字段 | Docker 默认值 |
+|----------|------|-------------|---------------|
+| `GCMDB_DATABASE_HOST` | 数据库地址 | `database.host` | `mysql` |
+| `GCMDB_DATABASE_PORT` | 数据库端口 | `database.port` | `3306` |
+| `GCMDB_DATABASE_USERNAME` | 数据库用户 | `database.username` | `root` |
+| `GCMDB_DATABASE_PASSWORD` | 数据库密码 | `database.password` | `root` |
+| `GCMDB_DATABASE_NAME` | 数据库名称 | `database.name` | `gcmdb` |
+| `GCMDB_SERVER_HOST` | 监听地址 | `server.host` | `0.0.0.0` |
+| `GCMDB_SERVER_PORT` | 监听端口 | `server.port` | `8080` |
+
+这样本地开发直接使用 `config.yaml`，Docker 部署通过环境变量覆盖，互不干扰。
 
 ## Docker 部署说明
 
