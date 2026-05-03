@@ -1,23 +1,22 @@
-version: '3'
 services:
   # mysql
   mysql:
-    image: mysql:latest
+    image: mysql:8
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: jinang123
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-jinang123}
       MYSQL_DATABASE: gcmdb
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-
-  # redis
-  redis:
-    image: redis:latest
-    restart: always
-    ports:
-      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # 必须加：解决中文乱码
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
   # 后端
   gcmdb:
@@ -29,9 +28,16 @@ services:
     container_name: gcmdb
     ports:
       - "8080:8080"
+    environment:
+      GCMDB_DATABASE_HOST: mysql
+      GCMDB_DATABASE_PORT: "3306"
+      GCMDB_DATABASE_USERNAME: root
+      GCMDB_DATABASE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-jinang123}
+      GCMDB_DATABASE_NAME: gcmdb
+      TZ: Asia/Shanghai  # 增加时区
     depends_on:
-      - mysql
-      - elasticsearch
+      mysql:
+        condition: service_healthy
 
   # 前端
   gcmdb-web:
@@ -43,8 +49,6 @@ services:
     container_name: gcmdb-web
     ports:
       - "80:80"
-    depends_on:
-      - gcmdb
 
 volumes:
   mysql_data:

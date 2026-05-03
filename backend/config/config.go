@@ -36,6 +36,7 @@ func Init() {
 		configPath = "./config/config.yaml"
 	}
 	viper.SetConfigFile(configPath)
+	viper.SetEnvPrefix("GCMDB")
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatalf("读取配置文件失败: %v", err)
