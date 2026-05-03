@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap');
 
 :root {
   --color-primary: #2563EB;
@@ -111,6 +112,7 @@ body {
 .el-table {
   --el-table-border-color: var(--color-border);
   --el-table-header-bg-color: var(--color-muted);
+  --el-table-row-height: 40px;
   border-radius: var(--radius-md) !important;
   overflow: hidden;
 }
@@ -186,6 +188,42 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-scrollbar-hover);
+}
+
+/* Code / monospace font */
+code, pre, .mono {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+}
+
+/* Pagination sticky bottom */
+.pagination-wrap {
+  position: sticky;
+  bottom: 0;
+  background: var(--color-surface);
+  padding: 12px 0;
+  border-top: 1px solid var(--color-border);
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Skeleton animation enhancement */
+.el-skeleton {
+  --el-skeleton-color: var(--color-muted);
+  --el-skeleton-to-color: var(--color-border);
+}
+
+/* Responsive breakpoints */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .shortcuts-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .group-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* Utility classes */

@@ -22,7 +22,7 @@
             <div class="panel-loading">加载中...</div>
           </template>
           <template v-else-if="detailFields.length">
-            <el-table :data="detailFields" size="small" stripe :show-header="true" max-height="320">
+            <el-table :data="detailFields" size="small" stripe highlight-current-row :show-header="true" max-height="320">
               <el-table-column prop="alias" label="别名" width="120" />
               <el-table-column prop="name" label="名称" width="120" />
               <el-table-column prop="type" label="类型" width="80">

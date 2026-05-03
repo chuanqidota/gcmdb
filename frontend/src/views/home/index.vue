@@ -2,15 +2,32 @@
   <div class="home">
     <!-- 统计卡片 -->
     <div class="stats-grid">
-      <div class="stat-card" v-for="s in statCards" :key="s.label">
-        <div class="stat-icon" :style="{ background: s.bg }">
-          <el-icon :size="22" :color="s.color"><component :is="s.icon" /></el-icon>
+      <template v-if="loading">
+        <div class="stat-card" v-for="i in 3" :key="i">
+          <el-skeleton :loading="true" animated>
+            <template #template>
+              <div style="display: flex; align-items: center; gap: 16px; width: 100%">
+                <el-skeleton-item variant="circle" style="width: 48px; height: 48px; flex-shrink: 0" />
+                <div style="flex: 1">
+                  <el-skeleton-item variant="h1" style="width: 60%; height: 28px" />
+                  <el-skeleton-item variant="text" style="width: 40%; height: 14px; margin-top: 6px" />
+                </div>
+              </div>
+            </template>
+          </el-skeleton>
         </div>
-        <div class="stat-info">
-          <div class="stat-value">{{ s.value }}</div>
-          <div class="stat-label">{{ s.label }}</div>
+      </template>
+      <template v-else>
+        <div class="stat-card" v-for="s in statCards" :key="s.label">
+          <div class="stat-icon" :style="{ background: s.bg }">
+            <el-icon :size="22" :color="s.color"><component :is="s.icon" /></el-icon>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value">{{ s.value }}</div>
+            <div class="stat-label">{{ s.label }}</div>
+          </div>
         </div>
-      </div>
+      </template>
     </div>
 
     <!-- 快捷入口 -->

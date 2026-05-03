@@ -5,7 +5,12 @@
       <el-button type="primary" @click="openCreateDialog">创建用户</el-button>
     </div>
 
-    <el-table :data="list" stripe v-loading="loading">
+    <el-skeleton :loading="loading" animated :count="5">
+      <template #template>
+        <div style="padding: 12px 0"><el-skeleton-item v-for="i in 5" :key="i" variant="text" style="height: 36px; margin-bottom: 6px" /></div>
+      </template>
+      <template #default>
+    <el-table :data="list" stripe highlight-current-row>
       <el-table-column prop="id" label="ID" width="60" />
       <el-table-column prop="username" label="用户名" width="150" />
       <el-table-column label="Token" min-width="280">
@@ -37,7 +42,14 @@
           </el-button>
         </template>
       </el-table-column>
+      <template #empty>
+        <el-empty description="暂无用户">
+          <el-button type="primary" @click="openCreateDialog()">创建第一个用户</el-button>
+        </el-empty>
+      </template>
     </el-table>
+      </template>
+    </el-skeleton>
 
     <!-- 创建用户对话框 -->
     <el-dialog v-model="createDialog.visible" title="创建用户" width="400px" :close-on-click-modal="false">

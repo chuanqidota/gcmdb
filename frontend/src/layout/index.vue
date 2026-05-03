@@ -17,42 +17,60 @@
         router
         class="nav-menu"
       >
-        <el-menu-item index="/home">
-          <el-icon><HomeFilled /></el-icon>
-          <template #title>首页</template>
-        </el-menu-item>
-        <el-menu-item index="/search">
-          <el-icon><Search /></el-icon>
-          <template #title>综合检索</template>
-        </el-menu-item>
-        <el-menu-item index="/instance">
-          <el-icon><List /></el-icon>
-          <template #title>实例管理</template>
-        </el-menu-item>
-        <el-menu-item index="/model-manage">
-          <el-icon><Grid /></el-icon>
-          <template #title>模型管理</template>
-        </el-menu-item>
-        <el-menu-item index="/model-topology">
-          <el-icon><Share /></el-icon>
-          <template #title>模型拓扑</template>
-        </el-menu-item>
-        <el-menu-item index="/search-direct-sql">
-          <el-icon><Document /></el-icon>
-          <template #title>SQL 查询</template>
-        </el-menu-item>
-        <el-menu-item index="/audit">
-          <el-icon><Notebook /></el-icon>
-          <template #title>审计日志</template>
-        </el-menu-item>
-        <el-menu-item index="/api-test">
-          <el-icon><Monitor /></el-icon>
-          <template #title>API 测试</template>
-        </el-menu-item>
-        <el-menu-item v-if="isAdmin" index="/user-manage">
-          <el-icon><User /></el-icon>
-          <template #title>用户管理</template>
-        </el-menu-item>
+        <el-tooltip :disabled="!isCollapsed" content="首页" placement="right" :show-after="300">
+          <el-menu-item index="/home">
+            <el-icon><HomeFilled /></el-icon>
+            <template #title>首页</template>
+          </el-menu-item>
+        </el-tooltip>
+        <el-tooltip :disabled="!isCollapsed" content="综合检索" placement="right" :show-after="300">
+          <el-menu-item index="/search">
+            <el-icon><Search /></el-icon>
+            <template #title>综合检索</template>
+          </el-menu-item>
+        </el-tooltip>
+        <el-tooltip :disabled="!isCollapsed" content="实例管理" placement="right" :show-after="300">
+          <el-menu-item index="/instance">
+            <el-icon><List /></el-icon>
+            <template #title>实例管理</template>
+          </el-menu-item>
+        </el-tooltip>
+        <el-tooltip :disabled="!isCollapsed" content="模型管理" placement="right" :show-after="300">
+          <el-menu-item index="/model-manage">
+            <el-icon><Grid /></el-icon>
+            <template #title>模型管理</template>
+          </el-menu-item>
+        </el-tooltip>
+        <el-tooltip :disabled="!isCollapsed" content="模型拓扑" placement="right" :show-after="300">
+          <el-menu-item index="/model-topology">
+            <el-icon><Share /></el-icon>
+            <template #title>模型拓扑</template>
+          </el-menu-item>
+        </el-tooltip>
+        <el-tooltip :disabled="!isCollapsed" content="SQL 查询" placement="right" :show-after="300">
+          <el-menu-item index="/search-direct-sql">
+            <el-icon><Document /></el-icon>
+            <template #title>SQL 查询</template>
+          </el-menu-item>
+        </el-tooltip>
+        <el-tooltip :disabled="!isCollapsed" content="审计日志" placement="right" :show-after="300">
+          <el-menu-item index="/audit">
+            <el-icon><Notebook /></el-icon>
+            <template #title>审计日志</template>
+          </el-menu-item>
+        </el-tooltip>
+        <el-tooltip :disabled="!isCollapsed" content="API 测试" placement="right" :show-after="300">
+          <el-menu-item index="/api-test">
+            <el-icon><Monitor /></el-icon>
+            <template #title>API 测试</template>
+          </el-menu-item>
+        </el-tooltip>
+        <el-tooltip v-if="isAdmin" :disabled="!isCollapsed" content="用户管理" placement="right" :show-after="300">
+          <el-menu-item index="/user-manage">
+            <el-icon><User /></el-icon>
+            <template #title>用户管理</template>
+          </el-menu-item>
+        </el-tooltip>
       </el-menu>
     </el-aside>
     <el-container>
@@ -104,7 +122,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { HomeFilled, Grid, List, Search, Fold, Expand, Share, Document, Notebook, User, Monitor } from '@element-plus/icons-vue'
@@ -145,6 +163,19 @@ const pwdRules = {
     },
   ],
 }
+
+const handleResize = () => {
+  isCollapsed.value = window.innerWidth < 768
+}
+
+onMounted(() => {
+  handleResize()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+})
 
 onMounted(async () => {
   try {

@@ -58,25 +58,37 @@
               </el-button>
             </div>
           </template>
-          <el-table :data="models" stripe v-loading="modelsLoading" @row-click="onRowClick" row-class-name="model-row">
-            <el-table-column prop="id" label="ID" width="60" />
-            <el-table-column prop="alias" label="别名" width="130" />
-            <el-table-column prop="name" label="名称" width="140" />
-            <el-table-column prop="description" label="描述" show-overflow-tooltip />
-            <el-table-column prop="is_usable" label="状态" width="80" align="center">
-              <template #default="{ row }">
-                <el-tag :type="row.is_usable ? 'success' : 'danger'" size="small" effect="light">{{ row.is_usable ? '启用' : '停用' }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="220" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="primary" @click.stop="toggleDetail(row)">{{ expandedModelId === row.id ? '收起' : '详情' }}</el-button>
-                <el-button link type="primary" @click.stop="showModelDialog(row)">编辑</el-button>
-                <el-button link type="primary" @click.stop="showMoveGroupDialog(row)">移组</el-button>
-                <el-button link type="danger" @click.stop="handleDeleteModel(row)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+          <el-skeleton :loading="modelsLoading" animated :count="5">
+            <template #template>
+              <div style="padding: 8px 0">
+                <el-skeleton-item v-for="i in 5" :key="i" variant="text" style="height: 40px; margin-bottom: 4px" />
+              </div>
+            </template>
+            <template #default>
+              <el-table :data="models" stripe highlight-current-row @row-click="onRowClick" row-class-name="model-row">
+                <el-table-column prop="id" label="ID" width="60" />
+                <el-table-column prop="alias" label="别名" width="130" />
+                <el-table-column prop="name" label="名称" width="140" />
+                <el-table-column prop="description" label="描述" show-overflow-tooltip />
+                <el-table-column prop="is_usable" label="状态" width="80" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="row.is_usable ? 'success' : 'danger'" size="small" effect="light">{{ row.is_usable ? '启用' : '停用' }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="220" fixed="right">
+                  <template #default="{ row }">
+                    <el-button link type="primary" @click.stop="toggleDetail(row)">{{ expandedModelId === row.id ? '收起' : '详情' }}</el-button>
+                    <el-button link type="primary" @click.stop="showModelDialog(row)">编辑</el-button>
+                    <el-button link type="primary" @click.stop="showMoveGroupDialog(row)">移组</el-button>
+                    <el-button link type="danger" @click.stop="handleDeleteModel(row)">删除</el-button>
+                  </template>
+                </el-table-column>
+                <template #empty>
+                  <el-empty description="暂无模型，请先创建模型" :image-size="80" />
+                </template>
+              </el-table>
+            </template>
+          </el-skeleton>
           <div class="pagination-wrap">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @change="loadModels" />
           </div>
@@ -125,7 +137,7 @@
                     <span>字段列表</span>
                     <el-button size="small" type="primary" @click="showFieldDialog()"><el-icon><Plus /></el-icon>新增字段</el-button>
                   </div>
-                  <el-table :data="currentFields" stripe size="small">
+                  <el-table :data="currentFields" stripe size="small" highlight-current-row>
                     <el-table-column prop="id" label="ID" width="50" />
                     <el-table-column prop="alias" label="别名" width="120" />
                     <el-table-column prop="name" label="名称" width="120" />
@@ -162,7 +174,7 @@
                 <span>唯一约束</span>
                 <el-button size="small" type="primary" @click="showUniqueDialog()"><el-icon><Plus /></el-icon>新增</el-button>
               </div>
-              <el-table :data="detailData.uniques" stripe size="small" v-if="detailData.uniques.length">
+              <el-table :data="detailData.uniques" stripe size="small" highlight-current-row v-if="detailData.uniques.length">
                 <el-table-column prop="id" label="ID" width="60" />
                 <el-table-column prop="fields" label="字段组合">
                   <template #default="{ row }">
@@ -185,7 +197,7 @@
                 <span>模型关系</span>
                 <el-button size="small" type="primary" @click="showRelationDialog()"><el-icon><Plus /></el-icon>新增关系</el-button>
               </div>
-              <el-table :data="detailData.relations" stripe size="small" v-loading="detailData.relationsLoading">
+              <el-table :data="detailData.relations" stripe size="small" highlight-current-row v-loading="detailData.relationsLoading">
                 <el-table-column prop="id" label="ID" width="60" />
                 <el-table-column prop="source_display" label="源模型" />
                 <el-table-column prop="target_display" label="目标模型" />
@@ -205,7 +217,7 @@
                 <span>关系类型</span>
                 <el-button size="small" type="primary" @click="showRtDialog()"><el-icon><Plus /></el-icon>新增</el-button>
               </div>
-              <el-table :data="relationTypes" stripe size="small">
+              <el-table :data="relationTypes" stripe size="small" highlight-current-row>
                 <el-table-column prop="id" label="ID" width="60" />
                 <el-table-column prop="name" label="名称" width="140" />
                 <el-table-column prop="s2t" label="源 → 目标" />
@@ -226,7 +238,7 @@
                 <span>字段关联</span>
                 <el-button size="small" type="primary" @click="showFieldRelDialog()"><el-icon><Plus /></el-icon>新增关联</el-button>
               </div>
-              <el-table :data="detailData.fieldRelations" stripe size="small" v-loading="detailData.fieldRelationsLoading">
+              <el-table :data="detailData.fieldRelations" stripe size="small" highlight-current-row v-loading="detailData.fieldRelationsLoading">
                 <el-table-column prop="id" label="ID" width="60" />
                 <el-table-column prop="source_model_display" label="源模型" width="140" />
                 <el-table-column prop="source_field_display" label="源字段" width="140" />
@@ -255,7 +267,7 @@
       </el-form>
       <template #footer>
         <el-button @click="groupDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveGroup">确定</el-button>
+        <el-button type="primary" :loading="groupSaving" @click="handleSaveGroup">确定</el-button>
       </template>
     </el-dialog>
 
@@ -276,7 +288,7 @@
       </el-form>
       <template #footer>
         <el-button @click="modelDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveModel">确定</el-button>
+        <el-button type="primary" :loading="modelSaving" @click="handleSaveModel">确定</el-button>
       </template>
     </el-dialog>
 
@@ -291,7 +303,7 @@
       </el-form>
       <template #footer>
         <el-button @click="moveGroupDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleMoveGroup">确定</el-button>
+        <el-button type="primary" :loading="moveGroupSaving" @click="handleMoveGroup">确定</el-button>
       </template>
     </el-dialog>
 
@@ -302,7 +314,7 @@
       </el-form>
       <template #footer>
         <el-button @click="fieldGroupDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveFieldGroup">确定</el-button>
+        <el-button type="primary" :loading="fieldGroupSaving" @click="handleSaveFieldGroup">确定</el-button>
       </template>
     </el-dialog>
 
@@ -331,7 +343,7 @@
       </el-form>
       <template #footer>
         <el-button @click="fieldDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveField">确定</el-button>
+        <el-button type="primary" :loading="fieldSaving" @click="handleSaveField">确定</el-button>
       </template>
     </el-dialog>
 
@@ -347,7 +359,7 @@
       </el-form>
       <template #footer>
         <el-button @click="uniqueDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveUnique">确定</el-button>
+        <el-button type="primary" :loading="uniqueSaving" @click="handleSaveUnique">确定</el-button>
       </template>
     </el-dialog>
 
@@ -373,7 +385,7 @@
       </el-form>
       <template #footer>
         <el-button @click="relationDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveRelation">确定</el-button>
+        <el-button type="primary" :loading="relationSaving" @click="handleSaveRelation">确定</el-button>
       </template>
     </el-dialog>
 
@@ -392,7 +404,7 @@
       </el-form>
       <template #footer>
         <el-button @click="rtDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleRtSave">确定</el-button>
+        <el-button type="primary" :loading="rtSaving" @click="handleRtSave">确定</el-button>
       </template>
     </el-dialog>
 
@@ -420,7 +432,7 @@
       </el-form>
       <template #footer>
         <el-button @click="fieldRelDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveFieldRel">确定</el-button>
+        <el-button type="primary" :loading="fieldRelSaving" @click="handleSaveFieldRel">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -440,6 +452,17 @@ import { listModelFieldUnique, createModelFieldUnique, deleteModelFieldUnique } 
 import { listModelFieldRelation, createModelFieldRelation, deleteModelFieldRelation } from '../../api/modelFieldRelation'
 
 const fieldTypes = ['string', 'number', 'bool', 'date', 'datetime', 'json', 'enum']
+
+// ===== 提交按钮 Loading 状态 =====
+const groupSaving = ref(false)
+const modelSaving = ref(false)
+const moveGroupSaving = ref(false)
+const fieldGroupSaving = ref(false)
+const fieldSaving = ref(false)
+const uniqueSaving = ref(false)
+const relationSaving = ref(false)
+const rtSaving = ref(false)
+const fieldRelSaving = ref(false)
 
 // ===== 分组 =====
 const groups = ref([])
@@ -471,14 +494,19 @@ const showGroupDialog = (group) => {
 }
 
 const handleSaveGroup = async () => {
-  if (editingGroup.value) {
-    await patchModelGroup(editingGroup.value.id, { name: groupForm.value.name, description: groupForm.value.description })
-  } else {
-    await createModelGroup(groupForm.value)
+  groupSaving.value = true
+  try {
+    if (editingGroup.value) {
+      await patchModelGroup(editingGroup.value.id, { name: groupForm.value.name, description: groupForm.value.description })
+    } else {
+      await createModelGroup(groupForm.value)
+    }
+    groupDialogVisible.value = false
+    ElMessage.success('操作成功')
+    loadGroups()
+  } finally {
+    groupSaving.value = false
   }
-  groupDialogVisible.value = false
-  ElMessage.success('操作成功')
-  loadGroups()
 }
 
 const handleDeleteGroup = async (group) => {
@@ -540,15 +568,20 @@ const showModelDialog = (row) => {
 }
 
 const handleSaveModel = async () => {
-  if (editingModel.value) {
-    await updateModel(editingModel.value.id, { name: modelForm.value.name, description: modelForm.value.description, is_usable: modelForm.value.is_usable, icon: modelForm.value.icon, order: modelForm.value.order })
-  } else {
-    await createModel(modelForm.value)
+  modelSaving.value = true
+  try {
+    if (editingModel.value) {
+      await updateModel(editingModel.value.id, { name: modelForm.value.name, description: modelForm.value.description, is_usable: modelForm.value.is_usable, icon: modelForm.value.icon, order: modelForm.value.order })
+    } else {
+      await createModel(modelForm.value)
+    }
+    modelDialogVisible.value = false
+    ElMessage.success('操作成功')
+    loadModels()
+    loadUngroupedCount()
+  } finally {
+    modelSaving.value = false
   }
-  modelDialogVisible.value = false
-  ElMessage.success('操作成功')
-  loadModels()
-  loadUngroupedCount()
 }
 
 const handleDeleteModel = async (row) => {
@@ -573,11 +606,16 @@ const showMoveGroupDialog = (row) => {
 
 const handleMoveGroup = async () => {
   if (!moveTargetModel.value || !moveToGroupId.value) return
-  await patchModelGroupId(moveTargetModel.value.id, { group_id: moveToGroupId.value })
-  moveGroupDialogVisible.value = false
-  ElMessage.success('移动成功')
-  loadModels()
-  loadUngroupedCount()
+  moveGroupSaving.value = true
+  try {
+    await patchModelGroupId(moveTargetModel.value.id, { group_id: moveToGroupId.value })
+    moveGroupDialogVisible.value = false
+    ElMessage.success('移动成功')
+    loadModels()
+    loadUngroupedCount()
+  } finally {
+    moveGroupSaving.value = false
+  }
 }
 
 // ===== 模型详情展开 =====
@@ -677,14 +715,19 @@ const showFieldGroupDialog = (group) => {
 }
 
 const handleSaveFieldGroup = async () => {
-  if (editingFieldGroup.value) {
-    await updateModelFieldGroup(editingFieldGroup.value.id, { name: fieldGroupForm.value.name })
-  } else {
-    await createModelFieldGroup({ model_id: expandedModelId.value, name: fieldGroupForm.value.name })
+  fieldGroupSaving.value = true
+  try {
+    if (editingFieldGroup.value) {
+      await updateModelFieldGroup(editingFieldGroup.value.id, { name: fieldGroupForm.value.name })
+    } else {
+      await createModelFieldGroup({ model_id: expandedModelId.value, name: fieldGroupForm.value.name })
+    }
+    fieldGroupDialogVisible.value = false
+    ElMessage.success('操作成功')
+    loadDetail(expandedModelId.value)
+  } finally {
+    fieldGroupSaving.value = false
   }
-  fieldGroupDialogVisible.value = false
-  ElMessage.success('操作成功')
-  loadDetail(expandedModelId.value)
 }
 
 const handleDeleteFieldGroup = async (group) => {
@@ -709,14 +752,19 @@ const showFieldDialog = (field) => {
 }
 
 const handleSaveField = async () => {
-  if (editingField.value) {
-    await updateModelField(editingField.value.id, { field_group_id: fieldForm.value.field_group_id, name: fieldForm.value.name, is_required: fieldForm.value.is_required, is_indexed: fieldForm.value.is_indexed, order: fieldForm.value.order })
-  } else {
-    await createModelField({ ...fieldForm.value, model_id: expandedModelId.value })
+  fieldSaving.value = true
+  try {
+    if (editingField.value) {
+      await updateModelField(editingField.value.id, { field_group_id: fieldForm.value.field_group_id, name: fieldForm.value.name, is_required: fieldForm.value.is_required, is_indexed: fieldForm.value.is_indexed, order: fieldForm.value.order })
+    } else {
+      await createModelField({ ...fieldForm.value, model_id: expandedModelId.value })
+    }
+    fieldDialogVisible.value = false
+    ElMessage.success('操作成功')
+    loadDetail(expandedModelId.value)
+  } finally {
+    fieldSaving.value = false
   }
-  fieldDialogVisible.value = false
-  ElMessage.success('操作成功')
-  loadDetail(expandedModelId.value)
 }
 
 const handleDeleteField = async (field) => {
@@ -736,10 +784,15 @@ const showUniqueDialog = () => {
 }
 
 const handleSaveUnique = async () => {
-  await createModelFieldUnique({ model_id: expandedModelId.value, fields: uniqueForm.value.fields.join(','), description: uniqueForm.value.description })
-  uniqueDialogVisible.value = false
-  ElMessage.success('创建成功')
-  loadDetail(expandedModelId.value)
+  uniqueSaving.value = true
+  try {
+    await createModelFieldUnique({ model_id: expandedModelId.value, fields: uniqueForm.value.fields.join(','), description: uniqueForm.value.description })
+    uniqueDialogVisible.value = false
+    ElMessage.success('创建成功')
+    loadDetail(expandedModelId.value)
+  } finally {
+    uniqueSaving.value = false
+  }
 }
 
 const handleDeleteUnique = async (row) => {
@@ -775,10 +828,15 @@ const showRelationDialog = () => {
 }
 
 const handleSaveRelation = async () => {
-  await createModelRelation(relationForm.value)
-  relationDialogVisible.value = false
-  ElMessage.success('创建成功')
-  loadRelations(expandedModelId.value)
+  relationSaving.value = true
+  try {
+    await createModelRelation(relationForm.value)
+    relationDialogVisible.value = false
+    ElMessage.success('创建成功')
+    loadRelations(expandedModelId.value)
+  } finally {
+    relationSaving.value = false
+  }
 }
 
 const handleDeleteRelation = async (row) => {
@@ -800,14 +858,19 @@ const showRtDialog = (row) => {
 }
 
 const handleRtSave = async () => {
-  if (rtEditing.value) {
-    await updateModelRelationType(rtEditing.value.id, rtForm.value)
-  } else {
-    await createModelRelationType(rtForm.value)
+  rtSaving.value = true
+  try {
+    if (rtEditing.value) {
+      await updateModelRelationType(rtEditing.value.id, rtForm.value)
+    } else {
+      await createModelRelationType(rtForm.value)
+    }
+    rtDialogVisible.value = false
+    ElMessage.success('操作成功')
+    loadRelationOptions()
+  } finally {
+    rtSaving.value = false
   }
-  rtDialogVisible.value = false
-  ElMessage.success('操作成功')
-  loadRelationOptions()
 }
 
 const handleRtDelete = async (row) => {
@@ -856,15 +919,20 @@ const handleSaveFieldRel = async () => {
     ElMessage.warning('请填写所有必填项')
     return
   }
-  await createModelFieldRelation({
-    source_model_id: expandedModelId.value,
-    target_model_id: f.target_model_id,
-    source_field_id: f.source_field_id,
-    target_field_id: f.target_field_id,
-  })
-  fieldRelDialogVisible.value = false
-  ElMessage.success('创建成功')
-  loadFieldRelations(expandedModelId.value)
+  fieldRelSaving.value = true
+  try {
+    await createModelFieldRelation({
+      source_model_id: expandedModelId.value,
+      target_model_id: f.target_model_id,
+      source_field_id: f.source_field_id,
+      target_field_id: f.target_field_id,
+    })
+    fieldRelDialogVisible.value = false
+    ElMessage.success('创建成功')
+    loadFieldRelations(expandedModelId.value)
+  } finally {
+    fieldRelSaving.value = false
+  }
 }
 
 const handleDeleteFieldRel = async (row) => {

@@ -26,7 +26,12 @@
       <el-button @click="resetFilter">重置</el-button>
     </div>
 
-    <el-table :data="list" stripe v-loading="loading" style="margin-top: 12px" row-key="id">
+    <el-skeleton :loading="loading" animated :count="8">
+      <template #template>
+        <div style="padding: 12px 0"><el-skeleton-item v-for="i in 8" :key="i" variant="text" style="height: 36px; margin-bottom: 6px" /></div>
+      </template>
+      <template #default>
+    <el-table :data="list" stripe highlight-current-row style="margin-top: 12px" row-key="id">
       <el-table-column type="expand">
         <template #default="{ row }">
           <div class="expand-content">
@@ -65,6 +70,8 @@
       </el-table-column>
       <el-table-column prop="created_at" label="时间" width="170" />
     </el-table>
+      </template>
+    </el-skeleton>
 
     <div class="pagination-wrap">
       <el-pagination
@@ -236,6 +243,6 @@ onMounted(loadData)
   overflow-x: auto;
   max-height: 400px;
   margin: 0;
-  font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
 }
 </style>

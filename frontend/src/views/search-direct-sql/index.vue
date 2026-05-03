@@ -9,19 +9,31 @@
           </el-button>
         </div>
       </template>
-      <el-table :data="list" stripe v-loading="loading">
-        <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="name" label="名称" width="160" />
-        <el-table-column prop="sql" label="SQL 语句" show-overflow-tooltip />
-        <el-table-column prop="created_at" label="创建时间" width="170" />
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="success" @click="handleExecute(row)">执行</el-button>
-            <el-button link type="primary" @click="showDialog(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <el-skeleton :loading="loading" animated :count="5">
+        <template #template>
+          <div style="padding: 12px 0"><el-skeleton-item v-for="i in 5" :key="i" variant="text" style="height: 36px; margin-bottom: 6px" /></div>
+        </template>
+        <template #default>
+          <el-table :data="list" stripe highlight-current-row>
+            <el-table-column prop="id" label="ID" width="60" />
+            <el-table-column prop="name" label="名称" width="160" />
+            <el-table-column prop="sql" label="SQL 语句" show-overflow-tooltip />
+            <el-table-column prop="created_at" label="创建时间" width="170" />
+            <el-table-column label="操作" width="200" fixed="right">
+              <template #default="{ row }">
+                <el-button link type="success" @click="handleExecute(row)">执行</el-button>
+                <el-button link type="primary" @click="showDialog(row)">编辑</el-button>
+                <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+              </template>
+            </el-table-column>
+            <template #empty>
+              <el-empty description="暂无 SQL 查询">
+                <el-button type="primary" @click="showDialog()">创建第一个查询</el-button>
+              </el-empty>
+            </template>
+          </el-table>
+        </template>
+      </el-skeleton>
     </el-card>
 
     <el-card v-if="queryResult !== null" class="result-card">
@@ -32,7 +44,7 @@
         </div>
       </template>
       <div class="result-table-wrap">
-        <el-table :data="queryResult" stripe max-height="400" v-if="queryResult.length">
+        <el-table :data="queryResult" stripe highlight-current-row max-height="400" v-if="queryResult.length">
           <el-table-column v-for="col in resultColumns" :key="col" :prop="col" :label="col" show-overflow-tooltip min-width="120" />
         </el-table>
         <el-empty v-else description="查询无结果" :image-size="60" />
@@ -45,12 +57,12 @@
           <el-input v-model="form.name" placeholder="查询名称" />
         </el-form-item>
         <el-form-item label="SQL" required>
-          <el-input v-model="form.sql" type="textarea" :rows="8" placeholder="SELECT ..." style="font-family: 'Inter', monospace" />
+          <el-input v-model="form.sql" type="textarea" :rows="8" placeholder="SELECT ..." class="sql-textarea" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">确定</el-button>
+        <el-button type="primary" :loading="saveLoading" @click="handleSave">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -68,6 +80,7 @@ const dialogVisible = ref(false)
 const editing = ref(null)
 const form = ref({ name: '', sql: '' })
 const queryResult = ref(null)
+const saveLoading = ref(false)
 
 const resultColumns = computed(() => {
   if (!queryResult.value?.length) return []
@@ -91,14 +104,21 @@ const showDialog = (row) => {
 }
 
 const handleSave = async () => {
-  if (editing.value) {
-    await updateSearchDirectSql(editing.value.id, form.value)
-  } else {
-    await createSearchDirectSql(form.value)
+  saveLoading.value = true
+  try {
+    if (editing.value) {
+      await updateSearchDirectSql(editing.value.id, form.value)
+    } else {
+      await createSearchDirectSql(form.value)
+    }
+    dialogVisible.value = false
+    ElMessage.success('操作成功')
+    loadData()
+  } catch {
+    // error shown by interceptor
+  } finally {
+    saveLoading.value = false
   }
-  dialogVisible.value = false
-  ElMessage.success('操作成功')
-  loadData()
 }
 
 const handleExecute = async (row) => {
@@ -145,5 +165,11 @@ onMounted(loadData)
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.sql-textarea :deep(textarea) {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
 }
 </style>

@@ -68,20 +68,32 @@
       <!-- 全文检索结果 -->
       <template v-if="activeTab === 'fulltext' && (ft.results.length > 0 || ft.loading)">
         <div class="result-count" v-if="ft.count > 0">找到 <strong>{{ ft.count }}</strong> 条结果</div>
-        <el-table :data="ft.results" stripe v-loading="ft.loading" size="small">
-          <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="model_name" label="模型" width="120">
-            <template #default="{ row }"><el-tag size="small">{{ row.model_name }}</el-tag></template>
-          </el-table-column>
-          <el-table-column prop="model_alias" label="别名" width="100" />
-          <el-table-column label="数据" min-width="300">
-            <template #default="{ row }">
-              <span v-for="(v, k) in (row.data || {})" :key="k" class="data-tag">
-                <strong>{{ k }}:</strong> {{ v }}
-              </span>
-            </template>
-          </el-table-column>
-        </el-table>
+        <el-skeleton :loading="ft.loading" animated :rows="5">
+          <template #template>
+            <div style="padding: 8px 0;">
+              <el-skeleton-item v-for="i in 5" :key="i" variant="text" style="display: block; width: 100%; height: 40px; margin-bottom: 6px;" />
+            </div>
+          </template>
+          <template #default>
+            <el-table :data="ft.results" stripe size="small" highlight-current-row>
+              <el-table-column prop="id" label="ID" width="80" />
+              <el-table-column prop="model_name" label="模型" width="120">
+                <template #default="{ row }"><el-tag size="small">{{ row.model_name }}</el-tag></template>
+              </el-table-column>
+              <el-table-column prop="model_alias" label="别名" width="100" />
+              <el-table-column label="数据" min-width="300">
+                <template #default="{ row }">
+                  <span v-for="(v, k) in (row.data || {})" :key="k" class="data-tag">
+                    <strong>{{ k }}:</strong> {{ v }}
+                  </span>
+                </template>
+              </el-table-column>
+              <template #empty>
+                <el-empty description="输入关键词或选择模型开始搜索" />
+              </template>
+            </el-table>
+          </template>
+        </el-skeleton>
         <div v-if="ft.count > 0" class="pagination-wrap">
           <el-pagination
             v-model:current-page="ft.page"
@@ -126,16 +138,28 @@
           </div>
         </div>
         <div class="result-count" v-if="inst.count > 0">找到 <strong>{{ inst.count }}</strong> 条实例</div>
-        <el-table :data="inst.results" stripe v-loading="inst.loading" size="small">
-          <el-table-column
-            v-for="col in inst.columns"
-            :key="col"
-            :prop="col"
-            :label="inst.columnLabelMap[col] || col"
-            :min-width="calcColWidth(inst.columnLabelMap[col] || col)"
-            show-overflow-tooltip
-          />
-        </el-table>
+        <el-skeleton :loading="inst.loading" animated :rows="5">
+          <template #template>
+            <div style="padding: 8px 0;">
+              <el-skeleton-item v-for="i in 5" :key="i" variant="text" style="display: block; width: 100%; height: 40px; margin-bottom: 6px;" />
+            </div>
+          </template>
+          <template #default>
+            <el-table :data="inst.results" stripe size="small" highlight-current-row>
+              <el-table-column
+                v-for="col in inst.columns"
+                :key="col"
+                :prop="col"
+                :label="inst.columnLabelMap[col] || col"
+                :min-width="calcColWidth(inst.columnLabelMap[col] || col)"
+                show-overflow-tooltip
+              />
+              <template #empty>
+                <el-empty description="选择模型并设置条件后点击搜索" />
+              </template>
+            </el-table>
+          </template>
+        </el-skeleton>
         <div v-if="inst.count > 0" class="pagination-wrap">
           <el-pagination
             v-model:current-page="inst.page"
@@ -172,12 +196,18 @@
               <!-- 字段表内联展开（按分组） -->
               <div v-if="expandedModelId === m.id" class="fields-inline">
                 <template v-if="modelFieldsCache[m.id]?.loading">
-                  <div class="fields-loading">加载中...</div>
+                  <el-skeleton :rows="5" animated>
+                    <template #template>
+                      <div style="padding: 8px 0;">
+                        <el-skeleton-item v-for="i in 5" :key="i" variant="text" style="display: block; width: 100%; height: 40px; margin-bottom: 6px;" />
+                      </div>
+                    </template>
+                  </el-skeleton>
                 </template>
                 <template v-else-if="modelFieldsCache[m.id]?.fieldGroups?.length">
                   <div v-for="group in modelFieldsCache[m.id].fieldGroups" :key="group.name" class="field-group">
                     <div class="field-group-title">{{ group.name || '未分组' }}</div>
-                    <el-table :data="group.fields" stripe size="small" :show-header="group._showHeader">
+                    <el-table :data="group.fields" stripe size="small" :show-header="group._showHeader" highlight-current-row>
                       <el-table-column prop="alias" label="别名" width="150">
                         <template #default="{ row }">
                           <span>{{ row.alias }}</span>
@@ -198,6 +228,9 @@
                         </template>
                       </el-table-column>
                       <el-table-column prop="order" label="排序" width="80" align="center" />
+                      <template #empty>
+                        <el-empty description="暂无字段数据" />
+                      </template>
                     </el-table>
                   </div>
                 </template>

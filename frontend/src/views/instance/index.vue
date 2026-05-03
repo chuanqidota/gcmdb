@@ -67,7 +67,20 @@
             <el-button type="primary" size="small" @click="loadInstances">搜索</el-button>
           </div>
 
-          <el-table :data="instances" stripe v-loading="loading" @selection-change="onSelectionChange" @expand-change="onExpandChange" style="margin-top: 12px" row-key="id">
+          <el-skeleton :loading="loading" animated :rows="5" :throttle="{ leading: 300, trailing: 200 }">
+            <template #template>
+              <el-skeleton-item variant="text" style="width: 30%; margin-bottom: 12px" />
+              <div v-for="i in 5" :key="i" style="display: flex; gap: 12px; margin-bottom: 16px">
+                <el-skeleton-item variant="text" style="width: 5%" />
+                <el-skeleton-item variant="text" style="width: 8%" />
+                <el-skeleton-item variant="text" style="width: 20%" />
+                <el-skeleton-item variant="text" style="width: 20%" />
+                <el-skeleton-item variant="text" style="width: 20%" />
+                <el-skeleton-item variant="text" style="width: 15%" />
+              </div>
+            </template>
+            <template #default>
+          <el-table :data="instances" stripe v-loading="loading" highlight-current-row @selection-change="onSelectionChange" @expand-change="onExpandChange" style="margin-top: 12px" row-key="id">
             <el-table-column type="expand" width="45">
               <template #default="{ row }">
                 <div class="relation-panel" v-loading="relationCache[row.id]?.loading">
@@ -98,6 +111,7 @@
                           :data="getPaginatedInstances(row.id, g.model_id)"
                           size="small"
                           stripe
+                          highlight-current-row
                           row-key="id"
                           v-loading="relationCache[row.id]?.tabData?.[g.model_id]?.loading"
                         >
@@ -167,7 +181,12 @@
                 <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
               </template>
             </el-table-column>
+            <template #empty>
+              <el-empty description="暂无实例数据，请先选择一个模型" />
+            </template>
           </el-table>
+            </template>
+          </el-skeleton>
           <div class="pagination-wrap">
             <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @change="loadInstances" />
           </div>
@@ -212,7 +231,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">确定</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -247,6 +266,7 @@ const selectedIds = ref([])
 const dialogVisible = ref(false)
 const editingInstance = ref(null)
 const instanceForm = ref({})
+const saving = ref(false)
 
 // ===== 实例关系 =====
 // relationCache[instanceId] = { groups, loading, activeTab, tabData: { [modelId]: { fields, instances, loading, page, selectedIds } } }
@@ -324,6 +344,7 @@ const showEditDialog = (row) => {
 }
 
 const handleSave = async () => {
+  saving.value = true
   try {
     if (editingInstance.value) {
       await updateInstance(editingInstance.value.id, { data: instanceForm.value })
@@ -335,6 +356,8 @@ const handleSave = async () => {
     loadInstances()
   } catch {
     // error shown by interceptor
+  } finally {
+    saving.value = false
   }
 }
 
