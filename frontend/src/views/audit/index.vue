@@ -89,6 +89,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { listAuditLog } from '../../api/audit'
+import { formatJson } from '../../utils/format'
 
 const categoryMap = {
   '模型配置': ['model_group', 'model', 'model_field_group', 'model_field', 'model_field_unique', 'model_field_relation', 'model_relation_type', 'model_relation'],
@@ -130,14 +131,6 @@ const actionTagType = (action) => {
   if (action === 'delete') return 'danger'
   if (action === 'update') return 'warning'
   return 'info'
-}
-
-const formatJson = (str) => {
-  try {
-    return JSON.stringify(JSON.parse(str), null, 2)
-  } catch {
-    return str
-  }
 }
 
 const onCategoryChange = () => {

@@ -19,31 +19,10 @@ type instanceRelation struct {
 
 var InstanceRelation = new(instanceRelation)
 
-// CreateModelFieldRelation
-//
-//	@Description: 创建模型字段关联-维护实例关系
-//	@receiver f
-func (f *instanceRelation) CreateModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId uint) error {
-	modelFields := make([]models.ModelField, 0)
-	if err := database.DB.Model(&models.ModelField{}).
-		Where("id in ?", []uint{sourceFieldId, targetFieldId}).
-		Scan(&modelFields).Error; err != nil {
-		return fmt.Errorf("查询出错-%s", err.Error())
-	}
-	fieldId2Alias := make(map[uint]string)
-	for _, modelField := range modelFields {
-		fieldId2Alias[modelField.ID] = modelField.Alias
-	}
-
-	sourceField, ok := fieldId2Alias[sourceFieldId]
-	if !ok {
-		return fmt.Errorf("没有找到源字段ID对应的别名")
-	}
-	targetField, ok := fieldId2Alias[targetFieldId]
-	if !ok {
-		return fmt.Errorf("没有找到目标字段ID对应的别名")
-	}
-
+// findMatchingRelations 查询通过字段值匹配的实例关系
+// baseOnly=true: 只查询两端模型匹配的关系
+// baseOnly=false: 额外限定 instanceId 必须参与
+func (f *instanceRelation) findMatchingRelations(sourceField, targetField string, sourceModelId, targetModelId uint, instanceId uint, baseOnly bool) ([]models.InstanceRelation, error) {
 	sql := `SELECT
 				instance1.model_id as source_model_id,
 				instance2.model_id as target_model_id,
@@ -59,10 +38,31 @@ func (f *instanceRelation) CreateModelFieldRelation(sourceModelId, targetModelId
 				instance1.model_id = ?
 			AND
 				instance2.model_id = ?`
-
+	args := []any{sourceField, targetField, sourceModelId, targetModelId}
+	if !baseOnly {
+		sql += "\n\t\t\tAND\n\t\t\t\t(instance1.id = ? OR instance2.id = ?)"
+		args = append(args, instanceId, instanceId)
+	}
 	instanceRelations := make([]models.InstanceRelation, 0)
-	if err := database.DB.Raw(sql, sourceField, targetField, sourceModelId, targetModelId).Scan(&instanceRelations).Error; err != nil {
-		return fmt.Errorf("查询失败-%s", err.Error())
+	if err := database.DB.Raw(sql, args...).Scan(&instanceRelations).Error; err != nil {
+		return nil, fmt.Errorf("查询失败-%s", err.Error())
+	}
+	return instanceRelations, nil
+}
+
+// CreateModelFieldRelation
+//
+//	@Description: 创建模型字段关联-维护实例关系
+//	@receiver f
+func (f *instanceRelation) CreateModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId uint) error {
+	sourceField, targetField, err := f.lookupFieldAliases(sourceFieldId, targetFieldId)
+	if err != nil {
+		return err
+	}
+
+	instanceRelations, err := f.findMatchingRelations(sourceField, targetField, sourceModelId, targetModelId, 0, true)
+	if err != nil {
+		return err
 	}
 	if len(instanceRelations) == 0 {
 		return nil
@@ -80,57 +80,47 @@ func (f *instanceRelation) CreateModelFieldRelation(sourceModelId, targetModelId
 //	@Description: 删除模型字段关联-维护实例关系
 //	@receiver f
 func (f *instanceRelation) DeleteModelFieldRelation(sourceModelId, targetModelId, sourceFieldId, targetFieldId uint) error {
-	modelFields := make([]models.ModelField, 0)
-	if err := database.DB.Model(&models.ModelField{}).
-		Where("id in ?", []uint{sourceFieldId, targetFieldId}).
-		Scan(&modelFields).Error; err != nil {
-		return fmt.Errorf("查询出错-%s", err.Error())
-	}
-	fieldId2Alias := make(map[uint]string)
-	for _, modelField := range modelFields {
-		fieldId2Alias[modelField.ID] = modelField.Alias
+	sourceField, targetField, err := f.lookupFieldAliases(sourceFieldId, targetFieldId)
+	if err != nil {
+		return err
 	}
 
-	sourceField, ok := fieldId2Alias[sourceFieldId]
-	if !ok {
-		return fmt.Errorf("没有找到源字段ID对应的别名")
-	}
-	targetField, ok := fieldId2Alias[targetFieldId]
-	if !ok {
-		return fmt.Errorf("没有找到目标字段ID对应的别名")
-	}
-
-	sql := `SELECT
-				instance1.model_id as source_model_id,
-				instance2.model_id as target_model_id,
-				instance1.id as source_id,
-				instance2.id as target_id
-			FROM
-				instance instance1
-			INNER JOIN
-				instance instance2
-			ON
-				JSON_EXTRACT(instance1.data, CONCAT('$.', ?)) = JSON_EXTRACT(instance2.data, CONCAT('$.', ?))
-			WHERE
-				instance1.model_id = ?
-			AND
-				instance2.model_id = ?`
-
-	instanceRelations := make([]models.InstanceRelation, 0)
-	if err := database.DB.Raw(sql, sourceField, targetField, sourceModelId, targetModelId).Scan(&instanceRelations).Error; err != nil {
-		return fmt.Errorf("查询失败-%s", err.Error())
+	instanceRelations, err := f.findMatchingRelations(sourceField, targetField, sourceModelId, targetModelId, 0, true)
+	if err != nil {
+		return err
 	}
 	if len(instanceRelations) == 0 {
 		return nil
 	}
-	// 按源/目标模型ID删除匹配的实例关系
 	if err := database.DB.Model(&models.InstanceRelation{}).
 		Where("source_model_id = ? AND target_model_id = ?", sourceModelId, targetModelId).
 		Delete(&models.InstanceRelation{}).Error; err != nil {
 		return fmt.Errorf("删除失败-%s", err.Error())
 	}
-
 	return nil
+}
+
+// lookupFieldAliases 根据字段ID查询字段别名
+func (f *instanceRelation) lookupFieldAliases(sourceFieldId, targetFieldId uint) (string, string, error) {
+	modelFields := make([]models.ModelField, 0)
+	if err := database.DB.Model(&models.ModelField{}).
+		Where("id in ?", []uint{sourceFieldId, targetFieldId}).
+		Scan(&modelFields).Error; err != nil {
+		return "", "", fmt.Errorf("查询出错-%s", err.Error())
+	}
+	fieldId2Alias := make(map[uint]string)
+	for _, modelField := range modelFields {
+		fieldId2Alias[modelField.ID] = modelField.Alias
+	}
+	sourceField, ok := fieldId2Alias[sourceFieldId]
+	if !ok {
+		return "", "", fmt.Errorf("没有找到源字段ID对应的别名")
+	}
+	targetField, ok := fieldId2Alias[targetFieldId]
+	if !ok {
+		return "", "", fmt.Errorf("没有找到目标字段ID对应的别名")
+	}
+	return sourceField, targetField, nil
 }
 
 // CreateInstance
@@ -141,72 +131,27 @@ func (f *instanceRelation) CreateInstance(ModelId uint, instanceId uint) error {
 	if !config.Conf.Server.AutoRelation {
 		return nil
 	}
-	modelFieldRelations := make([]models.ModelFieldRelation, 0)
-	if err := database.DB.Model(&models.ModelFieldRelation{}).
-		Where(map[string]any{"source_model_id": ModelId}).
-		Scan(&modelFieldRelations).Error; err != nil {
-		return fmt.Errorf("查询出错-%s", err.Error())
+	modelFieldRelations, fieldId2Alias, err := f.loadRelatedFieldRelations(ModelId)
+	if err != nil {
+		return err
 	}
 	if len(modelFieldRelations) == 0 {
 		return nil
 	}
 
-	// 只查询相关模型的字段，而非全表扫描
-	relatedModelIds := make(map[uint]bool)
 	for _, mfr := range modelFieldRelations {
-		relatedModelIds[mfr.SourceModelId] = true
-		relatedModelIds[mfr.TargetModelId] = true
-	}
-	modelIdSlice := make([]uint, 0, len(relatedModelIds))
-	for id := range relatedModelIds {
-		modelIdSlice = append(modelIdSlice, id)
-	}
-
-	modelFields := make([]models.ModelField, 0)
-	if err := database.DB.Model(&models.ModelField{}).
-		Where("model_id in ?", modelIdSlice).
-		Scan(&modelFields).Error; err != nil {
-		return fmt.Errorf("查询出错-%s", err.Error())
-	}
-
-	fieldId2Alias := make(map[uint]string)
-	for _, modelField := range modelFields {
-		fieldId2Alias[modelField.ID] = modelField.Alias
-	}
-
-	for _, modelFieldRelation := range modelFieldRelations {
-		sourceField, ok := fieldId2Alias[modelFieldRelation.SourceFieldId]
+		sourceField, ok := fieldId2Alias[mfr.SourceFieldId]
 		if !ok {
 			continue
 		}
-		targetField, ok := fieldId2Alias[modelFieldRelation.TargetFieldId]
+		targetField, ok := fieldId2Alias[mfr.TargetFieldId]
 		if !ok {
 			continue
 		}
-		sourceModelId := modelFieldRelation.SourceModelId
-		targetModelId := modelFieldRelation.TargetModelId
 
-		sql := `SELECT
-					instance1.model_id as source_model_id,
-					instance2.model_id as target_model_id,
-					instance1.id as source_id,
-					instance2.id as target_id
-				FROM
-					instance instance1
-				INNER JOIN
-					instance instance2
-				ON
-					JSON_EXTRACT(instance1.data, CONCAT('$.', ?)) = JSON_EXTRACT(instance2.data, CONCAT('$.', ?))
-				WHERE
-					instance1.model_id = ?
-				AND
-					instance2.model_id = ?
-				AND
-					(instance1.id = ? OR instance2.id = ?)`
-
-		instanceRelations := make([]models.InstanceRelation, 0)
-		if err := database.DB.Raw(sql, sourceField, targetField, sourceModelId, targetModelId, instanceId, instanceId).Scan(&instanceRelations).Error; err != nil {
-			return fmt.Errorf("查询失败-%s", err.Error())
+		instanceRelations, err := f.findMatchingRelations(sourceField, targetField, mfr.SourceModelId, mfr.TargetModelId, instanceId, false)
+		if err != nil {
+			return err
 		}
 		if len(instanceRelations) == 0 {
 			continue
@@ -255,20 +200,18 @@ func (f *instanceRelation) MulDeleteInstance(ids []uint) error {
 	return nil
 }
 
-// SyncSourceModelInstanceRelation
-//
-//	@Description: 同步指定源模型的实例关系
-//	@receiver f
-func (f *instanceRelation) SyncSourceModelInstanceRelation(modelId uint) error {
-	// 查询模型字段关联
+// loadRelatedFieldRelations 加载模型字段关联及相关字段别名
+func (f *instanceRelation) loadRelatedFieldRelations(modelId uint) ([]models.ModelFieldRelation, map[uint]string, error) {
 	modelFieldRelations := make([]models.ModelFieldRelation, 0)
 	if err := database.DB.Model(&models.ModelFieldRelation{}).
 		Where(map[string]any{"source_model_id": modelId}).
 		Scan(&modelFieldRelations).Error; err != nil {
-		return fmt.Errorf("查询模型字段关联出错")
+		return nil, nil, fmt.Errorf("查询模型字段关联出错")
+	}
+	if len(modelFieldRelations) == 0 {
+		return nil, nil, nil
 	}
 
-	// 只查询相关模型的字段
 	relatedModelIds := make(map[uint]bool)
 	for _, mfr := range modelFieldRelations {
 		relatedModelIds[mfr.SourceModelId] = true
@@ -283,15 +226,26 @@ func (f *instanceRelation) SyncSourceModelInstanceRelation(modelId uint) error {
 	if err := database.DB.Model(&models.ModelField{}).
 		Where("model_id in ?", modelIdSlice).
 		Scan(&modelFields).Error; err != nil {
-		return fmt.Errorf("查询出错-%s", err.Error())
+		return nil, nil, fmt.Errorf("查询出错-%s", err.Error())
 	}
-	// 构建字段id和别名的对应关系
+
 	fieldId2Alias := make(map[uint]string)
 	for _, modelField := range modelFields {
 		fieldId2Alias[modelField.ID] = modelField.Alias
 	}
+	return modelFieldRelations, fieldId2Alias, nil
+}
 
-	// 使用事务：先删除再重建
+// SyncSourceModelInstanceRelation
+//
+//	@Description: 同步指定源模型的实例关系
+//	@receiver f
+func (f *instanceRelation) SyncSourceModelInstanceRelation(modelId uint) error {
+	modelFieldRelations, fieldId2Alias, err := f.loadRelatedFieldRelations(modelId)
+	if err != nil {
+		return err
+	}
+
 	return database.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(&models.InstanceRelation{}).
 			Where(map[string]any{"source_model_id": modelId}).
@@ -299,18 +253,12 @@ func (f *instanceRelation) SyncSourceModelInstanceRelation(modelId uint) error {
 			return fmt.Errorf("删除实例关联出错")
 		}
 
-		// 遍历模型字段关联，查询实例关联
-		for _, modelFieldRelation := range modelFieldRelations {
-			sourceModelId := modelFieldRelation.SourceModelId
-			targetModelId := modelFieldRelation.TargetModelId
-			sourceFieldId := modelFieldRelation.SourceFieldId
-			targetFieldId := modelFieldRelation.TargetFieldId
-
-			sourceField, ok := fieldId2Alias[sourceFieldId]
+		for _, mfr := range modelFieldRelations {
+			sourceField, ok := fieldId2Alias[mfr.SourceFieldId]
 			if !ok {
 				continue
 			}
-			targetField, ok := fieldId2Alias[targetFieldId]
+			targetField, ok := fieldId2Alias[mfr.TargetFieldId]
 			if !ok {
 				continue
 			}
@@ -332,7 +280,7 @@ func (f *instanceRelation) SyncSourceModelInstanceRelation(modelId uint) error {
 						instance2.model_id = ?`
 
 			instanceRelations := make([]models.InstanceRelation, 0)
-			if err := tx.Raw(sql, sourceField, targetField, sourceModelId, targetModelId).Scan(&instanceRelations).Error; err != nil {
+			if err := tx.Raw(sql, sourceField, targetField, mfr.SourceModelId, mfr.TargetModelId).Scan(&instanceRelations).Error; err != nil {
 				logger.Error(fmt.Sprintf("查询失败-%s", err.Error()))
 				continue
 			}

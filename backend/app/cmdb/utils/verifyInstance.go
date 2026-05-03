@@ -12,6 +12,41 @@ import (
 )
 
 var dateRegexp = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+
+// verifyUniqueness 验证实例数据的唯一性约束
+// excludeId: 排除的实例ID（更新时传入当前实例ID，创建时传入0）
+func verifyUniqueness(modelId uint, dataMap map[string]any, excludeId uint) error {
+	modelFieldsUniques := make([]models.ModelFieldUnique, 0)
+	if err := database.DB.Model(&models.ModelFieldUnique{}).
+		Where(map[string]any{"model_id": modelId}).
+		Scan(&modelFieldsUniques).Error; err != nil {
+		return fmt.Errorf("查询失败-%s", err.Error())
+	}
+	for _, modelFieldUnique := range modelFieldsUniques {
+		fields := strings.Split(modelFieldUnique.Fields, ",")
+		conditions := make([]string, 0)
+		_params := make([]any, len(fields))
+		for i, _field := range fields {
+			conditions = append(conditions, fmt.Sprintf("data->'$.%s' = ?", _field))
+			_params[i] = fmt.Sprintf("%v", dataMap[_field])
+		}
+		query := strings.Join(conditions, " AND ")
+		q := database.DB.Model(&models.Instance{}).
+			Where(map[string]any{"model_id": modelId}).
+			Where(query, _params...)
+		if excludeId > 0 {
+			q = q.Not(map[string]any{"id": excludeId})
+		}
+		var count int64
+		if err := q.Count(&count).Error; err != nil {
+			return fmt.Errorf("查询失败-%s", err.Error())
+		}
+		if count > 0 {
+			return fmt.Errorf("字段%s值重复", modelFieldUnique.Fields)
+		}
+	}
+	return nil
+}
 var datetimeRegexp = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$`)
 
 // validateFieldValue 校验字段值是否匹配字段类型
@@ -147,31 +182,8 @@ func (v *verify) VerifyCreateInstance(modelId uint, data datatypes.JSON) (dataty
 	}
 
 	// 验证唯一性
-	modelFieldsUniques := make([]models.ModelFieldUnique, 0)
-	if err := database.DB.Model(&models.ModelFieldUnique{}).
-		Where(map[string]any{"model_id": modelId}).
-		Scan(&modelFieldsUniques).Error; err != nil {
-		return nil, fmt.Errorf("查询失败-%s", err.Error())
-	}
-	for _, modelFieldUnique := range modelFieldsUniques {
-		fields := strings.Split(modelFieldUnique.Fields, ",") // 获取字段
-		conditions := make([]string, 0)
-		_params := make([]any, len(fields))
-		for i, _field := range fields {
-			conditions = append(conditions, fmt.Sprintf("data->'$.%s' = ?", _field))
-			_params[i] = fmt.Sprintf("%v", dataMap[_field])
-		}
-		query := strings.Join(conditions, " AND ")
-		var count int64
-		if err := database.DB.Model(&models.Instance{}).
-			Where(map[string]any{"model_id": modelId}).
-			Where(query, _params...).
-			Count(&count).Error; err != nil {
-			return nil, fmt.Errorf("查询失败-%s", err.Error())
-		}
-		if count > 0 {
-			return nil, fmt.Errorf("字段%s值重复", modelFieldUnique.Fields)
-		}
+	if err := verifyUniqueness(modelId, dataMap, 0); err != nil {
+		return nil, err
 	}
 	// 响应数据
 	jsonData, err := json.Marshal(dataMap)
@@ -240,32 +252,8 @@ func (v *verify) VerifyUpdateInstance(id uint, data datatypes.JSON) (datatypes.J
 	}
 
 	// 验证唯一性
-	modelFieldsUniques := make([]models.ModelFieldUnique, 0)
-	if err := database.DB.Model(&models.ModelFieldUnique{}).
-		Where(map[string]any{"model_id": instance.ModelId}).
-		Scan(&modelFieldsUniques).Error; err != nil {
-		return nil, fmt.Errorf("查询失败-%s", err.Error())
-	}
-	for _, modelFieldUnique := range modelFieldsUniques {
-		fields := strings.Split(modelFieldUnique.Fields, ",") // 获取字段
-		conditions := make([]string, 0)
-		_params := make([]any, len(fields))
-		for i, _field := range fields {
-			conditions = append(conditions, fmt.Sprintf("data->'$.%s' = ?", _field))
-			_params[i] = fmt.Sprintf("%v", dataMap[_field])
-		}
-		query := strings.Join(conditions, " AND ")
-		var count int64
-		if err := database.DB.Model(&models.Instance{}).
-			Where(map[string]any{"model_id": instance.ModelId}).
-			Where(query, _params...).
-			Not(map[string]any{"id": id}).
-			Count(&count).Error; err != nil {
-			return nil, fmt.Errorf("查询失败-%s", err.Error())
-		}
-		if count > 0 {
-			return nil, fmt.Errorf("字段%s值重复", modelFieldUnique.Fields)
-		}
+	if err := verifyUniqueness(instance.ModelId, dataMap, id); err != nil {
+		return nil, err
 	}
 	// 响应数据
 	jsonData, err := json.Marshal(dataMap)
