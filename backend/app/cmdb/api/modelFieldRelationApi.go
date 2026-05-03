@@ -77,7 +77,7 @@ func (m *modelFieldRelation) ListModelFieldRelation(c *gin.Context) {
 	sourceModelId := c.Param("source_model_id")
 	var modelFieldRelations []models.ModelFieldRelation
 	if err := database.DB.Model(&models.ModelFieldRelation{}).
-		Where(map[string]any{"source_model_id": sourceModelId}).
+		Where("source_model_id = ? OR target_model_id = ?", sourceModelId, sourceModelId).
 		Scan(&modelFieldRelations).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return

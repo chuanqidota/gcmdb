@@ -213,6 +213,27 @@
                 </el-table-column>
               </el-table>
             </el-tab-pane>
+
+            <!-- 字段关联 Tab -->
+            <el-tab-pane label="字段关联" name="fieldRelations">
+              <div class="card-header section-header">
+                <span>字段关联</span>
+                <el-button size="small" type="primary" @click="showFieldRelDialog()"><el-icon><Plus /></el-icon>新增关联</el-button>
+              </div>
+              <el-table :data="detailData.fieldRelations" stripe size="small" v-loading="detailData.fieldRelationsLoading">
+                <el-table-column prop="id" label="ID" width="60" />
+                <el-table-column prop="source_model_display" label="源模型" width="140" />
+                <el-table-column prop="source_field_display" label="源字段" width="140" />
+                <el-table-column prop="target_model_display" label="目标模型" width="140" />
+                <el-table-column prop="target_field_display" label="目标字段" width="140" />
+                <el-table-column label="操作" width="80">
+                  <template #default="{ row }">
+                    <el-button link type="danger" size="small" @click="handleDeleteFieldRel(row)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <el-empty v-if="!detailData.fieldRelationsLoading && !detailData.fieldRelations.length" description="暂无字段关联" :image-size="48" />
+            </el-tab-pane>
           </el-tabs>
         </el-card>
       </el-col>
@@ -367,6 +388,34 @@
         <el-button type="primary" @click="handleRtSave">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 字段关联对话框 -->
+    <el-dialog v-model="fieldRelDialogVisible" title="新增字段关联" width="520px">
+      <el-form :model="fieldRelForm" label-width="70px">
+        <el-form-item label="源模型">
+          <el-input :model-value="`${expandedModel.name} (${expandedModel.alias})`" disabled />
+        </el-form-item>
+        <el-form-item label="源字段" required>
+          <el-select v-model="fieldRelForm.source_field_id" placeholder="选择源字段" style="width: 100%" filterable>
+            <el-option v-for="f in detailData.allFields" :key="f.id" :label="`${f.name} (${f.alias})`" :value="f.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="目标模型" required>
+          <el-select v-model="fieldRelForm.target_model_id" placeholder="选择目标模型" style="width: 100%" filterable @change="onTargetModelChange">
+            <el-option v-for="m in targetModelsForFieldRel" :key="m.id" :label="`${m.name} (${m.alias})`" :value="m.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="目标字段" required>
+          <el-select v-model="fieldRelForm.target_field_id" placeholder="选择目标字段" style="width: 100%" filterable :disabled="!fieldRelForm.target_model_id">
+            <el-option v-for="f in targetModelFields" :key="f.id" :label="`${f.name} (${f.alias})`" :value="f.id" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="fieldRelDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveFieldRel">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -381,6 +430,7 @@ import { listModelRelationType, createModelRelationType, updateModelRelationType
 import { createModelField, updateModelField, deleteModelField } from '../../api/modelField'
 import { createModelFieldGroup, updateModelFieldGroup, deleteModelFieldGroup } from '../../api/modelFieldGroup'
 import { listModelFieldUnique, createModelFieldUnique, deleteModelFieldUnique } from '../../api/modelFieldUnique'
+import { listModelFieldRelation, createModelFieldRelation, deleteModelFieldRelation } from '../../api/modelFieldRelation'
 
 const fieldTypes = ['string', 'number', 'bool', 'date', 'datetime', 'json', 'enum']
 
@@ -535,6 +585,8 @@ const detailData = ref({
   uniques: [],
   relations: [],
   relationsLoading: false,
+  fieldRelations: [],
+  fieldRelationsLoading: false,
 })
 
 const currentFields = computed(() => {
@@ -578,6 +630,8 @@ const loadDetail = async (modelId) => {
   }
   // 加载关系
   loadRelations(modelId)
+  // 加载字段关联
+  loadFieldRelations(modelId)
 }
 
 const loadRelations = async (modelId) => {
@@ -589,6 +643,18 @@ const loadRelations = async (modelId) => {
     detailData.value.relations = []
   } finally {
     detailData.value.relationsLoading = false
+  }
+}
+
+const loadFieldRelations = async (modelId) => {
+  detailData.value.fieldRelationsLoading = true
+  try {
+    const res = await listModelFieldRelation(modelId)
+    detailData.value.fieldRelations = res.data || []
+  } catch {
+    detailData.value.fieldRelations = []
+  } finally {
+    detailData.value.fieldRelationsLoading = false
   }
 }
 
@@ -742,6 +808,63 @@ const handleRtDelete = async (row) => {
   await deleteModelRelationType(row.id)
   ElMessage.success('删除成功')
   loadRelationOptions()
+}
+
+// ===== 字段关联 CRUD =====
+const fieldRelDialogVisible = ref(false)
+const fieldRelForm = ref({ source_field_id: null, target_model_id: null, target_field_id: null })
+const targetModelFields = ref([])
+
+// 目标模型选项：从模型关系中提取已关联的模型
+const targetModelsForFieldRel = computed(() => {
+  const relationTargetIds = new Set((detailData.value.relations || []).map(r => r.target_id))
+  const relationSourceIds = new Set((detailData.value.relations || []).map(r => r.source_id))
+  const relatedIds = new Set([...relationTargetIds, ...relationSourceIds])
+  relatedIds.delete(expandedModelId.value)
+  return allModelsForSelect.value.filter(m => relatedIds.has(m.id))
+})
+
+const onTargetModelChange = async (modelId) => {
+  fieldRelForm.value.target_field_id = null
+  targetModelFields.value = []
+  if (!modelId) return
+  try {
+    const res = await retrieveModel(modelId)
+    const groups = res.data.groups || []
+    targetModelFields.value = groups.flatMap(g => g.fields || [])
+  } catch {
+    targetModelFields.value = []
+  }
+}
+
+const showFieldRelDialog = () => {
+  fieldRelForm.value = { source_field_id: null, target_model_id: null, target_field_id: null }
+  targetModelFields.value = []
+  fieldRelDialogVisible.value = true
+}
+
+const handleSaveFieldRel = async () => {
+  const f = fieldRelForm.value
+  if (!f.source_field_id || !f.target_model_id || !f.target_field_id) {
+    ElMessage.warning('请填写所有必填项')
+    return
+  }
+  await createModelFieldRelation({
+    source_model_id: expandedModelId.value,
+    target_model_id: f.target_model_id,
+    source_field_id: f.source_field_id,
+    target_field_id: f.target_field_id,
+  })
+  fieldRelDialogVisible.value = false
+  ElMessage.success('创建成功')
+  loadFieldRelations(expandedModelId.value)
+}
+
+const handleDeleteFieldRel = async (row) => {
+  await ElMessageBox.confirm('确定删除该字段关联？', '确认删除', { type: 'warning' })
+  await deleteModelFieldRelation(row.id)
+  ElMessage.success('删除成功')
+  loadFieldRelations(expandedModelId.value)
 }
 
 // ===== 初始化 =====
