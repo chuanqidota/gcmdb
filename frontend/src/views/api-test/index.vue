@@ -94,10 +94,15 @@
       <div class="response-section">
         <div class="response-header">
           <span class="panel-title">响应</span>
-          <span v-if="responseStatus !== null" class="response-meta">
-            <el-tag :type="responseStatus === 200 ? 'success' : 'danger'" size="small">{{ responseStatus }}</el-tag>
-            <span class="response-time">{{ responseTime }}ms</span>
-          </span>
+          <div class="response-actions">
+            <span v-if="responseStatus !== null" class="response-meta">
+              <el-tag :type="responseStatus === 200 ? 'success' : 'danger'" size="small">{{ responseStatus }}</el-tag>
+              <span class="response-time">{{ responseTime }}ms</span>
+            </span>
+            <el-button v-if="responseData !== null" size="small" link @click="copyResponse">
+              <el-icon><CopyDocument /></el-icon> 复制
+            </el-button>
+          </div>
         </div>
         <div v-if="responseData === null" class="response-empty">
           点击「发送请求」查看响应结果
@@ -389,6 +394,13 @@ const copyRequest = () => {
   ElMessage.success('已复制到剪贴板')
 }
 
+// ===== 复制响应 =====
+const copyResponse = () => {
+  if (responseData.value === null) return
+  navigator.clipboard.writeText(formatJson(responseData.value))
+  ElMessage.success('已复制到剪贴板')
+}
+
 // ===== 格式化 JSON =====
 const formatJson = (data) => {
   try {
@@ -613,6 +625,12 @@ onMounted(async () => {
 
 .response-header .panel-title {
   padding: 12px 0 8px;
+}
+
+.response-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .response-meta {
