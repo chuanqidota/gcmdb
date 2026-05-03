@@ -44,6 +44,8 @@ docker compose logs -f
 - 后端 API：http://localhost:8080
 - 默认管理员：`admin` / `admin123`
 
+首次启动会自动执行数据库迁移并创建默认管理员账号。
+
 ### 本地开发
 
 **后端：**
@@ -97,15 +99,112 @@ cors:
 token_cache_ttl: 5           # Token 缓存 TTL（分钟）
 ```
 
-Docker 部署时，环境变量会覆盖配置文件（前缀 `GCMDB_`）：
+Docker 部署时，环境变量会覆盖配置文件（前缀 `GCMDB_`，`.` 替换为 `_`）：
 
-| 环境变量 | 对应配置 |
-|----------|----------|
-| `GCMDB_DATABASE_HOST` | `database.host` |
-| `GCMDB_DATABASE_PORT` | `database.port` |
-| `GCMDB_DATABASE_USERNAME` | `database.username` |
-| `GCMDB_DATABASE_PASSWORD` | `database.password` |
-| `GCMDB_DATABASE_NAME` | `database.name` |
+| 环境变量 | 对应配置 | Docker 默认值 |
+|----------|----------|---------------|
+| `GCMDB_SERVER_HOST` | `server.host` | `0.0.0.0` |
+| `GCMDB_SERVER_PORT` | `server.port` | `8080` |
+| `GCMDB_DATABASE_HOST` | `database.host` | `mysql` |
+| `GCMDB_DATABASE_PORT` | `database.port` | `3306` |
+| `GCMDB_DATABASE_USERNAME` | `database.username` | `root` |
+| `GCMDB_DATABASE_PASSWORD` | `database.password` | `root` |
+| `GCMDB_DATABASE_NAME` | `database.name` | `gcmdb` |
+
+## Docker 部署说明
+
+### 架构
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  gcmdb-web  │────▶│    gcmdb    │────▶│    mysql     │
+│  (nginx)    │     │  (Go/Gin)   │     │  (MySQL 8)  │
+│  :80        │     │  :8080      │     │  :3306       │
+└─────────────┘     └─────────────┘     └─────────────┘
+```
+
+- **gcmdb-web**：nginx 提供前端静态文件，反向代理 `/v1/` 和 `/openapi/` 到后端
+- **gcmdb**：Go 后端 API 服务
+- **mysql**：MySQL 8 数据库，首次启动自动初始化
+
+### 环境变量
+
+Docker Compose 通过环境变量覆盖后端配置文件，确保容器间通信正确：
+- `GCMDB_SERVER_HOST=0.0.0.0` — 监听所有网卡（容器间互通）
+- `GCMDB_DATABASE_HOST=mysql` — 使用 Docker 网络中的 MySQL 服务名
+
+### 数据持久化
+
+MySQL 数据通过 Docker volume `mysql_data` 持久化。重置数据：
+
+```bash
+docker compose down -v   # -v 删除数据卷
+docker compose up -d
+```
+
+### Nginx 代理
+
+前端 nginx 使用 Docker 内置 DNS（`resolver 127.0.0.11`）动态解析后端容器地址，后端容器重启后自动更新 IP。
+
+## Kubernetes 部署
+
+推荐使用 Ingress 路由方案，前后端独立部署：
+
+```
+Ingress
+  ├── /v1/, /openapi/  →  gcmdb-backend Service  →  后端 Pod
+  └── /*               →  gcmdb-frontend Service  →  前端 Pod
+```
+
+### 前端
+
+前端 nginx 只负责静态文件服务和 SPA 路由，不需要反向代理：
+
+```nginx
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+```
+
+### Ingress 配置示例
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gcmdb
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /v1/
+        pathType: Prefix
+        backend:
+          service:
+            name: gcmdb-backend
+            port:
+              number: 8080
+      - path: /openapi/
+        pathType: Prefix
+        backend:
+          service:
+            name: gcmdb-backend
+            port:
+              number: 8080
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: gcmdb-frontend
+            port:
+              number: 80
+```
 
 ## 项目结构
 
