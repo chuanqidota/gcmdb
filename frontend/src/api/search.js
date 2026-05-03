@@ -20,3 +20,6 @@ export const getModelRelationTypes = () => openapiRequest.get('/model/relation-t
 
 // 获取所有模型关系
 export const getAllModelRelations = () => openapiRequest.get('/model/relation')
+
+// 获取实例拓扑（上下游关系）
+export const getInstanceTopology = (id, model) => openapiRequest.get('/instance/topology', { params: { id, model } })

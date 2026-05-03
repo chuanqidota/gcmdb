@@ -59,12 +59,6 @@
             <template #title>审计日志</template>
           </el-menu-item>
         </el-tooltip>
-        <el-tooltip :disabled="!isCollapsed" content="API 测试" placement="right" :show-after="300">
-          <el-menu-item index="/api-test">
-            <el-icon><Monitor /></el-icon>
-            <template #title>API 测试</template>
-          </el-menu-item>
-        </el-tooltip>
         <el-tooltip v-if="isAdmin" :disabled="!isCollapsed" content="用户管理" placement="right" :show-after="300">
           <el-menu-item index="/user-manage">
             <el-icon><User /></el-icon>
@@ -125,7 +119,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { HomeFilled, Grid, List, Search, Fold, Expand, Share, Document, Notebook, User, Monitor } from '@element-plus/icons-vue'
+import { HomeFilled, Grid, List, Search, Fold, Expand, Share, Document, Notebook, User } from '@element-plus/icons-vue'
 import { getMe, logout, changePassword } from '../api/auth'
 import { useUserStore } from '../stores/user'
 
