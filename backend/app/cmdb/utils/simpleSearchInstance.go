@@ -65,20 +65,38 @@ func SimpleSearchInstance(modelId uint, listInstance params.ListInstance) (*resp
 		return db.Where(strings.Join(conditions, " OR "), _params...)
 	}
 
+	// 检查字段是否已索引
+	isFieldIndexed := func(fieldName string) bool {
+		var count int64
+		database.DB.Model(&models.ModelField{}).
+			Where("model_id = ? AND alias = ? AND is_indexed = ?", modelId, fieldName, true).
+			Count(&count)
+		return count > 0
+	}
+
 	switch {
 	// 只有 field+value+compare
 	case search == "" && field != "" && value != "" && compare != "":
 		if !ValidFieldName(field) {
 			return nil, fmt.Errorf("非法字段名:%s", field)
 		}
-		db = db.Where(fmt.Sprintf("data->>'$.%s' %s ?", field, compare), compareValue)
+		// 精确匹配且字段已索引时，使用 indexed_values 命中索引
+		if compare == "=" && isFieldIndexed(field) {
+			db = db.Where("FIND_IN_SET(?, indexed_values) > 0", value)
+		} else {
+			db = db.Where(fmt.Sprintf("data->>'$.%s' %s ?", field, compare), compareValue)
+		}
 
 	// search + field+value+compare
 	case search != "" && field != "" && value != "" && compare != "":
 		if !ValidFieldName(field) {
 			return nil, fmt.Errorf("非法字段名:%s", field)
 		}
-		db = db.Where(fmt.Sprintf("data->>'$.%s' %s ?", field, compare), compareValue)
+		if compare == "=" && isFieldIndexed(field) {
+			db = db.Where("FIND_IN_SET(?, indexed_values) > 0", value)
+		} else {
+			db = db.Where(fmt.Sprintf("data->>'$.%s' %s ?", field, compare), compareValue)
+		}
 		db = addSearchCondition(db)
 
 	// 只有 search（无 field/value）

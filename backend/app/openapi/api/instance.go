@@ -158,6 +158,46 @@ func (i *instance) InstanceWrite(c *gin.Context) {
 
 	switch action {
 
+	case "fulltext": // 全文检索（POST）
+		var body params.FulltextInstance
+		if err := c.ShouldBindJSON(&body); err != nil {
+			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			return
+		}
+		if body.Search == "" {
+			response.Fail(c, "参数search不能为空")
+			return
+		}
+		if count, result, err := utils.Instance.FulltextInstance(body); err != nil {
+			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+			return
+		} else {
+			response.Success(c, "执行成功", map[string]any{
+				"count":  count,
+				"result": result,
+			})
+		}
+
+	case "search": // 结构化搜索（POST）
+		var body params.SearchInstance
+		if err := c.ShouldBindJSON(&body); err != nil {
+			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			return
+		}
+		if body.Model == "" {
+			response.Fail(c, "参数model不能为空")
+			return
+		}
+		count, results, err := utils.Instance.SearchInstance(body)
+		if err != nil {
+			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+			return
+		}
+		response.Success(c, "执行成功", map[string]any{
+			"count":   count,
+			"results": results,
+		})
+
 	case "create": // 创建
 		var createBody params.CreateInstance
 		if err := c.ShouldBindJSON(&createBody); err != nil {

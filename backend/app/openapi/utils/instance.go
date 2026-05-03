@@ -48,8 +48,9 @@ func (i *instance) CreateInstance(modelAlias string, data datatypes.JSON) error 
 	}
 	// 创建实例数据
 	createInstance := models.Instance{
-		ModelId: modelId,
-		Data:    verifyData,
+		ModelId:       modelId,
+		Data:          verifyData,
+		IndexedValues: utils.IndexedValues.BuildIndexedValues(modelId, verifyData),
 	}
 
 	if err := database.DB.Model(&models.Instance{}).
@@ -78,9 +79,15 @@ func (i *instance) UpdateInstance(id uint, data datatypes.JSON) error {
 	if err != nil {
 		return fmt.Errorf("参数校验失败:%s", err.Error())
 	}
+	// 查询实例获取 model_id
+	var inst models.Instance
+	database.DB.Model(&models.Instance{}).Where(map[string]any{"id": id}).Select("model_id").Scan(&inst)
 	if err := database.DB.Model(&models.Instance{}).
 		Where(map[string]any{"id": id}).
-		Update("data", verifyData).Error; err != nil {
+		Updates(map[string]any{
+			"data":           verifyData,
+			"indexed_values": utils.IndexedValues.BuildIndexedValues(inst.ModelId, verifyData),
+		}).Error; err != nil {
 		return fmt.Errorf("更新失败-%s", err.Error())
 	}
 	return nil
@@ -286,6 +293,18 @@ func (i *instance) SearchInstance(body params.SearchInstance) (int64, any, error
 	}
 	query := database.DB.Model(&models.Instance{}).Where(map[string]any{"model_id": modelId})
 
+	// 查询已索引的字段集合（缓存，避免重复查询）
+	indexedFieldSet := make(map[string]bool)
+	{
+		var indexedFields []string
+		database.DB.Model(&models.ModelField{}).
+			Where("model_id = ? AND is_indexed = ?", modelId, true).
+			Pluck("alias", &indexedFields)
+		for _, f := range indexedFields {
+			indexedFieldSet[f] = true
+		}
+	}
+
 	// 指定查询字段
 	if len(body.Fields) > 0 {
 		baseCols := map[string]bool{"id": true, "model_id": true}
@@ -356,8 +375,13 @@ func (i *instance) SearchInstance(body params.SearchInstance) (int64, any, error
 						return 0, nil, err
 					}
 					for f, v := range mv {
-						sql, args := jsonExtract(f, compares[action]+" ?", v)
-						query = query.Where(sql, args...)
+						// 精确匹配且字段已索引时，使用 indexed_values 命中索引
+						if action == "eq" && indexedFieldSet[f] {
+							query = query.Where("FIND_IN_SET(?, indexed_values) > 0", v)
+						} else {
+							sql, args := jsonExtract(f, compares[action]+" ?", v)
+							query = query.Where(sql, args...)
+						}
 					}
 				}
 			case action == "in":

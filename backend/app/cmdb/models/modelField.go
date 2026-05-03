@@ -47,6 +47,7 @@ type ModelField struct {
 	Description  string `gorm:"column:description;type:text;comment:描述" json:"description"`
 	Options      string `gorm:"column:options;type:text;comment:枚举选项JSON数组" json:"options"`
 	IsRequired   bool   `gorm:"column:is_required;type:boolean;not null;default:false;comment:是否必填" json:"is_required"`
+	IsIndexed    bool   `gorm:"column:is_indexed;type:boolean;not null;default:false;comment:是否索引" json:"is_indexed"`
 	Order        uint   `gorm:"column:order;type:uint;default:0;comment:排序" json:"order"`
 }
 

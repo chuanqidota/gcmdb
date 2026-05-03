@@ -47,8 +47,9 @@ func (i *instance) CreateInstance(c *gin.Context) {
 	}
 	// 创建实例
 	instance := models.Instance{
-		ModelId: body.ModelId,
-		Data:    verifyData,
+		ModelId:       body.ModelId,
+		Data:          verifyData,
+		IndexedValues: utils.IndexedValues.BuildIndexedValues(body.ModelId, verifyData),
 	}
 	if err := database.DB.Model(&models.Instance{}).
 		Create(&instance).Error; err != nil {
@@ -136,11 +137,15 @@ func (i *instance) UpdateInstance(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("参数错误-%s", err.Error()))
 		return
 	}
+	// 查询实例获取 model_id 用于构建索引值
+	var inst models.Instance
+	database.DB.Model(&models.Instance{}).Where(map[string]any{"id": id}).Select("model_id").Scan(&inst)
 	if err := database.DB.Model(&models.Instance{}).
 		Where(map[string]any{"id": id}).
 		Updates(map[string]any{
-			"updated_at": time.Now(),
-			"data":       verifyData,
+			"updated_at":     time.Now(),
+			"data":           verifyData,
+			"indexed_values": utils.IndexedValues.BuildIndexedValues(inst.ModelId, verifyData),
 		}).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("更新失败-%s", err.Error()))
 		return

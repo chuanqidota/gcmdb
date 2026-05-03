@@ -101,7 +101,10 @@
         <div v-if="inst.modelId" class="condition-builder">
           <div v-for="(c, i) in inst.conditions" :key="i" class="condition-row">
             <el-select v-model="c.field" placeholder="字段" class="cond-field">
-              <el-option v-for="f in inst.fields" :key="f.alias" :label="f.name" :value="f.alias" />
+              <el-option v-for="f in inst.fields" :key="f.alias" :value="f.alias">
+                <span>{{ f.name }}</span>
+                <el-tag v-if="f.is_indexed" size="small" type="primary" style="margin-left: 6px">索引</el-tag>
+              </el-option>
             </el-select>
             <el-select v-model="c.op" class="cond-op">
               <el-option label="=" value="eq" />
@@ -179,6 +182,7 @@
                         <template #default="{ row }">
                           <span>{{ row.alias }}</span>
                           <el-tag v-if="modelFieldsCache[m.id]?.uniqueAliases?.includes(row.alias)" size="small" type="warning" class="unique-tag">唯一</el-tag>
+                          <el-tag v-if="row.is_indexed" size="small" type="primary" class="unique-tag">索引</el-tag>
                         </template>
                       </el-table-column>
                       <el-table-column prop="name" label="名称" width="150" />

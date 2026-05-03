@@ -138,6 +138,12 @@
                         <span v-else>-</span>
                       </template>
                     </el-table-column>
+                    <el-table-column prop="is_indexed" label="索引" width="60" align="center">
+                      <template #default="{ row }">
+                        <el-icon v-if="row.is_indexed" color="var(--color-primary)"><CircleCheckFilled /></el-icon>
+                        <span v-else>-</span>
+                      </template>
+                    </el-table-column>
                     <el-table-column prop="order" label="排序" width="60" />
                     <el-table-column label="操作" width="120" fixed="right">
                       <template #default="{ row }">
@@ -320,6 +326,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="必填"><el-switch v-model="fieldForm.is_required" /></el-form-item>
+        <el-form-item label="索引"><el-switch v-model="fieldForm.is_indexed" /></el-form-item>
         <el-form-item label="排序"><el-input-number v-model="fieldForm.order" :min="0" /></el-form-item>
       </el-form>
       <template #footer>
@@ -691,19 +698,19 @@ const handleDeleteFieldGroup = async (group) => {
 // ===== 字段 CRUD =====
 const fieldDialogVisible = ref(false)
 const editingField = ref(null)
-const fieldForm = ref({ alias: '', name: '', type: 'string', description: '', options: '', is_required: false, order: 0, field_group_id: null })
+const fieldForm = ref({ alias: '', name: '', type: 'string', description: '', options: '', is_required: false, is_indexed: false, order: 0, field_group_id: null })
 
 const showFieldDialog = (field) => {
   editingField.value = field || null
   fieldForm.value = field
-    ? { alias: field.alias, name: field.name, type: field.type, description: field.description || '', options: field.options || '', is_required: field.is_required, order: field.order, field_group_id: field.field_group_id }
-    : { alias: '', name: '', type: 'string', description: '', options: '', is_required: false, order: 0, field_group_id: selectedFieldGroup.value || detailData.value.fieldGroups[0]?.id }
+    ? { alias: field.alias, name: field.name, type: field.type, description: field.description || '', options: field.options || '', is_required: field.is_required, is_indexed: field.is_indexed, order: field.order, field_group_id: field.field_group_id }
+    : { alias: '', name: '', type: 'string', description: '', options: '', is_required: false, is_indexed: false, order: 0, field_group_id: selectedFieldGroup.value || detailData.value.fieldGroups[0]?.id }
   fieldDialogVisible.value = true
 }
 
 const handleSaveField = async () => {
   if (editingField.value) {
-    await updateModelField(editingField.value.id, { field_group_id: fieldForm.value.field_group_id, name: fieldForm.value.name, is_required: fieldForm.value.is_required, order: fieldForm.value.order })
+    await updateModelField(editingField.value.id, { field_group_id: fieldForm.value.field_group_id, name: fieldForm.value.name, is_required: fieldForm.value.is_required, is_indexed: fieldForm.value.is_indexed, order: fieldForm.value.order })
   } else {
     await createModelField({ ...fieldForm.value, model_id: expandedModelId.value })
   }

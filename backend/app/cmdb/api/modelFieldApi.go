@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/app/cmdb/params"
+	cmdbUtils "gcmdb/app/cmdb/utils"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/logger"
 	"gcmdb/pkg/response"
@@ -62,6 +63,7 @@ func (m *modelField) CreateModelField(c *gin.Context) {
 		"name":           body.Name,
 		"type":           body.Type,
 		"is_required":    body.IsRequired,
+		"is_indexed":     body.IsIndexed,
 		"order":          body.Order,
 	}
 	if err := database.DB.Model(&models.ModelField{}).
@@ -121,14 +123,23 @@ func (m *modelField) UpdateModelField(c *gin.Context) {
 		"updated_at":     time.Now(),
 		"field_group_id": body.FieldGroupId,
 		"is_required":    body.IsRequired,
+		"is_indexed":     body.IsIndexed,
 		"name":           body.Name,
 		"order":          body.Order,
 	}
+	// 查询旧的 is_indexed 状态，判断是否需要同步
+	var oldField models.ModelField
+	database.DB.Model(&models.ModelField{}).Where(map[string]any{"id": id}).Select("model_id", "is_indexed").Scan(&oldField)
+
 	if err := database.DB.Model(&models.ModelField{}).
 		Where(map[string]any{"id": id}).
 		Updates(data).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("更新失败-%s", err.Error()))
 		return
+	}
+	// is_indexed 状态变更时，异步刷新该模型所有实例的 indexed_values
+	if oldField.IsIndexed != body.IsIndexed {
+		go cmdbUtils.IndexedValues.SyncModelIndexedValues(oldField.ModelId)
 	}
 	response.Success(c, "更新成功", nil)
 }

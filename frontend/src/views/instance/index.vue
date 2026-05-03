@@ -55,7 +55,10 @@
               <template #prefix><el-icon><Search /></el-icon></template>
             </el-input>
             <el-select v-model="filterField" placeholder="筛选字段" clearable style="width: 140px" size="small">
-              <el-option v-for="f in modelFields" :key="f.alias" :label="f.name" :value="f.alias" />
+              <el-option v-for="f in modelFields" :key="f.alias" :value="f.alias">
+                <span>{{ f.name }}</span>
+                <el-tag v-if="f.is_indexed" size="small" type="primary" style="margin-left: 6px">索引</el-tag>
+              </el-option>
             </el-select>
             <el-select v-model="filterCompare" placeholder="条件" clearable style="width: 90px" size="small">
               <el-option label="等于" value="=" /><el-option label="包含" value="like" /><el-option label="不等于" value="!=" />
