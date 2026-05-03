@@ -3,6 +3,7 @@ package middleware
 import (
 	"gcmdb/app/auth/models"
 	"gcmdb/app/auth/session"
+	"gcmdb/pkg/cache"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
 	"net/http"
@@ -48,14 +49,25 @@ func TokenAuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		// 先查缓存
+		if entry := cache.GetTokenUser(token); entry != nil {
+			c.Set("user_id", entry.UserID)
+			c.Set("username", entry.Username)
+			c.Set("is_admin", entry.IsAdmin)
+			c.Next()
+			return
+		}
+		// 缓存未命中，查库
 		var user models.User
 		if err := database.DB.Where("token = ? AND is_active = ?", token, true).First(&user).Error; err != nil {
 			response.FailWithStatus(c, http.StatusUnauthorized, "无效的 Token")
 			c.Abort()
 			return
 		}
+		cache.SetTokenUser(token, user.ID, user.Username, user.IsAdmin)
 		c.Set("user_id", user.ID)
 		c.Set("username", user.Username)
+		c.Set("is_admin", user.IsAdmin)
 		c.Next()
 	}
 }
@@ -80,12 +92,22 @@ func OpenAPIAuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		// 先查缓存
+		if entry := cache.GetTokenUser(token); entry != nil {
+			c.Set("user_id", entry.UserID)
+			c.Set("username", entry.Username)
+			c.Set("is_admin", entry.IsAdmin)
+			c.Next()
+			return
+		}
+		// 缓存未命中，查库
 		var user models.User
 		if err := database.DB.Where("token = ? AND is_active = ?", token, true).First(&user).Error; err != nil {
 			response.FailWithStatus(c, http.StatusUnauthorized, "无效的 Token")
 			c.Abort()
 			return
 		}
+		cache.SetTokenUser(token, user.ID, user.Username, user.IsAdmin)
 		c.Set("user_id", user.ID)
 		c.Set("username", user.Username)
 		c.Set("is_admin", user.IsAdmin)

@@ -377,7 +377,7 @@ func (i *instance) SearchInstance(body params.SearchInstance) (int64, any, error
 					for f, v := range mv {
 						// 精确匹配且字段已索引时，使用 indexed_values 命中索引
 						if action == "eq" && indexedFieldSet[f] {
-							query = query.Where("FIND_IN_SET(?, indexed_values) > 0", v)
+							query = query.Where("indexed_values LIKE ?", "%,"+fmt.Sprintf("%v", v)+",%")
 						} else {
 							sql, args := jsonExtract(f, compares[action]+" ?", v)
 							query = query.Where(sql, args...)

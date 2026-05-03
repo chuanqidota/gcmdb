@@ -24,6 +24,7 @@ type Config struct {
 	CORS struct {
 		AllowedOrigins []string `mapstructure:"allowed_origins"`
 	} `mapstructure:"cors"`
+	TokenCacheTTL int `mapstructure:"token_cache_ttl"` // 单位：分钟，默认 5
 }
 
 var Conf = new(Config)

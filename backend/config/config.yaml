@@ -11,3 +11,4 @@ database:
   name: gcmdb
 cors:
   allowed_origins: []
+token_cache_ttl: 5

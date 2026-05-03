@@ -82,7 +82,7 @@ func SimpleSearchInstance(modelId uint, listInstance params.ListInstance) (*resp
 		}
 		// 精确匹配且字段已索引时，使用 indexed_values 命中索引
 		if compare == "=" && isFieldIndexed(field) {
-			db = db.Where("FIND_IN_SET(?, indexed_values) > 0", value)
+			db = db.Where("indexed_values LIKE ?", "%,"+value+",%")
 		} else {
 			db = db.Where(fmt.Sprintf("data->>'$.%s' %s ?", field, compare), compareValue)
 		}
@@ -93,7 +93,7 @@ func SimpleSearchInstance(modelId uint, listInstance params.ListInstance) (*resp
 			return nil, fmt.Errorf("非法字段名:%s", field)
 		}
 		if compare == "=" && isFieldIndexed(field) {
-			db = db.Where("FIND_IN_SET(?, indexed_values) > 0", value)
+			db = db.Where("indexed_values LIKE ?", "%,"+value+",%")
 		} else {
 			db = db.Where(fmt.Sprintf("data->>'$.%s' %s ?", field, compare), compareValue)
 		}
