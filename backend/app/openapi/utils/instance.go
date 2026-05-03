@@ -189,7 +189,7 @@ func (i *instance) FulltextInstance(body params.FulltextInstance) (int64, []resp
 	modelAlias := body.ModelAlias
 
 	query := database.DB.Table("instance i").
-		Select("i.id, i.model_id, m.name as model_name, i.data").
+		Select("i.id, i.model_id, m.name as model_name, m.alias as model_alias, i.data, i.created_at, i.updated_at").
 		Joins("LEFT JOIN model m ON i.model_id = m.id").
 		Where("m.is_usable = ?", true).
 		Where("JSON_SEARCH(i.data, 'one', ?) IS NOT NULL", "%"+search+"%")
@@ -204,9 +204,30 @@ func (i *instance) FulltextInstance(body params.FulltextInstance) (int64, []resp
 		return 0, nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
 
-	var result []resp.FulltextInstance
-	if err := query.Limit(limit).Offset(offset).Scan(&result).Error; err != nil {
+	type fulltextRow struct {
+		ID         uint
+		ModelId    uint
+		ModelName  string
+		ModelAlias string
+		Data       datatypes.JSON
+		CreatedAt  time.Time
+		UpdatedAt  time.Time
+	}
+	var rows []fulltextRow
+	if err := query.Limit(limit).Offset(offset).Scan(&rows).Error; err != nil {
 		return 0, nil, fmt.Errorf("查询失败-%s", err.Error())
+	}
+	result := make([]resp.FulltextInstance, 0, len(rows))
+	for _, r := range rows {
+		result = append(result, resp.FulltextInstance{
+			ID:         r.ID,
+			ModelId:    r.ModelId,
+			ModelName:  r.ModelName,
+			ModelAlias: r.ModelAlias,
+			Data:       r.Data,
+			CreatedAt:  r.CreatedAt.Format(time.DateTime),
+			UpdatedAt:  r.UpdatedAt.Format(time.DateTime),
+		})
 	}
 	return count, result, nil
 }
@@ -379,11 +400,33 @@ func (i *instance) SearchInstance(body params.SearchInstance) (int64, any, error
 		return count, results, nil
 	}
 
-	instances := make([]models.Instance, 0)
-	if err := query.Offset(offset).Limit(limit).Scan(&instances).Error; err != nil {
+	type searchRow struct {
+		ID        uint
+		ModelId   uint
+		Data      datatypes.JSON
+		CreatedAt time.Time
+		UpdatedAt time.Time
+	}
+	var rows []searchRow
+	if err := query.Offset(offset).Limit(limit).Scan(&rows).Error; err != nil {
 		return 0, nil, fmt.Errorf("查询出错-%s", err.Error())
 	}
-	return count, instances, nil
+	// 查询模型名称
+	var m models.Model
+	database.DB.Model(&models.Model{}).Where(map[string]any{"id": modelId}).First(&m)
+	items := make([]resp.SearchInstanceItem, 0, len(rows))
+	for _, r := range rows {
+		items = append(items, resp.SearchInstanceItem{
+			ID:         r.ID,
+			ModelId:    r.ModelId,
+			ModelName:  m.Name,
+			ModelAlias: m.Alias,
+			Data:       r.Data,
+			CreatedAt:  r.CreatedAt.Format(time.DateTime),
+			UpdatedAt:  r.UpdatedAt.Format(time.DateTime),
+		})
+	}
+	return count, items, nil
 }
 
 // TargetInstance
@@ -392,9 +435,9 @@ func (i *instance) SearchInstance(body params.SearchInstance) (int64, any, error
 //	@receiver i
 //	@param sourceId 源实例id
 //	@param targetModel 目标模型别名
-//	@return []models.Instance
+//	@return []resp.RelatedInstance
 //	@return error
-func (i *instance) TargetInstance(sourceId uint, targetModel string) ([]models.Instance, error) {
+func (i *instance) TargetInstance(sourceId uint, targetModel string) ([]resp.RelatedInstance, error) {
 	return i.queryRelatedInstance(sourceId, targetModel, "target")
 }
 
@@ -404,15 +447,24 @@ func (i *instance) TargetInstance(sourceId uint, targetModel string) ([]models.I
 //	@receiver i
 //	@param targetId 目标实例id
 //	@param SourceModel 源模型别名
-//	@return []models.Instance
+//	@return []resp.RelatedInstance
 //	@return error
-func (i *instance) SourceInstance(targetId uint, SourceModel string) ([]models.Instance, error) {
+func (i *instance) SourceInstance(targetId uint, SourceModel string) ([]resp.RelatedInstance, error) {
 	return i.queryRelatedInstance(targetId, SourceModel, "source")
 }
 
 // queryRelatedInstance 通用关联实例查询, direction: "source" 或 "target"
-func (i *instance) queryRelatedInstance(id uint, modelAlias, direction string) ([]models.Instance, error) {
-	instances := make([]models.Instance, 0)
+func (i *instance) queryRelatedInstance(id uint, modelAlias, direction string) ([]resp.RelatedInstance, error) {
+	type relatedRow struct {
+		ID         uint
+		ModelId    uint
+		ModelName  string
+		ModelAlias string
+		Data       datatypes.JSON
+		CreatedAt  time.Time
+		UpdatedAt  time.Time
+	}
+	var rows []relatedRow
 	// direction="target": 查目标实例 (join on target_id, where source_id)
 	// direction="source": 查源实例 (join on source_id, where target_id)
 	joinCol := "ir.target_id"
@@ -425,8 +477,9 @@ func (i *instance) queryRelatedInstance(id uint, modelAlias, direction string) (
 	}
 
 	query := database.DB.Table("instance i").
-		Select("i.*").
+		Select("i.id, i.model_id, m.name as model_name, m.alias as model_alias, i.data, i.created_at, i.updated_at").
 		Joins("INNER JOIN instance_relation ir ON i.id = "+joinCol).
+		Joins("INNER JOIN model m ON m.id = i.model_id").
 		Where(whereCol+" = ?", id)
 
 	if modelAlias != "" {
@@ -443,10 +496,22 @@ func (i *instance) queryRelatedInstance(id uint, modelAlias, direction string) (
 		query = query.Where(modelCol+" = ?", modelId)
 	}
 
-	if err := query.Scan(&instances).Error; err != nil {
+	if err := query.Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("查询出错-%s", err.Error())
 	}
-	return instances, nil
+	result := make([]resp.RelatedInstance, 0, len(rows))
+	for _, r := range rows {
+		result = append(result, resp.RelatedInstance{
+			ID:         r.ID,
+			ModelId:    r.ModelId,
+			ModelName:  r.ModelName,
+			ModelAlias: r.ModelAlias,
+			Data:       r.Data,
+			CreatedAt:  r.CreatedAt.Format(time.DateTime),
+			UpdatedAt:  r.UpdatedAt.Format(time.DateTime),
+		})
+	}
+	return result, nil
 }
 
 // DetailInstance
