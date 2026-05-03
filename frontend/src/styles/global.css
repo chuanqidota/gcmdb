@@ -24,9 +24,6 @@
   --radius-lg: 12px;
   --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --page-height: calc(100vh - 56px - 40px);
-  --dialog-width-sm: 420px;
-  --dialog-width-md: 520px;
-  --dialog-width-lg: 640px;
   --color-warning: #D97706;
   --color-warning-light: #FEF3C7;
   --color-info: #7C3AED;
@@ -194,16 +191,4 @@ body {
 /* Utility classes */
 .section-header {
   margin-bottom: 12px;
-}
-
-.dialog-sm {
-  width: var(--dialog-width-sm) !important;
-}
-
-.dialog-md {
-  width: var(--dialog-width-md) !important;
-}
-
-.dialog-lg {
-  width: var(--dialog-width-lg) !important;
 }

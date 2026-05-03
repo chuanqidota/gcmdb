@@ -17,11 +17,8 @@ type instance struct {
 
 var Instance = new(instance)
 
-// InstanceQuery
-//
-//	@Description: 实例查询（GET）
-//	@receiver i
-//	@param c
+// InstanceQuery 实例查询 handler（仅 GET）
+// 与 InstanceWrite 分离，避免 isGet 双模式分支带来的代码复杂度
 func (i *instance) InstanceQuery(c *gin.Context) {
 	action := c.Param("action")
 

@@ -62,7 +62,7 @@ func (sds *searchDirectSql) ListSearchDirectSql(c *gin.Context) {
 	}
 	db := database.DB.Model(&models.SearchDirectSql{})
 	if search != "" {
-		db.Where("name like ?", "%"+search+"%").
+		db = db.Where("name like ?", "%"+search+"%").
 			Or("uuid like ?", "%"+search+"%").
 			Or("sql like ?", "%"+search+"%")
 	}
@@ -123,7 +123,7 @@ func (sds *searchDirectSql) UpdateSearchDirectSql(c *gin.Context) {
 		return
 	}
 	data := map[string]any{
-		"created_at": time.Now(),
+		"updated_at": time.Now(),
 		"name":       body.Name,
 		"sql":        body.Sql,
 	}

@@ -82,18 +82,57 @@ func (m *modelFieldRelation) ListModelFieldRelation(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
-	results := make([]resp.ListModelFieldRelation, 0)
-	for _, modelFieldRelation := range modelFieldRelations {
-		SourceModelDisplay, _ := modelFieldRelation.GetSourceModelId()
-		TargetModelDisplay, _ := modelFieldRelation.GetTargetModelId()
-		SourceFieldDisplay, _ := modelFieldRelation.GetSourceFieldId()
-		TargetFieldDisplay, _ := modelFieldRelation.GetTargetFieldId()
+	// 批量收集所有需要的 model ID 和 field ID，避免 N+1 查询
+	modelIds := make(map[uint]bool)
+	fieldIds := make(map[uint]bool)
+	for _, mfr := range modelFieldRelations {
+		modelIds[mfr.SourceModelId] = true
+		modelIds[mfr.TargetModelId] = true
+		fieldIds[mfr.SourceFieldId] = true
+		fieldIds[mfr.TargetFieldId] = true
+	}
+
+	// 批量查询 models
+	modelIdSlice := make([]uint, 0, len(modelIds))
+	for id := range modelIds {
+		modelIdSlice = append(modelIdSlice, id)
+	}
+	modelsList := make([]models.Model, 0)
+	if len(modelIdSlice) > 0 {
+		database.DB.Model(&models.Model{}).Where("id IN ?", modelIdSlice).Scan(&modelsList)
+	}
+	modelMap := make(map[uint]models.Model, len(modelsList))
+	for _, m := range modelsList {
+		modelMap[m.ID] = m
+	}
+
+	// 批量查询 fields
+	fieldIdSlice := make([]uint, 0, len(fieldIds))
+	for id := range fieldIds {
+		fieldIdSlice = append(fieldIdSlice, id)
+	}
+	fieldsList := make([]models.ModelField, 0)
+	if len(fieldIdSlice) > 0 {
+		database.DB.Model(&models.ModelField{}).Where("id IN ?", fieldIdSlice).Scan(&fieldsList)
+	}
+	fieldMap := make(map[uint]models.ModelField, len(fieldsList))
+	for _, f := range fieldsList {
+		fieldMap[f.ID] = f
+	}
+
+	// 组装结果
+	results := make([]resp.ListModelFieldRelation, 0, len(modelFieldRelations))
+	for _, mfr := range modelFieldRelations {
+		srcModel := modelMap[mfr.SourceModelId]
+		tgtModel := modelMap[mfr.TargetModelId]
+		srcField := fieldMap[mfr.SourceFieldId]
+		tgtField := fieldMap[mfr.TargetFieldId]
 		results = append(results, resp.ListModelFieldRelation{
-			ModelFieldRelation: modelFieldRelation,
-			SourceModelDisplay: SourceModelDisplay,
-			TargetModelDisplay: TargetModelDisplay,
-			SourceFieldDisplay: SourceFieldDisplay,
-			TargetFieldDisplay: TargetFieldDisplay,
+			ModelFieldRelation: mfr,
+			SourceModelDisplay: fmt.Sprintf("%s(%s)", srcModel.Name, srcModel.Alias),
+			TargetModelDisplay: fmt.Sprintf("%s(%s)", tgtModel.Name, tgtModel.Alias),
+			SourceFieldDisplay: fmt.Sprintf("%s(%s)", srcField.Name, srcField.Alias),
+			TargetFieldDisplay: fmt.Sprintf("%s(%s)", tgtField.Name, tgtField.Alias),
 		})
 	}
 	response.Success(c, "查询成功", results)

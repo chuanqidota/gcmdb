@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import router from '../router'
 
 const authRequest = axios.create({
   baseURL: '/v1/auth',
@@ -16,6 +17,12 @@ authRequest.interceptors.response.use(
     return res.data
   },
   (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('gcmdb_logged_in')
+      router.push('/login')
+      ElMessage.error('会话已过期，请重新登录')
+      return Promise.reject(err)
+    }
     const msg = err.response?.data?.msg || err.message || '网络错误'
     ElMessage.error(msg)
     return Promise.reject(err)

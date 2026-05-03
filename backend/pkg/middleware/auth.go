@@ -11,6 +11,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 三种认证中间件的适用场景：
+// - SessionAuthMiddleware: 前端页面接口（/v1/cmdb/*），基于 cookie 中的 session ID
+// - OpenAPIAuthMiddleware: 对外开放接口（/openapi/*），支持 session 或 Bearer token 双模式
+// - CORSMiddleware: 跨域请求处理，放行 OPTIONS 预检请求
+
 // SessionAuthMiddleware 页面接口 session 认证
 func SessionAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {

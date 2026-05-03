@@ -169,7 +169,8 @@ func (i *instance) DirectSearch(uuid string) (any, error) {
 	if err := database.DB.Raw(sql).Limit(1000).Scan(&result).Error; err != nil {
 		return nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
-	// MySQL JSON 列扫描后可能为 []uint8 或 string，需反序列化为 map/slice
+	// GORM 扫描 MySQL JSON 列到 map[string]interface{} 时，值可能为 []uint8 或 string
+	// 需要手动反序列化为 JSON 对象/数组，否则前端收到的是转义字符串而非结构化数据
 	for _, row := range result {
 		for k, v := range row {
 			switch val := v.(type) {
@@ -197,9 +198,9 @@ func (i *instance) DirectSearch(uuid string) (any, error) {
 //	@receiver i
 //	@param body
 //	@return int64
-//	@return []resp.FulltextInstance
+//	@return []resp.InstanceItem
 //	@return error
-func (i *instance) FulltextInstance(body params.FulltextInstance) (int64, []resp.FulltextInstance, error) {
+func (i *instance) FulltextInstance(body params.FulltextInstance) (int64, []resp.InstanceItem, error) {
 	search := body.Search
 	limit := body.Limit
 	offset := body.Offset
@@ -237,9 +238,9 @@ func (i *instance) FulltextInstance(body params.FulltextInstance) (int64, []resp
 	if err := query.Limit(limit).Offset(offset).Scan(&rows).Error; err != nil {
 		return 0, nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
-	result := make([]resp.FulltextInstance, 0, len(rows))
+	result := make([]resp.InstanceItem, 0, len(rows))
 	for _, r := range rows {
-		result = append(result, resp.FulltextInstance{
+		result = append(result, resp.InstanceItem{
 			ID:         r.ID,
 			ModelId:    r.ModelId,
 			ModelName:  r.ModelName,
@@ -301,7 +302,9 @@ func (i *instance) SearchInstance(body params.SearchInstance) (int64, any, error
 		query = query.Select(strings.Join(parts, ", "))
 	}
 
-	// where 条件
+	// where 条件解析
+	// 支持的操作符：eq/ne/gt/ge/lt/le（比较）、in（包含）、startswith/endswith/contains（模糊匹配）、search（全文搜索）、or（或条件）
+	// 每个条件格式：{ "操作符": { "字段名": "值" } }
 	compares := map[string]string{
 		"eq": "=", "ne": "!=", "gt": ">", "ge": ">=",
 		"lt": "<", "le": "<=",
@@ -434,9 +437,9 @@ func (i *instance) SearchInstance(body params.SearchInstance) (int64, any, error
 	// 查询模型名称
 	var m models.Model
 	database.DB.Model(&models.Model{}).Where(map[string]any{"id": modelId}).First(&m)
-	items := make([]resp.SearchInstanceItem, 0, len(rows))
+	items := make([]resp.InstanceItem, 0, len(rows))
 	for _, r := range rows {
-		items = append(items, resp.SearchInstanceItem{
+		items = append(items, resp.InstanceItem{
 			ID:         r.ID,
 			ModelId:    r.ModelId,
 			ModelName:  m.Name,
@@ -455,9 +458,9 @@ func (i *instance) SearchInstance(body params.SearchInstance) (int64, any, error
 //	@receiver i
 //	@param sourceId 源实例id
 //	@param targetModel 目标模型别名
-//	@return []resp.RelatedInstance
+//	@return []resp.InstanceItem
 //	@return error
-func (i *instance) TargetInstance(sourceId uint, targetModel string) ([]resp.RelatedInstance, error) {
+func (i *instance) TargetInstance(sourceId uint, targetModel string) ([]resp.InstanceItem, error) {
 	return i.queryRelatedInstance(sourceId, targetModel, "target")
 }
 
@@ -467,14 +470,14 @@ func (i *instance) TargetInstance(sourceId uint, targetModel string) ([]resp.Rel
 //	@receiver i
 //	@param targetId 目标实例id
 //	@param SourceModel 源模型别名
-//	@return []resp.RelatedInstance
+//	@return []resp.InstanceItem
 //	@return error
-func (i *instance) SourceInstance(targetId uint, SourceModel string) ([]resp.RelatedInstance, error) {
+func (i *instance) SourceInstance(targetId uint, SourceModel string) ([]resp.InstanceItem, error) {
 	return i.queryRelatedInstance(targetId, SourceModel, "source")
 }
 
 // queryRelatedInstance 通用关联实例查询, direction: "source" 或 "target"
-func (i *instance) queryRelatedInstance(id uint, modelAlias, direction string) ([]resp.RelatedInstance, error) {
+func (i *instance) queryRelatedInstance(id uint, modelAlias, direction string) ([]resp.InstanceItem, error) {
 	type relatedRow struct {
 		ID         uint
 		ModelId    uint
@@ -519,9 +522,9 @@ func (i *instance) queryRelatedInstance(id uint, modelAlias, direction string) (
 	if err := query.Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("查询出错-%s", err.Error())
 	}
-	result := make([]resp.RelatedInstance, 0, len(rows))
+	result := make([]resp.InstanceItem, 0, len(rows))
 	for _, r := range rows {
-		result = append(result, resp.RelatedInstance{
+		result = append(result, resp.InstanceItem{
 			ID:         r.ID,
 			ModelId:    r.ModelId,
 			ModelName:  r.ModelName,
@@ -539,9 +542,9 @@ func (i *instance) queryRelatedInstance(id uint, modelAlias, direction string) (
 //	@Description: 查询单个实例详情
 //	@receiver i
 //	@param idStr 实例ID字符串
-//	@return *resp.DetailInstance
+//	@return *resp.InstanceItem
 //	@return error
-func (i *instance) DetailInstance(idStr string) (*resp.DetailInstance, error) {
+func (i *instance) DetailInstance(idStr string) (*resp.InstanceItem, error) {
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("无效的实例ID:%s", idStr)
@@ -557,7 +560,7 @@ func (i *instance) DetailInstance(idStr string) (*resp.DetailInstance, error) {
 	}
 	var m models.Model
 	database.DB.Model(&models.Model{}).Where(map[string]any{"id": inst.ModelId}).First(&m)
-	return &resp.DetailInstance{
+	return &resp.InstanceItem{
 		ID:         inst.ID,
 		ModelId:    inst.ModelId,
 		ModelName:  m.Name,
@@ -593,7 +596,7 @@ func (i *instance) TopologyInstance(idStr string, modelAlias string) (*resp.Topo
 	var m models.Model
 	database.DB.Model(&models.Model{}).Where(map[string]any{"id": inst.ModelId}).First(&m)
 
-	detail := resp.DetailInstance{
+	detail := resp.InstanceItem{
 		ID:         inst.ID,
 		ModelId:    inst.ModelId,
 		ModelName:  m.Name,

@@ -10,7 +10,10 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// 维护实例关系
+// instanceRelation 实例关系维护工具
+// 核心逻辑：当模型定义了字段关联（ModelFieldRelation）时，自动同步实例级别的关系（InstanceRelation）
+// 例如：模型 A 的 host_ip 字段关联模型 B 的 ip 字段，则当实例 A.host_ip = "1.1.1.1" 时
+// 自动查找 B 中 ip = "1.1.1.1" 的实例并建立关系
 type instanceRelation struct {
 }
 

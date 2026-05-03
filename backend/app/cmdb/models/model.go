@@ -42,20 +42,3 @@ func (m *Model) GetModelFieldGroups() ([]ModelFieldGroup, error) {
 	}
 	return modelFieldGroups, nil
 }
-
-// GetModelFields
-//
-//	@Description: 获取模型对应的字段
-//	@receiver m
-//	@return []ModelField
-//	@return error
-func (m *Model) GetModelFields() ([]ModelField, error) {
-	modelFields := make([]ModelField, 0)
-	if err := database.DB.Model(&ModelField{}).
-		Where(map[string]any{"model_id": m.ID}).
-		Order("`order` asc").
-		Scan(&modelFields).Error; err != nil {
-		return nil, err
-	}
-	return modelFields, nil
-}
