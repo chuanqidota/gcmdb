@@ -53,11 +53,27 @@ var modelRegistry = map[string]func() any{
 	"instance_relation":    func() any { return &cmdbModels.InstanceRelation{} },
 }
 
+// openapiActionMap openapi 路由的 :action 参数 → 审计操作类型映射
+var openapiActionMap = map[string]string{
+	"create":     "create",
+	"update":     "update",
+	"delete":     "delete",
+	"mul_delete": "delete",
+}
+
 // AuditMiddleware 审计中间件，拦截写操作并记录到 audit_log 表
 func AuditMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		method := c.Request.Method
 		action, isWrite := actionMap[method]
+
+		// 特殊处理: openapi 路由通过 :action 参数区分操作类型（全部使用 POST）
+		if paramAction := c.Param("action"); paramAction != "" {
+			if mapped, ok := openapiActionMap[paramAction]; ok {
+				action = mapped
+				isWrite = true
+			}
+		}
 
 		// 特殊处理: search-direct-sql 的 GET /:id 是执行SQL操作，也需要审计
 		if !isWrite && method == "GET" && strings.Contains(c.Request.URL.Path, "search-direct-sql/") {
@@ -178,11 +194,12 @@ func queryBeforeData(c *gin.Context, resourceType, resourceID string) string {
 func parseResource(c *gin.Context) (resourceType, resourceID string) {
 	path := c.Request.URL.Path
 
-	// 遍历 resourceMap 匹配路径片段（优先匹配长路径）
+	// 最长前缀匹配：遍历 resourceMap，选择匹配片段最长的条目
+	bestLen := 0
 	for fragment, resType := range resourceMap {
-		if strings.Contains(path, fragment) {
+		if strings.Contains(path, fragment) && len(fragment) > bestLen {
 			resourceType = resType
-			break
+			bestLen = len(fragment)
 		}
 	}
 
@@ -199,6 +216,33 @@ func parseResource(c *gin.Context) (resourceType, resourceID string) {
 	}
 	if resourceID == "" {
 		resourceID = c.Param("source_model_id")
+	}
+
+	// URL 参数中没有 ID 时，尝试从请求体 JSON 中提取
+	if resourceID == "" && c.Request.Body != nil {
+		bodyBytes, err := io.ReadAll(c.Request.Body)
+		if err == nil && len(bodyBytes) > 0 {
+			var bodyMap map[string]any
+			if json.Unmarshal(bodyBytes, &bodyMap) == nil {
+				// 依次尝试常见 ID 字段
+				for _, key := range []string{"id", "source_id", "target_id"} {
+					if v, ok := bodyMap[key]; ok && v != nil {
+						resourceID = fmt.Sprintf("%v", v)
+						break
+					}
+				}
+				// 批量操作：ids 数组
+				if resourceID == "" {
+					if ids, ok := bodyMap["ids"]; ok {
+						if b, err := json.Marshal(ids); err == nil {
+							resourceID = string(b)
+						}
+					}
+				}
+			}
+			// 恢复请求体供后续 handler 读取
+			c.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+		}
 	}
 
 	return resourceType, resourceID

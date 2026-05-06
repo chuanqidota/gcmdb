@@ -115,7 +115,7 @@ func Engine() *gin.Engine {
 	}
 
 	// 对外开放接口 — session 或 token 认证
-	openapi := router.Group("openapi").Use(middleware.OpenAPIAuthMiddleware())
+	openapi := router.Group("openapi").Use(middleware.OpenAPIAuthMiddleware()).Use(middleware.AuditMiddleware())
 	{
 		openapi.GET("model/:range", openApi.Model.ModelRange)                                      // 模型操作
 		openapi.GET("instance/:action", openApi.Instance.InstanceQuery)                            // 实例查询
