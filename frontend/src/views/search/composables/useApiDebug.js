@@ -173,16 +173,20 @@ export function useApiDebug(allModels) {
     }
   })
 
+  const buildWhereClause = (conditions) => {
+    return conditions.filter(c => c.field && c.op).map(c => {
+      let v = c.value
+      if (c.op === 'in') v = v.split(',').map(s => s.trim())
+      return { [c.op]: { [c.field]: v } }
+    })
+  }
+
   const buildGetParams = (params, paramValues, conditions) => {
     const qs = new URLSearchParams()
     for (const p of params) {
       const val = paramValues[p.key]
       if (p.type === 'condition-builder') {
-        const where = conditions.filter(c => c.field && c.op).map(c => {
-          let v = c.value
-          if (c.op === 'in') v = v.split(',').map(s => s.trim())
-          return { [c.op]: { [c.field]: v } }
-        })
+        const where = buildWhereClause(conditions)
         if (where.length) qs.set('where', JSON.stringify(where))
       } else if (p.type === 'multi-select') {
         if (val?.length) qs.set(p.key, val.join(','))
@@ -202,11 +206,7 @@ export function useApiDebug(allModels) {
     for (const p of ep.params) {
       const val = paramValues[p.key]
       if (p.type === 'condition-builder') {
-        const where = conditions.filter(c => c.field && c.op).map(c => {
-          let v = c.value
-          if (c.op === 'in') v = v.split(',').map(s => s.trim())
-          return { [c.op]: { [c.field]: v } }
-        })
+        const where = buildWhereClause(conditions)
         if (where.length) {
           if (!body.__condition) body.__condition = {}
           body.__condition.where = where

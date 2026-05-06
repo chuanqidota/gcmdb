@@ -11,7 +11,7 @@
             <span class="panel-model-name">{{ selectedModel.name }}</span>
             <el-tag size="small" type="info">{{ selectedModel.alias }}</el-tag>
           </div>
-          <el-icon class="panel-close" @click="selectedModel = null"><Close /></el-icon>
+          <el-icon class="panel-close" @click="resetNodeHighlight?.(); selectedModel = null"><Close /></el-icon>
         </div>
         <div v-if="selectedModel.description" class="panel-desc">{{ selectedModel.description }}</div>
 
@@ -75,6 +75,7 @@ const selectedModel = ref(null)
 const detailFields = ref([])
 const detailRelations = ref([])
 const detailLoading = ref(false)
+let resetNodeHighlight = null
 
 let graph = null
 let allModels = []
@@ -187,15 +188,20 @@ onMounted(async () => {
 
   // 节点点击
   let prevSelected = null
+  resetNodeHighlight = () => {
+    if (prevSelected) {
+      graph.updateNodeData([{ id: prevSelected, style: { stroke: '#fff', lineWidth: 2 } }])
+      prevSelected = null
+    }
+  }
+
   graph.on('node:click', (e) => {
     const nodeId = e.target.id
     const model = allModels.find(m => String(m.id) === nodeId)
     if (!model) return
 
-    // 高亮选中节点
     if (prevSelected && prevSelected !== nodeId) {
-      const prevModel = allModels.find(m => String(m.id) === prevSelected)
-      graph.updateNodeData([{ id: prevSelected, style: { stroke: '#fff', lineWidth: 2 } }])
+      resetNodeHighlight()
     }
     graph.updateNodeData([{ id: nodeId, style: { stroke: '#3B82F6', lineWidth: 3 } }])
     prevSelected = nodeId
@@ -206,10 +212,7 @@ onMounted(async () => {
 
   // 画布点击关闭面板
   graph.on('canvas:click', () => {
-    if (prevSelected) {
-      graph.updateNodeData([{ id: prevSelected, style: { stroke: '#fff', lineWidth: 2 } }])
-      prevSelected = null
-    }
+    resetNodeHighlight()
     selectedModel.value = null
   })
 })

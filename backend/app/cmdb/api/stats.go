@@ -1,7 +1,7 @@
 package api
 
 import (
-	auditModels "gcmdb/app/audit/models"
+	"gcmdb/app/cmdb/models"
 	"gcmdb/app/cmdb/resp"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
@@ -17,21 +17,30 @@ func (s *stats) GetStats(c *gin.Context) {
 	var data resp.StatsResponse
 
 	// 模型分组数
-	database.DB.Table("model_group").Count(&data.ModelGroupCount)
+	if err := database.DB.Table("model_group").Count(&data.ModelGroupCount).Error; err != nil {
+		response.Fail(c, "查询失败-模型分组数")
+		return
+	}
 
 	// 模型数
-	database.DB.Table("model").Count(&data.ModelCount)
+	if err := database.DB.Table("model").Count(&data.ModelCount).Error; err != nil {
+		response.Fail(c, "查询失败-模型数")
+		return
+	}
 
 	// 实例总数 + 每个模型的实例数
 	var modelCounts []resp.ModelInstanceCount
-	database.DB.Table("instance i").
+	if err := database.DB.Table("instance i").
 		Select(`i.model_id, m.name as model_name, m.alias as model_alias,
 			COALESCE(mg.name, '') as group_name, COUNT(*) as instance_count`).
 		Joins("JOIN model m ON m.id = i.model_id").
 		Joins("LEFT JOIN model_group mg ON mg.id = m.group_id").
 		Group("i.model_id, m.name, m.alias, mg.name").
 		Order("instance_count DESC").
-		Scan(&modelCounts)
+		Scan(&modelCounts).Error; err != nil {
+		response.Fail(c, "查询失败-实例统计")
+		return
+	}
 	data.ModelInstanceCounts = modelCounts
 
 	totalInstances := 0
@@ -41,24 +50,36 @@ func (s *stats) GetStats(c *gin.Context) {
 	data.InstanceCount = totalInstances
 
 	// 关系总数
-	database.DB.Table("instance_relation").Count(&data.RelationCount)
+	if err := database.DB.Table("instance_relation").Count(&data.RelationCount).Error; err != nil {
+		response.Fail(c, "查询失败-关系总数")
+		return
+	}
 
-	// 最近 10 条审计日志
-	var logs []auditModels.AuditLog
-	database.DB.Order("id DESC").Limit(10).Find(&logs)
-	recentLogs := make([]resp.AuditLogBrief, len(logs))
-	for i, l := range logs {
-		recentLogs[i] = resp.AuditLogBrief{
-			ID:           l.ID,
-			Action:       l.Action,
-			ResourceType: l.ResourceType,
-			ResourceID:   l.ResourceID,
-			Path:         l.Path,
-			Username:     l.Username,
-			CreatedAt:    l.CreatedAt,
+	// 模型分组概览（附带每组的模型数和实例数）
+	instanceCountByGroup := map[string]int{}
+	modelCountByGroup := map[string]int{}
+	for _, mc := range modelCounts {
+		g := mc.GroupName
+		if g == "" {
+			g = "未分组"
+		}
+		instanceCountByGroup[g] += mc.InstanceCount
+		modelCountByGroup[g]++
+	}
+
+	var groups []models.ModelGroup
+	database.DB.Find(&groups)
+	groupSummaries := make([]resp.GroupSummary, len(groups))
+	for i, g := range groups {
+		groupSummaries[i] = resp.GroupSummary{
+			ID:            g.ID,
+			Name:          g.Name,
+			Description:   g.Description,
+			ModelCount:    modelCountByGroup[g.Name],
+			InstanceCount: instanceCountByGroup[g.Name],
 		}
 	}
-	data.RecentLogs = recentLogs
+	data.GroupSummaries = groupSummaries
 
 	response.Success(c, "查询成功", data)
 }

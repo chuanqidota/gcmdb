@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"gcmdb/app/cmdb/models"
@@ -176,26 +175,7 @@ func (i *instance) DirectSearch(uuid string) (any, error) {
 	if err := database.DB.Raw(sql).Limit(1000).Scan(&result).Error; err != nil {
 		return nil, fmt.Errorf("查询失败-%s", err.Error())
 	}
-	// GORM 扫描 MySQL JSON 列到 map[string]interface{} 时，值可能为 []uint8 或 string
-	// 需要手动反序列化为 JSON 对象/数组，否则前端收到的是转义字符串而非结构化数据
-	for _, row := range result {
-		for k, v := range row {
-			switch val := v.(type) {
-			case []uint8:
-				var parsed interface{}
-				if json.Unmarshal(val, &parsed) == nil {
-					row[k] = parsed
-				}
-			case string:
-				if len(val) > 0 && (val[0] == '{' || val[0] == '[') {
-					var parsed interface{}
-					if json.Unmarshal([]byte(val), &parsed) == nil {
-						row[k] = parsed
-					}
-				}
-			}
-		}
-	}
+	pkgUtils.ParseJSONColumns(result)
 	return result, nil
 }
 

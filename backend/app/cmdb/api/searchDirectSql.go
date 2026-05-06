@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"gcmdb/app/cmdb/models"
@@ -112,24 +111,7 @@ func (sds *searchDirectSql) ExecuteSearchDirectSql(c *gin.Context) {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
 	}
-	for _, row := range result {
-		for k, v := range row {
-			switch val := v.(type) {
-			case []uint8:
-				var parsed interface{}
-				if json.Unmarshal(val, &parsed) == nil {
-					row[k] = parsed
-				}
-			case string:
-				if len(val) > 0 && (val[0] == '{' || val[0] == '[') {
-					var parsed interface{}
-					if json.Unmarshal([]byte(val), &parsed) == nil {
-						row[k] = parsed
-					}
-				}
-			}
-		}
-	}
+	pkgUtils.ParseJSONColumns(result)
 	response.Success(c, "执行成功", result)
 }
 

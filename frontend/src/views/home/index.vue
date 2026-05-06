@@ -79,14 +79,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { Grid, List, Share } from '@element-plus/icons-vue'
 import { getStats } from '../../api/stats'
-import { listModelGroup } from '../../api/modelGroup'
+import { GROUP_COLORS } from '../../utils/colors'
 
 const loading = ref(true)
 const statCards = ref([])
 const modelInstanceCounts = ref([])
 const groupCards = ref([])
 
-const BAR_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#06B6D4', '#EC4899', '#84CC16', '#F97316', '#6366F1']
+const BAR_COLORS = GROUP_COLORS
 
 const chartData = computed(() => {
   const all = modelInstanceCounts.value
@@ -118,10 +118,7 @@ const chartData = computed(() => {
 
 onMounted(async () => {
   try {
-    const [statsRes, groupsRes] = await Promise.all([
-      getStats(),
-      listModelGroup({ limit: 1000 }),
-    ])
+    const statsRes = await getStats()
     const stats = statsRes.data || {}
 
     statCards.value = [
@@ -133,17 +130,8 @@ onMounted(async () => {
 
     modelInstanceCounts.value = stats.model_instance_counts || []
 
-    // 模型分组概览
-    const groups = groupsRes.data?.results || []
-    const instanceCountByGroup = {}
-    const modelCountByGroup = {}
-    for (const m of (stats.model_instance_counts || [])) {
-      const g = m.group_name || '未分组'
-      instanceCountByGroup[g] = (instanceCountByGroup[g] || 0) + m.instance_count
-      modelCountByGroup[g] = (modelCountByGroup[g] || 0) + 1
-    }
-
-    const groupColors = [
+    // 模型分组概览（直接使用后端聚合数据）
+    const groupColorPairs = [
       { color: '#2563EB', bg: '#DBEAFE' },
       { color: '#059669', bg: '#D1FAE5' },
       { color: '#D97706', bg: '#FEF3C7' },
@@ -152,11 +140,9 @@ onMounted(async () => {
       { color: '#0891B2', bg: '#CFFAFE' },
     ]
 
-    groupCards.value = groups.map((group, i) => ({
+    groupCards.value = (stats.group_summaries || []).map((group, i) => ({
       ...group,
-      model_count: modelCountByGroup[group.name] || 0,
-      instance_count: instanceCountByGroup[group.name] || 0,
-      ...groupColors[i % groupColors.length],
+      ...groupColorPairs[i % groupColorPairs.length],
     }))
   } catch {
     // error shown by interceptor
