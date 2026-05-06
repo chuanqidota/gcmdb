@@ -1,13 +1,10 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"gcmdb/app/openapi/params"
 	"gcmdb/app/openapi/utils"
 	"gcmdb/pkg/response"
-	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,59 +33,6 @@ func (i *instance) InstanceQuery(c *gin.Context) {
 			return
 		}
 		response.Success(c, "执行成功", result)
-
-	case "fulltext": // 全文检索
-		var body params.FulltextInstance
-		body.Search = c.Query("search")
-		body.ModelAlias = c.Query("model_alias")
-		body.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", "10"))
-		body.Offset, _ = strconv.Atoi(c.DefaultQuery("offset", "0"))
-		if body.Search == "" {
-			response.Fail(c, "参数search不能为空")
-			return
-		}
-		if count, result, err := utils.Instance.FulltextInstance(body); err != nil {
-			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
-			return
-		} else {
-			response.Success(c, "执行成功", map[string]any{
-				"count":  count,
-				"result": result,
-			})
-		}
-
-	case "search": // 搜索
-		var body params.SearchInstance
-		body.Model = c.Query("model")
-		if body.Model == "" {
-			response.Fail(c, "参数model不能为空")
-			return
-		}
-		if fields := c.QueryArray("fields"); len(fields) > 0 {
-			body.Fields = fields
-		} else if f := c.Query("fields"); f != "" {
-			body.Fields = strings.Split(f, ",")
-		}
-		body.Condition.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", "10"))
-		body.Condition.Offset, _ = strconv.Atoi(c.DefaultQuery("offset", "0"))
-		if order := c.Query("order"); order != "" {
-			body.Condition.Order = []string{order}
-		}
-		if whereStr := c.Query("where"); whereStr != "" {
-			var where []map[string]any
-			if err := json.Unmarshal([]byte(whereStr), &where); err == nil {
-				body.Condition.Where = where
-			}
-		}
-		count, results, err := utils.Instance.SearchInstance(body)
-		if err != nil {
-			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
-			return
-		}
-		response.Success(c, "执行成功", map[string]any{
-			"count":   count,
-			"results": results,
-		})
 
 	case "target": // 通过源查询目标模型
 		var body params.SourceTargetInstance

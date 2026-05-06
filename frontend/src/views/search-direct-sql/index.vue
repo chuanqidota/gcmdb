@@ -45,7 +45,14 @@
       </template>
       <div class="result-table-wrap">
         <el-table :data="queryResult" stripe highlight-current-row max-height="400" v-if="queryResult.length">
-          <el-table-column v-for="col in resultColumns" :key="col" :prop="col" :label="col" show-overflow-tooltip min-width="120" />
+          <el-table-column v-for="col in resultColumns" :key="col" :label="col" show-overflow-tooltip min-width="120">
+            <template #default="{ row }">
+              <template v-if="row[col] !== null && typeof row[col] === 'object'">
+                <span class="json-cell">{{ JSON.stringify(row[col]) }}</span>
+              </template>
+              <template v-else>{{ row[col] }}</template>
+            </template>
+          </el-table-column>
         </el-table>
         <el-empty v-else description="查询无结果" :image-size="60" />
       </div>
@@ -160,6 +167,13 @@ onMounted(loadData)
 
 .result-table-wrap {
   overflow-x: auto;
+}
+
+.json-cell {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  word-break: break-all;
 }
 
 @keyframes slideUp {

@@ -26,13 +26,13 @@ export function useApiDebug(allModels) {
       name: '实例查询',
       collapsed: false,
       endpoints: [
-        { key: 'instance-fulltext', name: '全文搜索', method: 'GET', path: '/instance/fulltext', params: [
+        { key: 'instance-fulltext', name: '全文搜索', method: 'POST', path: '/instance/fulltext', params: [
           { key: 'search', label: '搜索词', type: 'input', required: true },
           { key: 'model_alias', label: '模型过滤', type: 'select', source: 'models', placeholder: '可选' },
           { key: 'limit', label: '数量', type: 'number' },
           { key: 'offset', label: '偏移', type: 'number' },
         ]},
-        { key: 'instance-search', name: '结构化搜索', method: 'GET', path: '/instance/search', params: [
+        { key: 'instance-search', name: '结构化搜索', method: 'POST', path: '/instance/search', params: [
           { key: 'model', label: '模型', type: 'select', required: true, source: 'models', placeholder: '选择模型' },
           { key: 'fields', label: '返回字段', type: 'multi-select', source: 'fields', placeholder: '不选则返回全部' },
           { key: 'where', label: '查询条件', type: 'condition-builder' },
@@ -198,18 +198,43 @@ export function useApiDebug(allModels) {
 
   const buildPostBody = (ep, paramValues, conditions) => {
     const body = {}
+    const hasConditionBuilder = ep.params.some(p => p.type === 'condition-builder')
     for (const p of ep.params) {
       const val = paramValues[p.key]
-      if (p.type === 'textarea') {
+      if (p.type === 'condition-builder') {
+        const where = conditions.filter(c => c.field && c.op).map(c => {
+          let v = c.value
+          if (c.op === 'in') v = v.split(',').map(s => s.trim())
+          return { [c.op]: { [c.field]: v } }
+        })
+        if (where.length) {
+          if (!body.__condition) body.__condition = {}
+          body.__condition.where = where
+        }
+      } else if (p.type === 'textarea') {
         if (val) {
           try { body[p.key] = JSON.parse(val) } catch { body[p.key] = val }
         }
       } else if (p.type === 'number') {
-        if (val !== undefined && val !== null && val !== '') body[p.key] = val
+        if (val !== undefined && val !== null && val !== '') {
+          if (hasConditionBuilder && (p.key === 'limit' || p.key === 'offset')) {
+            if (!body.__condition) body.__condition = {}
+            body.__condition[p.key] = val
+          } else {
+            body[p.key] = val
+          }
+        }
       } else if (p.type === 'multi-select') {
         if (val?.length) body[p.key] = val
       } else {
-        if (val) body[p.key] = val
+        if (val) {
+          if (hasConditionBuilder && p.key === 'order') {
+            if (!body.__condition) body.__condition = {}
+            body.__condition.order = [val]
+          } else {
+            body[p.key] = val
+          }
+        }
       }
     }
     if (body.target_ids && typeof body.target_ids === 'string') {

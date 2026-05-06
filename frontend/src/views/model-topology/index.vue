@@ -186,17 +186,30 @@ onMounted(async () => {
   await graph.render()
 
   // 节点点击
+  let prevSelected = null
   graph.on('node:click', (e) => {
     const nodeId = e.target.id
     const model = allModels.find(m => String(m.id) === nodeId)
-    if (model) {
-      selectedModel.value = model
-      loadModelDetail(model.alias)
+    if (!model) return
+
+    // 高亮选中节点
+    if (prevSelected && prevSelected !== nodeId) {
+      const prevModel = allModels.find(m => String(m.id) === prevSelected)
+      graph.updateNodeData([{ id: prevSelected, style: { stroke: '#fff', lineWidth: 2 } }])
     }
+    graph.updateNodeData([{ id: nodeId, style: { stroke: '#3B82F6', lineWidth: 3 } }])
+    prevSelected = nodeId
+
+    selectedModel.value = model
+    loadModelDetail(model.alias)
   })
 
   // 画布点击关闭面板
   graph.on('canvas:click', () => {
+    if (prevSelected) {
+      graph.updateNodeData([{ id: prevSelected, style: { stroke: '#fff', lineWidth: 2 } }])
+      prevSelected = null
+    }
     selectedModel.value = null
   })
 })
@@ -257,8 +270,12 @@ async function loadModelDetail(alias) {
 
 /* 详情面板 */
 .detail-panel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
   width: 380px;
-  flex-shrink: 0;
+  z-index: 10;
   background: var(--color-surface);
   border-left: 1px solid var(--color-border);
   padding: 20px;

@@ -107,6 +107,9 @@ func Engine() *gin.Engine {
 		cmdb.GET("audit-log", auditApi.Audit.ListAuditLog)                                    // 查询审计日志
 		cmdb.GET("audit-log/:resource_type/:resource_id", auditApi.Audit.RetrieveAuditLog)    // 查询资源审计历史
 
+		// 首页统计
+		cmdb.GET("stats", cmdbApi.Stats.GetStats) // 首页统计数据
+
 		// 任务
 		cmdb.POST("sync-instance-relation", taskApi.InstanceRelation.SyncInstanceRelation) // 同步实例关系
 	}

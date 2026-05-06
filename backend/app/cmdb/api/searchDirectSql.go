@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"gcmdb/app/cmdb/models"
@@ -93,8 +94,12 @@ func (sds *searchDirectSql) ExecuteSearchDirectSql(c *gin.Context) {
 	var searchDirectSql models.SearchDirectSql
 	if err := database.DB.Model(&models.SearchDirectSql{}).
 		Where(map[string]any{"id": id}).
-		First(&searchDirectSql).Error; errors.Is(err, gorm.ErrRecordNotFound) {
-		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		First(&searchDirectSql).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			response.Fail(c, fmt.Sprintf("未找到查询:%s", id))
+		} else {
+			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+		}
 		return
 	}
 	sql := searchDirectSql.Sql
@@ -102,10 +107,28 @@ func (sds *searchDirectSql) ExecuteSearchDirectSql(c *gin.Context) {
 		response.Fail(c, err.Error())
 		return
 	}
-	var result interface{}
+	var result []map[string]interface{}
 	if err := database.DB.Raw(sql).Limit(1000).Scan(&result).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
 		return
+	}
+	for _, row := range result {
+		for k, v := range row {
+			switch val := v.(type) {
+			case []uint8:
+				var parsed interface{}
+				if json.Unmarshal(val, &parsed) == nil {
+					row[k] = parsed
+				}
+			case string:
+				if len(val) > 0 && (val[0] == '{' || val[0] == '[') {
+					var parsed interface{}
+					if json.Unmarshal([]byte(val), &parsed) == nil {
+						row[k] = parsed
+					}
+				}
+			}
+		}
 	}
 	response.Success(c, "执行成功", result)
 }

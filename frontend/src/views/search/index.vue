@@ -178,11 +178,6 @@
                             <el-table-column prop="instance_id" label="ID" width="60">
                               <template #default="{ row: rel }">{{ rel.instance_id }}</template>
                             </el-table-column>
-                            <el-table-column prop="relation_type" label="关系类型" width="120">
-                              <template #default="{ row: rel }">
-                                <el-tag size="small" type="primary">{{ rel.relation_type || '-' }}</el-tag>
-                              </template>
-                            </el-table-column>
                             <el-table-column
                               v-for="f in (instRelationCache[row.id]?.tabData?.[g.model_id]?.fields || [])"
                               :key="f.alias"
