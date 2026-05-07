@@ -7,8 +7,6 @@ import (
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/logger"
 	"strings"
-
-	"gorm.io/gorm"
 )
 
 type indexedValues struct{}
@@ -69,15 +67,13 @@ func (v *indexedValues) SyncModelIndexedValues(modelId uint) {
 
 	// 无索引字段时，清空所有实例的 indexed_values
 	if len(indexedFields) == 0 {
-		if err := database.DB.Model(&models.Instance{}).
+		database.DB.Model(&models.Instance{}).
 			Where("model_id = ?", modelId).
-			Update("indexed_values", "").Error; err != nil {
-			logger.Error(fmt.Sprintf("清空索引值失败-%s", err.Error()))
-		}
+			Update("indexed_values", "")
 		return
 	}
 
-	// 查询该模型所有实例（只查一次）
+	// 查询该模型所有实例
 	instances := make([]models.Instance, 0)
 	if err := database.DB.Model(&models.Instance{}).
 		Where("model_id = ?", modelId).
@@ -86,27 +82,15 @@ func (v *indexedValues) SyncModelIndexedValues(modelId uint) {
 		logger.Error(fmt.Sprintf("查询实例失败-%s", err.Error()))
 		return
 	}
-	if len(instances) == 0 {
-		return
-	}
 
-	// 批量更新：CASE WHEN 一次 SQL 搞定
-	caseSQL := "CASE id "
-	args := make([]interface{}, 0)
-	ids := make([]uint, 0, len(instances))
+	// 逐实例更新 indexed_values
 	for _, inst := range instances {
 		indexedVal := v.buildIndexedValuesFromFields(indexedFields, inst.Data)
-		caseSQL += "WHEN ? THEN ? "
-		args = append(args, inst.ID, indexedVal)
-		ids = append(ids, inst.ID)
-	}
-	caseSQL += "END"
-	args = append(args, ids)
-
-	if err := database.DB.Model(&models.Instance{}).
-		Where("id IN ?", ids).
-		Update("indexed_values", gorm.Expr(caseSQL, args...)).Error; err != nil {
-		logger.Error(fmt.Sprintf("批量更新索引值失败-%s", err.Error()))
+		if err := database.DB.Model(&models.Instance{}).
+			Where("id = ?", inst.ID).
+			Update("indexed_values", indexedVal).Error; err != nil {
+			logger.Error(fmt.Sprintf("更新实例 %d 索引值失败-%s", inst.ID, err.Error()))
+		}
 	}
 }
 

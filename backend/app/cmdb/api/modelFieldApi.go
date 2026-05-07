@@ -86,6 +86,10 @@ func (m *modelField) CreateModelField(c *gin.Context) {
 		Update("data", expr).Error; err != nil {
 		logger.Error(fmt.Sprintf("更新字段失败-%s", err.Error()))
 	}
+	// is_indexed 为 true 时，同步刷新已有实例的 indexed_values
+	if body.IsIndexed {
+		cmdbUtils.IndexedValues.SyncModelIndexedValues(body.ModelId)
+	}
 
 	response.Success(c, "执行成功", nil)
 }
@@ -120,12 +124,16 @@ func (m *modelField) UpdateModelField(c *gin.Context) {
 		return
 	}
 	data := map[string]any{
-		"updated_at":     time.Now(),
-		"field_group_id": body.FieldGroupId,
-		"is_required":    body.IsRequired,
-		"is_indexed":     body.IsIndexed,
-		"name":           body.Name,
-		"order":          body.Order,
+		"updated_at":  time.Now(),
+		"is_required": body.IsRequired,
+		"is_indexed":  body.IsIndexed,
+		"name":        body.Name,
+		"order":       body.Order,
+	}
+	if body.FieldGroupId != nil {
+		data["field_group_id"] = *body.FieldGroupId
+	} else {
+		data["field_group_id"] = nil
 	}
 	// 查询旧的 is_indexed 状态，判断是否需要同步
 	var oldField models.ModelField
@@ -134,12 +142,16 @@ func (m *modelField) UpdateModelField(c *gin.Context) {
 	if err := database.DB.Model(&models.ModelField{}).
 		Where(map[string]any{"id": id}).
 		Updates(data).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("更新失败-%s", err.Error()))
+		if strings.Contains(err.Error(), "Duplicate entry") {
+			response.Fail(c, fmt.Sprintf("更新失败-模型下已存在名称「%s」的字段", body.Name))
+		} else {
+			response.Fail(c, fmt.Sprintf("更新失败-%s", err.Error()))
+		}
 		return
 	}
-	// is_indexed 状态变更时，异步刷新该模型所有实例的 indexed_values
+	// is_indexed 状态变更时，同步刷新该模型所有实例的 indexed_values
 	if oldField.IsIndexed != body.IsIndexed {
-		go cmdbUtils.IndexedValues.SyncModelIndexedValues(oldField.ModelId)
+		cmdbUtils.IndexedValues.SyncModelIndexedValues(oldField.ModelId)
 	}
 	response.Success(c, "更新成功", nil)
 }

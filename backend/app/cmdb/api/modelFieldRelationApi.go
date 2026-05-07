@@ -56,10 +56,24 @@ func (m *modelFieldRelation) CreateModelFieldRelation(c *gin.Context) {
 		return
 	}
 	var results models.ModelFieldRelation
-	if err := database.DB.Model(&models.ModelFieldRelation{}).
-		FirstOrCreate(&results, body).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
-		return
+	// 检查是否存在软删除的记录，存在则恢复
+	if err := database.DB.Unscoped().Model(&models.ModelFieldRelation{}).
+		Where("source_model_id = ? AND target_model_id = ? AND source_field_id = ? AND target_field_id = ? AND deleted_at IS NOT NULL",
+			body.SourceModelId, body.TargetModelId, body.SourceFieldId, body.TargetFieldId).
+		First(&results).Error; err == nil {
+		// 恢复软删除记录
+		if err := database.DB.Unscoped().Model(&results).Update("deleted_at", nil).Error; err != nil {
+			response.Fail(c, fmt.Sprintf("恢复失败-%s", err.Error()))
+			return
+		}
+	} else {
+		// 创建新记录
+		if err := database.DB.Model(&models.ModelFieldRelation{}).
+			Create(&body).Error; err != nil {
+			response.Fail(c, fmt.Sprintf("创建失败-%s", err.Error()))
+			return
+		}
+		results = body
 	}
 	// 同步创建实例关系
 	if err := utils.InstanceRelation.CreateModelFieldRelation(body.SourceModelId, body.TargetModelId, body.SourceFieldId, body.TargetFieldId); err != nil {

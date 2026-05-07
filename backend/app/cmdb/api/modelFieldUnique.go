@@ -5,6 +5,8 @@ import (
 	"gcmdb/app/cmdb/models"
 	"gcmdb/pkg/database"
 	"gcmdb/pkg/response"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -36,17 +38,24 @@ func (mfu *modelFieldUnique) CreateModelFieldUnique(c *gin.Context) {
 		response.Fail(c, "字段组合不能为空")
 		return
 	}
-	// 判断是否实例
-	var instanceCount int64
-	if err := database.DB.Model(&models.Instance{}).
-		Where(map[string]any{"model_id": body.ModelId}).
-		Count(&instanceCount).Error; err != nil {
-		response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
-		return
-	}
-	if instanceCount > 0 {
-		response.Fail(c, fmt.Sprintf("该模型存在实例，无法创建唯一字段"))
-		return
+	// 校验现有实例数据是否满足唯一性约束
+	if body.Fields != "" {
+		fields := strings.Split(body.Fields, ",")
+		selectParts := make([]string, 0, len(fields))
+		groupParts := make([]string, 0, len(fields))
+		for i, field := range fields {
+			field = strings.TrimSpace(field)
+			selectParts = append(selectParts, fmt.Sprintf("JSON_EXTRACT(data, '$.%s') as v%d", field, i))
+			groupParts = append(groupParts, fmt.Sprintf("v%d", i))
+		}
+		checkSQL := fmt.Sprintf("SELECT 1 FROM (SELECT %s, COUNT(*) as cnt FROM instance WHERE model_id = ? GROUP BY %s HAVING cnt > 1) t LIMIT 1",
+			strings.Join(selectParts, ", "), strings.Join(groupParts, ", "))
+		var dupCount int64
+		database.DB.Raw(checkSQL, body.ModelId).Count(&dupCount)
+		if dupCount > 0 {
+			response.Fail(c, fmt.Sprintf("现有实例中存在「%s」字段组合重复的数据，无法创建唯一约束", body.Fields))
+			return
+		}
 	}
 
 	var result models.ModelFieldUnique
