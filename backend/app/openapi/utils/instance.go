@@ -480,7 +480,19 @@ func (i *instance) SourceInstance(targetId uint, SourceModel string) ([]resp.Ins
 	return i.queryRelatedInstance(targetId, SourceModel, "source")
 }
 
-// queryRelatedInstance 通用关联实例查询, direction: "source" 或 "target"
+// RelatedInstances
+//
+//	@Description: 查询实例所有关联关系（双向）
+//	@receiver i
+//	@param id 实例id
+//	@param modelAlias 模型别名（可选过滤）
+//	@return []resp.InstanceItem
+//	@return error
+func (i *instance) RelatedInstances(id uint, modelAlias string) ([]resp.InstanceItem, error) {
+	return i.queryAllRelatedInstances(id, modelAlias)
+}
+
+// queryRelatedInstance 单方向关联实例查询, direction: "source" 或 "target"
 func (i *instance) queryRelatedInstance(id uint, modelAlias, direction string) ([]resp.InstanceItem, error) {
 	type relatedRow struct {
 		ID         uint
@@ -492,8 +504,6 @@ func (i *instance) queryRelatedInstance(id uint, modelAlias, direction string) (
 		UpdatedAt  time.Time
 	}
 	var rows []relatedRow
-	// direction="target": 查目标实例 (join on target_id, where source_id)
-	// direction="source": 查源实例 (join on source_id, where target_id)
 	joinCol := "ir.target_id"
 	whereCol := "ir.source_id"
 	modelCol := "ir.target_model_id"
@@ -507,7 +517,7 @@ func (i *instance) queryRelatedInstance(id uint, modelAlias, direction string) (
 		Select("i.id, i.model_id, m.name as model_name, m.alias as model_alias, i.data, i.created_at, i.updated_at").
 		Joins("INNER JOIN instance_relation ir ON i.id = "+joinCol).
 		Joins("INNER JOIN model m ON m.id = i.model_id").
-		Where(whereCol+" = ?", id)
+		Where(whereCol+" = ? AND i.deleted_at IS NULL", id)
 
 	if modelAlias != "" {
 		var modelId uint
@@ -521,6 +531,57 @@ func (i *instance) queryRelatedInstance(id uint, modelAlias, direction string) (
 			return nil, fmt.Errorf("查询出错-%s", err.Error())
 		}
 		query = query.Where(modelCol+" = ?", modelId)
+	}
+
+	if err := query.Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("查询出错-%s", err.Error())
+	}
+	result := make([]resp.InstanceItem, 0, len(rows))
+	for _, r := range rows {
+		result = append(result, resp.InstanceItem{
+			ID:         r.ID,
+			ModelId:    r.ModelId,
+			ModelName:  r.ModelName,
+			ModelAlias: r.ModelAlias,
+			Data:       r.Data,
+			CreatedAt:  r.CreatedAt.Format(time.DateTime),
+			UpdatedAt:  r.UpdatedAt.Format(time.DateTime),
+		})
+	}
+	return result, nil
+}
+
+// queryAllRelatedInstances 双向关联实例查询（上游+下游）
+func (i *instance) queryAllRelatedInstances(id uint, modelAlias string) ([]resp.InstanceItem, error) {
+	type relatedRow struct {
+		ID         uint
+		ModelId    uint
+		ModelName  string
+		ModelAlias string
+		Data       datatypes.JSON
+		CreatedAt  time.Time
+		UpdatedAt  time.Time
+	}
+	var rows []relatedRow
+
+	query := database.DB.Table("instance i").
+		Select("DISTINCT i.id, i.model_id, m.name as model_name, m.alias as model_alias, i.data, i.created_at, i.updated_at").
+		Joins("INNER JOIN instance_relation ir ON (i.id = ir.target_id AND ir.source_id = ?) OR (i.id = ir.source_id AND ir.target_id = ?)", id, id).
+		Joins("INNER JOIN model m ON m.id = i.model_id").
+		Where("i.deleted_at IS NULL AND i.id != ?", id)
+
+	if modelAlias != "" {
+		var modelId uint
+		if err := database.DB.Model(&models.Model{}).
+			Select("id").
+			Where(map[string]any{"alias": modelAlias}).
+			First(&modelId).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, fmt.Errorf("未找到模型:%s", modelAlias)
+			}
+			return nil, fmt.Errorf("查询出错-%s", err.Error())
+		}
+		query = query.Where("(ir.target_model_id = ? OR ir.source_model_id = ?)", modelId, modelId)
 	}
 
 	if err := query.Scan(&rows).Error; err != nil {
@@ -658,7 +719,7 @@ func (i *instance) queryTopologyRelations(instanceId uint, direction string, mod
 	if direction == "target" {
 		q := database.DB.Table("instance_relation ir").
 			Select("ir.target_id as instance_id, m.id as model_id, m.name as model_name, m.alias as model_alias, mrt.id as type_id, mrt.s2t, mrt.t2s, i.data").
-			Joins("INNER JOIN instance i ON i.id = ir.target_id").
+			Joins("INNER JOIN instance i ON i.id = ir.target_id AND i.deleted_at IS NULL").
 			Joins("INNER JOIN model m ON m.id = ir.target_model_id").
 			Joins("LEFT JOIN model_relation_type mrt ON mrt.id = (SELECT type_id FROM model_relation WHERE (source_id = ir.source_model_id AND target_id = ir.target_model_id) OR (source_id = ir.target_model_id AND target_id = ir.source_model_id) LIMIT 1)").
 			Where("ir.source_id = ?", instanceId)
@@ -671,7 +732,7 @@ func (i *instance) queryTopologyRelations(instanceId uint, direction string, mod
 	} else {
 		q := database.DB.Table("instance_relation ir").
 			Select("ir.source_id as instance_id, m.id as model_id, m.name as model_name, m.alias as model_alias, mrt.id as type_id, mrt.s2t, mrt.t2s, i.data").
-			Joins("INNER JOIN instance i ON i.id = ir.source_id").
+			Joins("INNER JOIN instance i ON i.id = ir.source_id AND i.deleted_at IS NULL").
 			Joins("INNER JOIN model m ON m.id = ir.source_model_id").
 			Joins("LEFT JOIN model_relation_type mrt ON mrt.id = (SELECT type_id FROM model_relation WHERE (source_id = ir.source_model_id AND target_id = ir.target_model_id) OR (source_id = ir.target_model_id AND target_id = ir.source_model_id) LIMIT 1)").
 			Where("ir.target_id = ?", instanceId)

@@ -60,6 +60,19 @@ func (i *instance) InstanceQuery(c *gin.Context) {
 		}
 		response.Success(c, "执行成功", result)
 
+	case "related": // 查询实例所有关联关系（双向）
+		var body params.SourceTargetInstance
+		if err := c.ShouldBindQuery(&body); err != nil {
+			response.Fail(c, fmt.Sprintf("参数校验失败-%s", err.Error()))
+			return
+		}
+		result, err := utils.Instance.RelatedInstances(body.Id, body.Model)
+		if err != nil {
+			response.Fail(c, fmt.Sprintf("查询失败-%s", err.Error()))
+			return
+		}
+		response.Success(c, "执行成功", result)
+
 	case "detail": // 查询单个实例详情
 		idStr := c.Query("id")
 		if idStr == "" {

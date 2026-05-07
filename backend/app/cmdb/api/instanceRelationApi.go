@@ -133,7 +133,7 @@ func (i *instanceRelation) listInstanceRelation(c *gin.Context, whereField, wher
 //	@param c
 func (i *instanceRelation) DeleteInstanceRelation(c *gin.Context) {
 	id := c.Param("id")
-	if err := database.DB.Model(&models.InstanceRelation{}).
+	if err := database.DB.Unscoped().Model(&models.InstanceRelation{}).
 		Where(map[string]any{"id": id}).
 		Delete(&models.InstanceRelation{}).Error; err != nil {
 		response.Fail(c, fmt.Sprintf("删除失败-%s", err.Error()))
@@ -156,7 +156,7 @@ func (i *instanceRelation) DeleteInstanceRelationByKeys(c *gin.Context) {
 		response.Fail(c, "参数不完整，需要 source_model_id, target_model_id, source_id, target_id")
 		return
 	}
-	if err := database.DB.Model(&models.InstanceRelation{}).
+	if err := database.DB.Unscoped().Model(&models.InstanceRelation{}).
 		Where(map[string]any{
 			"source_model_id": sourceModelId,
 			"target_model_id": targetModelId,

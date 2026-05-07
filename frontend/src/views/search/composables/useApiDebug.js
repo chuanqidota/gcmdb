@@ -47,6 +47,10 @@ export function useApiDebug(allModels) {
           { key: 'id', label: '实例ID', type: 'input', required: true, placeholder: '输入实例ID' },
           { key: 'model', label: '模型过滤', type: 'select', source: 'models', placeholder: '可选' },
         ]},
+        { key: 'instance-related', name: '关联实例(双向)', method: 'GET', path: '/instance/related', params: [
+          { key: 'id', label: '实例ID', type: 'input', required: true, placeholder: '输入实例ID' },
+          { key: 'model', label: '模型过滤', type: 'select', source: 'models', placeholder: '可选' },
+        ]},
         { key: 'instance-source', name: '查询上游实例', method: 'GET', path: '/instance/source', params: [
           { key: 'id', label: '目标实例ID', type: 'input', required: true },
           { key: 'model', label: '源模型', type: 'select', required: true, source: 'models', placeholder: '选择源模型' },

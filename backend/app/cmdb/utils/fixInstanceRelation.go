@@ -92,10 +92,25 @@ func (f *instanceRelation) DeleteModelFieldRelation(sourceModelId, targetModelId
 	if len(instanceRelations) == 0 {
 		return nil
 	}
-	if err := database.DB.Model(&models.InstanceRelation{}).
-		Where("source_model_id = ? AND target_model_id = ?", sourceModelId, targetModelId).
-		Delete(&models.InstanceRelation{}).Error; err != nil {
-		return fmt.Errorf("删除失败-%s", err.Error())
+	// 只删除通过该字段对匹配的特定实例关系，不影响其他字段关联的实例关系
+	if err := f.deleteMatchingRelations(instanceRelations); err != nil {
+		return err
+	}
+	return nil
+}
+
+// deleteMatchingRelations 根据复合唯一键删除 instance_relation 记录
+func (f *instanceRelation) deleteMatchingRelations(relations []models.InstanceRelation) error {
+	if len(relations) == 0 {
+		return nil
+	}
+	for _, ir := range relations {
+		if err := database.DB.Unscoped().Model(&models.InstanceRelation{}).
+			Where("source_model_id = ? AND target_model_id = ? AND source_id = ? AND target_id = ?",
+				ir.SourceModelId, ir.TargetModelId, ir.SourceInstanceId, ir.TargetInstanceId).
+			Delete(&models.InstanceRelation{}).Error; err != nil {
+			return fmt.Errorf("删除失败-%s", err.Error())
+		}
 	}
 	return nil
 }
@@ -247,7 +262,7 @@ func (f *instanceRelation) SyncSourceModelInstanceRelation(modelId uint) error {
 	}
 
 	return database.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.InstanceRelation{}).
+		if err := tx.Unscoped().Model(&models.InstanceRelation{}).
 			Where(map[string]any{"source_model_id": modelId}).
 			Delete(&models.InstanceRelation{}).Error; err != nil {
 			return fmt.Errorf("删除实例关联出错")
