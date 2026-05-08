@@ -351,8 +351,8 @@
 
     <!-- 接口调试 -->
     <div v-if="activeTab === 'api'" class="api-test-layout">
-      <!-- 左侧：接口选择 + 参数面板 -->
-      <div class="api-left-panel">
+      <!-- 左栏：接口列表 -->
+      <div class="api-col-endpoints">
         <div class="api-panel-title">OpenAPI 接口</div>
         <div class="api-endpoint-groups">
           <div v-for="group in apiEndpointGroups" :key="group.name" class="api-endpoint-group">
@@ -373,10 +373,12 @@
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- 参数表单 -->
+      <!-- 中栏：参数表单 -->
+      <div class="api-col-params">
         <div v-if="apiSelected" class="api-param-section">
-          <div class="api-panel-title">参数</div>
+          <div class="api-panel-title">参数 — {{ apiSelected.name }}</div>
           <div class="api-param-form">
             <div v-for="p in apiSelected.params" :key="p.key" class="api-param-row">
               <label class="api-param-label">
@@ -436,10 +438,14 @@
             </el-button>
           </div>
         </div>
+        <div v-else class="api-param-empty">
+          <el-icon size="40" color="var(--color-text-muted)"><ArrowLeft /></el-icon>
+          <span>请在左侧选择接口</span>
+        </div>
       </div>
 
-      <!-- 右侧：请求预览 + 响应 -->
-      <div class="api-right-panel">
+      <!-- 右栏：请求预览 + 响应 -->
+      <div class="api-col-response">
         <!-- 请求预览 -->
         <div class="api-request-preview">
           <div class="api-preview-header">
@@ -525,7 +531,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Search, Delete, CircleCheckFilled, ArrowDown, ArrowRight, Close, CopyDocument } from '@element-plus/icons-vue'
+import { Search, Delete, CircleCheckFilled, ArrowDown, ArrowRight, ArrowLeft, Close, CopyDocument } from '@element-plus/icons-vue'
 import { getAllModels, getModelGroups, getModelRelationTypes } from '../../api/search'
 import { useFulltext } from './composables/useFulltext'
 import { useInstance } from './composables/useInstance'
@@ -1190,25 +1196,44 @@ onMounted(async () => {
   opacity: 0;
 }
 
-/* ===== 接口调试 ===== */
+/* ===== 接口调试（三栏布局） ===== */
 .api-test-layout {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   width: 100%;
   height: var(--page-height);
   align-self: stretch;
 }
 
-.api-left-panel {
-  width: 320px;
+/* 左栏：接口列表 */
+.api-col-endpoints {
+  width: 180px;
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
   overflow-y: auto;
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
+}
+
+/* 中栏：参数表单 */
+.api-col-params {
+  width: 300px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+.api-param-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 
 .api-panel-title {
@@ -1245,11 +1270,11 @@ onMounted(async () => {
 .api-endpoint-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px 6px 20px;
+  gap: 6px;
+  padding: 5px 8px 5px 16px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--color-text-secondary);
   transition: all 0.15s;
 }
@@ -1294,8 +1319,7 @@ onMounted(async () => {
 }
 
 .api-param-section {
-  border-top: 1px solid var(--color-border);
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .api-param-form {
@@ -1357,13 +1381,14 @@ onMounted(async () => {
   line-height: 1.5;
 }
 
-/* 接口调试 右侧 */
-.api-right-panel {
+/* 右栏：请求+响应 */
+.api-col-response {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  overflow-y: auto;
 }
 
 .api-request-preview {
