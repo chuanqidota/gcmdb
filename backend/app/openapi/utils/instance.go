@@ -333,17 +333,18 @@ func (i *instance) SearchInstance(body params.SearchInstance) (int64, any, error
 					}
 					orQ := database.DB.Model(&models.Instance{}).Where("model_id = ?", modelId)
 					for orAct, orVal := range condMap {
-						op, ok := compares[orAct]
-						if !ok {
-							continue
-						}
 						if mv, ok := orVal.(map[string]interface{}); ok {
 							for f, v := range mv {
 								if !utils.ValidFieldName(f) {
 									return 0, nil, fmt.Errorf("非法字段名:%s", f)
 								}
-								sql, args := jsonExtract(f, op+" ?", v)
-								orQ = orQ.Where(sql, args...)
+								if op, ok := compares[orAct]; ok {
+									sql, args := jsonExtract(f, op+" ?", v)
+									orQ = orQ.Where(sql, args...)
+								} else if likeFn, ok := likes[orAct]; ok {
+									sql, args := jsonExtract(f, "LIKE ?", likeFn(fmt.Sprintf("%v", v)))
+									orQ = orQ.Where(sql, args...)
+								}
 							}
 						}
 					}

@@ -111,30 +111,46 @@
       <template v-if="activeTab === 'instance'">
         <!-- 条件构建器 -->
         <div v-if="inst.modelId" class="condition-builder">
-          <div v-for="(c, i) in inst.conditions" :key="i" class="condition-row">
-            <el-select v-model="c.field" placeholder="字段" class="cond-field">
-              <el-option v-for="f in inst.fields" :key="f.alias" :value="f.alias">
-                <span>{{ f.name }}</span>
-                <el-tag v-if="f.is_indexed" size="small" type="primary" style="margin-left: 6px">索引</el-tag>
-              </el-option>
-            </el-select>
-            <el-select v-model="c.op" class="cond-op">
-              <el-option label="=" value="eq" />
-              <el-option label="!=" value="ne" />
-              <el-option label=">" value="gt" />
-              <el-option label=">=" value="ge" />
-              <el-option label="<" value="lt" />
-              <el-option label="<=" value="le" />
-              <el-option label="包含" value="contains" />
-              <el-option label="开头是" value="startswith" />
-              <el-option label="结尾是" value="endswith" />
-              <el-option label="在列表" value="in" />
-            </el-select>
-            <el-input v-model="c.val" placeholder="值" class="cond-val" />
-            <el-button :icon="Delete" circle @click="inst.conditions.splice(i, 1)" />
+          <!-- 全局搜索 -->
+          <div class="global-search-row">
+            <el-input v-model="inst.globalSearch" placeholder="全局搜索所有字段..." clearable @keyup.enter="doInstanceSearch" style="width: 300px" size="small">
+              <template #prefix><el-icon><Search /></el-icon></template>
+            </el-input>
           </div>
+          <template v-for="(idx, di) in sortedIndices" :key="idx">
+            <!-- OR 分隔条：当当前条件的 group > 前一个条件的 group 时显示 -->
+            <div v-if="di > 0 && (inst.conditions[idx].group || 1) > (inst.conditions[sortedIndices[di - 1]].group || 1)" class="or-divider">
+              <span>OR</span>
+            </div>
+            <div class="condition-row" :class="{ 'or-condition': (inst.conditions[idx].group || 1) > 1 }">
+              <el-tag v-if="(inst.conditions[idx].group || 1) === 1" size="small" type="info">AND</el-tag>
+              <el-tag v-else size="small" type="warning">OR</el-tag>
+              <el-select v-model="inst.conditions[idx].field" placeholder="字段" class="cond-field" :disabled="inst.conditions[idx].op === 'search'">
+                <el-option v-for="f in inst.fields" :key="f.alias" :value="f.alias">
+                  <span>{{ f.name }}</span>
+                  <el-tag v-if="f.is_indexed" size="small" type="primary" style="margin-left: 6px">索引</el-tag>
+                </el-option>
+              </el-select>
+              <el-select v-model="inst.conditions[idx].op" class="cond-op" @change="inst.conditions[idx].field = ''">
+                <el-option label="=" value="eq" />
+                <el-option label="!=" value="ne" />
+                <el-option label=">" value="gt" />
+                <el-option label=">=" value="ge" />
+                <el-option label="<" value="lt" />
+                <el-option label="<=" value="le" />
+                <el-option label="包含" value="contains" />
+                <el-option label="开头是" value="startswith" />
+                <el-option label="结尾是" value="endswith" />
+                <el-option label="在列表" value="in" />
+                <el-option label="模糊搜索" value="search" />
+              </el-select>
+              <el-input v-model="inst.conditions[idx].val" :placeholder="inst.conditions[idx].op === 'search' ? '全文关键词' : '值'" class="cond-val" />
+              <el-button :icon="Delete" circle @click="inst.conditions.splice(idx, 1)" />
+            </div>
+          </template>
           <div class="condition-actions">
-            <el-button @click="inst.conditions.push({ field: '', op: 'eq', val: '' })">+ 添加条件</el-button>
+            <el-button @click="inst.conditions.push({ group: 1, field: '', op: 'eq', val: '' })">+ 添加条件</el-button>
+            <el-button @click="addOrGroup">+ 添加 OR 组</el-button>
           </div>
         </div>
         <div class="result-count" v-if="inst.count > 0">
@@ -382,21 +398,31 @@
 
               <!-- 条件构建器 -->
               <div v-else-if="p.type === 'condition-builder'" class="api-condition-builder">
-                <div v-for="(cond, idx) in apiConditions" :key="idx" class="api-cond-row">
-                  <el-select v-model="cond.field" placeholder="字段" size="small" style="width: 100px" filterable>
-                    <el-option v-for="f in apiModelFields" :key="f.alias" :label="f.name" :value="f.alias" />
-                  </el-select>
-                  <el-select v-model="cond.op" placeholder="操作符" size="small" style="width: 110px">
-                    <el-option v-for="op in apiOperators" :key="op.value" :label="op.label" :value="op.value" />
-                  </el-select>
-                  <el-input v-model="cond.value" placeholder="值" size="small" style="flex: 1" />
-                  <el-button link type="danger" size="small" @click="apiConditions.splice(idx, 1)">
-                    <el-icon><Delete /></el-icon>
+                <template v-for="(idx, di) in sortedApiIndices" :key="idx">
+                  <div v-if="di > 0 && (apiConditions[idx].group || 1) > (apiConditions[sortedApiIndices[di - 1]].group || 1)" class="or-divider-sm">
+                    <span>OR</span>
+                  </div>
+                  <div class="api-cond-row" :class="{ 'or-row': (apiConditions[idx].group || 1) > 1 }">
+                    <el-tag v-if="(apiConditions[idx].group || 1) === 1" size="small" type="info">AND</el-tag>
+                    <el-tag v-else size="small" type="warning">OR</el-tag>
+                    <el-select v-model="apiConditions[idx].field" placeholder="字段" size="small" style="width: 100px" filterable :disabled="apiConditions[idx].op === 'search'">
+                      <el-option v-for="f in apiModelFields" :key="f.alias" :label="f.name" :value="f.alias" />
+                    </el-select>
+                    <el-select v-model="apiConditions[idx].op" placeholder="操作符" size="small" style="width: 110px" @change="apiConditions[idx].field = ''">
+                      <el-option v-for="op in apiOperators" :key="op.value" :label="op.label" :value="op.value" />
+                    </el-select>
+                    <el-input v-model="apiConditions[idx].value" :placeholder="apiConditions[idx].op === 'search' ? '全文关键词' : '值'" size="small" style="flex: 1" />
+                    <el-button link type="danger" size="small" @click="apiConditions.splice(idx, 1)">
+                      <el-icon><Delete /></el-icon>
+                    </el-button>
+                  </div>
+                </template>
+                <div style="display: flex; gap: 6px; margin-top: 4px;">
+                  <el-button size="small" @click="apiConditions.push({ group: 1, field: '', op: 'eq', value: '' })">
+                    <el-icon><Plus /></el-icon> 添加条件
                   </el-button>
+                  <el-button size="small" @click="addApiOrGroup">+ 添加 OR 组</el-button>
                 </div>
-                <el-button size="small" @click="apiConditions.push({ field: '', op: 'eq', value: '' })">
-                  <el-icon><Plus /></el-icon> 添加条件
-                </el-button>
               </div>
             </div>
 
@@ -498,7 +524,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Search, Delete, CircleCheckFilled, ArrowDown, ArrowRight, Close, CopyDocument } from '@element-plus/icons-vue'
 import { getAllModels, getModelGroups, getModelRelationTypes } from '../../api/search'
 import { useFulltext } from './composables/useFulltext'
@@ -529,14 +555,20 @@ function switchTab(name) {
 const { ft, doFulltextSearch } = useFulltext()
 const {
   inst, instRelationCache, instRelations,
-  onModelChange, doInstanceSearch, calcColWidth, resetInstance,
+  onModelChange, doInstanceSearch, calcColWidth, resetInstance, addOrGroup,
   onInstExpandChange, onInstTabChange, getInstPaginatedInstances,
 } = useInstance(allModels)
+
+// 按 group 排序后的条件索引数组（保留原数组引用，v-model 不断裂）
+const sortedIndices = computed(() => {
+  const arr = inst.value.conditions
+  return arr.map((_, i) => i).sort((a, b) => (arr[a].group || 1) - (arr[b].group || 1))
+})
 const { modelSearch, expandedModelId, modelFieldsCache, groupedModels, toggleFields, resolveRelation } = useModelBrowse(allModels, allModelGroups, allRelationTypes)
 const {
   apiEndpointGroups, apiSelectedKey, apiSelected, apiParamValues, apiConditions,
   apiSending, apiRequestUrl, apiRequestBody, apiResponseData, apiResponseStatus, apiResponseTime,
-  apiOperators, apiModelFields, apiSavedSqls,
+  apiOperators, apiModelFields, apiSavedSqls, addApiOrGroup, sortedApiIndices,
   getApiOptions, selectApiEndpoint, sendApiRequest, copyApiRequest, copyApiResponse,
   isApiReadOnly, loadApiSavedSqls, formatJson,
 } = useApiDebug(allModels)
@@ -728,6 +760,10 @@ onMounted(async () => {
   border-radius: var(--radius-md);
 }
 
+.global-search-row {
+  margin-bottom: 12px;
+}
+
 .condition-row {
   display: flex;
   gap: 8px;
@@ -751,6 +787,28 @@ onMounted(async () => {
   display: flex;
   gap: 8px;
   margin-top: 4px;
+}
+
+.or-divider {
+  text-align: center;
+  padding: 6px 0;
+  color: #e6a23c;
+  font-weight: bold;
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+
+.or-divider span {
+  background: var(--color-muted);
+  padding: 2px 16px;
+  border-radius: 4px;
+  border: 1px dashed #e6a23c;
+}
+
+.or-condition {
+  background: #fdf6ec;
+  border-radius: 6px;
+  padding: 4px 8px;
 }
 
 /* 模型分组 */
@@ -1270,6 +1328,27 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.or-divider-sm {
+  text-align: center;
+  padding: 4px 0;
+  color: #e6a23c;
+  font-weight: bold;
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+
+.or-divider-sm span {
+  padding: 1px 10px;
+  border-radius: 3px;
+  border: 1px dashed #e6a23c;
+}
+
+.or-row {
+  background: #fdf6ec;
+  border-radius: 4px;
+  padding: 2px 4px;
 }
 
 .api-json-textarea :deep(textarea) {

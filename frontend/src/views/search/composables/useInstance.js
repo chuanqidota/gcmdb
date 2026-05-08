@@ -6,6 +6,7 @@ export function useInstance(allModels) {
     modelId: null,
     fields: [],
     conditions: [],
+    globalSearch: '',
     results: [],
     columns: [],
     columnLabelMap: {},
@@ -43,14 +44,37 @@ export function useInstance(allModels) {
     inst.value.loading = true
     try {
       const where = []
+      const group1 = [] // group 1 = AND (default)
+      const orGroups = {} // group 2+ = OR
+      // 全局搜索优先
+      if (inst.value.globalSearch) {
+        group1.push({ search: inst.value.globalSearch })
+      }
       for (const c of inst.value.conditions) {
-        if (!c.field || !c.op) continue
-        if (c.op === 'in') {
+        if (!c.op || c.val === '' || c.val === undefined) continue
+        let cond = null
+        if (c.op === 'search') {
+          cond = { search: c.val }
+        } else if (!c.field) {
+          continue
+        } else if (c.op === 'in') {
           const vals = c.val.split(',').map(v => v.trim()).filter(Boolean)
-          if (vals.length) where.push({ in: { [c.field]: vals } })
-        } else if (c.val !== '') {
-          where.push({ [c.op]: { [c.field]: c.val } })
+          if (vals.length) cond = { in: { [c.field]: vals } }
+        } else {
+          cond = { [c.op]: { [c.field]: c.val } }
         }
+        if (!cond) continue
+        const g = c.group || 1
+        if (g === 1) {
+          group1.push(cond)
+        } else {
+          if (!orGroups[g]) orGroups[g] = []
+          orGroups[g].push(cond)
+        }
+      }
+      where.push(...group1)
+      for (const g of Object.keys(orGroups)) {
+        if (orGroups[g].length) where.push({ or: orGroups[g] })
       }
       const body = {
         model: m.alias,
@@ -92,12 +116,18 @@ export function useInstance(allModels) {
 
   function resetInstance() {
     inst.value.conditions = []
+    inst.value.globalSearch = ''
     inst.value.results = []
     inst.value.columns = []
     inst.value.columnLabelMap = {}
     inst.value.count = 0
     inst.value.page = 1
     instRelationCache.value = {}
+  }
+
+  function addOrGroup() {
+    const maxGroup = inst.value.conditions.reduce((max, c) => Math.max(max, c.group || 1), 0)
+    inst.value.conditions.push({ group: maxGroup + 1, field: '', op: 'eq', val: '' })
   }
 
   // Expand row: load related instances
@@ -193,7 +223,7 @@ export function useInstance(allModels) {
 
   return {
     inst, instRelationCache, instRelations,
-    onModelChange, doInstanceSearch, calcColWidth, resetInstance,
+    onModelChange, doInstanceSearch, calcColWidth, resetInstance, addOrGroup,
     onInstExpandChange, onInstTabChange, getInstPaginatedInstances,
   }
 }

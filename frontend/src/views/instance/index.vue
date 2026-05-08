@@ -50,21 +50,40 @@
             </div>
           </template>
 
-          <div class="search-bar">
-            <el-input v-model="searchText" placeholder="模糊搜索..." style="width: 200px" clearable @clear="loadInstances" @keyup.enter="loadInstances" size="small">
-              <template #prefix><el-icon><Search /></el-icon></template>
-            </el-input>
-            <el-select v-model="filterField" placeholder="筛选字段" clearable style="width: 140px" size="small">
-              <el-option v-for="f in modelFields" :key="f.alias" :value="f.alias">
-                <span>{{ f.name }}</span>
-                <el-tag v-if="f.is_indexed" size="small" type="primary" style="margin-left: 6px">索引</el-tag>
-              </el-option>
-            </el-select>
-            <el-select v-model="filterCompare" placeholder="条件" clearable style="width: 90px" size="small">
-              <el-option label="等于" value="=" /><el-option label="包含" value="like" /><el-option label="不等于" value="!=" />
-            </el-select>
-            <el-input v-model="filterValue" placeholder="值" style="width: 140px" clearable size="small" @keyup.enter="loadInstances" />
-            <el-button type="primary" size="small" @click="loadInstances">搜索</el-button>
+          <!-- 条件构建器（与综合搜索一致） -->
+          <div class="condition-builder">
+            <!-- 全局搜索 -->
+            <div class="global-search-row">
+              <el-input v-model="globalSearch" placeholder="全局搜索所有字段..." clearable @keyup.enter="loadInstances" style="width: 300px" size="small">
+                <template #prefix><el-icon><Search /></el-icon></template>
+              </el-input>
+            </div>
+            <template v-for="(idx, di) in sortedIndices" :key="idx">
+              <div v-if="di > 0 && (conditions[idx].group || 1) > (conditions[sortedIndices[di - 1]].group || 1)" class="or-divider">
+                <span>OR</span>
+              </div>
+              <div class="condition-row" :class="{ 'or-condition': (conditions[idx].group || 1) > 1 }">
+                <el-tag v-if="(conditions[idx].group || 1) === 1" size="small" type="info">AND</el-tag>
+                <el-tag v-else size="small" type="warning">OR</el-tag>
+                <el-select v-model="conditions[idx].field" placeholder="字段" size="small" style="width: 140px" :disabled="conditions[idx].op === 'search'">
+                  <el-option v-for="f in modelFields" :key="f.alias" :value="f.alias">
+                    <span>{{ f.name }}</span>
+                    <el-tag v-if="f.is_indexed" size="small" type="primary" style="margin-left: 6px">索引</el-tag>
+                  </el-option>
+                </el-select>
+                <el-select v-model="conditions[idx].op" size="small" style="width: 110px" @change="conditions[idx].field = ''">
+                  <el-option v-for="op in OPERATORS" :key="op.value" :label="op.label" :value="op.value" />
+                </el-select>
+                <el-input v-model="conditions[idx].val" :placeholder="conditions[idx].op === 'search' ? '全文关键词' : '值'" size="small" style="flex: 1" @keyup.enter="loadInstances" />
+                <el-button link type="danger" size="small" @click="removeCondition(idx)"><el-icon><Delete /></el-icon></el-button>
+              </div>
+            </template>
+            <div class="condition-actions">
+              <el-button size="small" @click="addCondition(1)">+ 添加条件</el-button>
+              <el-button size="small" @click="addOrGroup">+ 添加 OR 组</el-button>
+              <el-button type="primary" size="small" @click="loadInstances" :loading="loading">搜索</el-button>
+              <el-button size="small" @click="resetAll">重置</el-button>
+            </div>
           </div>
 
           <el-skeleton :loading="loading" animated :rows="5" :throttle="{ leading: 300, trailing: 200 }">
@@ -246,6 +265,8 @@ import { listModelGroup } from '../../api/modelGroup'
 import { listModelRelation } from '../../api/modelRelation'
 import { listInstance, retrieveInstance, createInstance, updateInstance, deleteInstance } from '../../api/instance'
 import { sourceTargetRelation, targetSourceRelation, createInstanceRelation, deleteInstanceRelationByKeys } from '../../api/instanceRelation'
+import { searchInstance } from '../../api/search'
+import { useConditionBuilder } from './composables/useConditionBuilder'
 
 const treeRef = ref(null)
 const treeCollapsed = ref(false)
@@ -255,10 +276,7 @@ const currentModel = ref(null)
 const modelFields = ref([])
 const instances = ref([])
 const loading = ref(false)
-const searchText = ref('')
-const filterField = ref('')
-const filterCompare = ref('')
-const filterValue = ref('')
+const globalSearch = ref('')
 const page = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -279,7 +297,22 @@ const targetInstancesLoading = ref(false)
 const allModels = ref([])
 const modelRelations = ref([]) // 当前模型的模型关系列表
 
+// 条件构建器
+const { conditions, addCondition, addOrGroup, removeCondition, resetConditions, buildWhere, OPERATORS } = useConditionBuilder()
+
+// 按 group 排序后的条件索引数组（保留原数组引用，v-model 不断裂）
+const sortedIndices = computed(() => {
+  const arr = conditions.value
+  return arr.map((_, i) => i).sort((a, b) => (arr[a].group || 1) - (arr[b].group || 1))
+})
+
 const tableColumns = computed(() => modelFields.value.slice(0, 6))
+
+const resetAll = () => {
+  resetConditions()
+  globalSearch.value = ''
+  loadInstances()
+}
 
 const parseOptions = (options) => {
   if (!options) return []
@@ -305,6 +338,8 @@ const onNodeClick = async (data) => {
   modelRelations.value = relRes.data.results || []
   page.value = 1
   relationCache.value = {}
+  conditions.value = []
+  globalSearch.value = ''
   loadInstances()
 }
 
@@ -312,16 +347,34 @@ const loadInstances = async () => {
   if (!currentModel.value) return
   loading.value = true
   try {
-    const params = { limit: pageSize.value, offset: (page.value - 1) * pageSize.value }
-    if (searchText.value) params.search = searchText.value
-    if (filterField.value && filterCompare.value && filterValue.value) {
-      params.field = filterField.value
-      params.compare = filterCompare.value
-      params.value = filterValue.value
+    // 将全局搜索转为 search 条件
+    const allConditions = [...conditions.value]
+    if (globalSearch.value) {
+      allConditions.push({ group: 1, field: '', op: 'search', val: globalSearch.value })
     }
-    const res = await listInstance(currentModel.value.id, params)
-    instances.value = res.data.results
-    total.value = res.data.count
+    const where = buildWhere(allConditions)
+
+    if (where.length) {
+      // 有条件时走 OpenAPI 结构化搜索
+      const body = {
+        model: currentModel.value.alias,
+        __condition: {
+          where,
+          limit: pageSize.value,
+          offset: (page.value - 1) * pageSize.value,
+          order: ['-id'],
+        },
+      }
+      const res = await searchInstance(body)
+      instances.value = res.data?.results || []
+      total.value = res.data?.count || 0
+    } else {
+      // 无条件时走内部 API
+      const params = { limit: pageSize.value, offset: (page.value - 1) * pageSize.value }
+      const res = await listInstance(currentModel.value.id, params)
+      instances.value = res.data.results
+      total.value = res.data.count
+    }
   } finally {
     loading.value = false
   }
@@ -747,10 +800,51 @@ onMounted(buildTree)
   font-weight: 600;
 }
 
-.search-bar {
+/* 条件构建器（与综合搜索一致） */
+.condition-builder {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: var(--color-muted);
+  border-radius: var(--radius-md);
+}
+
+.global-search-row {
+  margin-bottom: 12px;
+}
+
+.condition-row {
   display: flex;
   gap: 8px;
   align-items: center;
+  margin-bottom: 8px;
+}
+
+.condition-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.or-divider {
+  text-align: center;
+  padding: 6px 0;
+  color: #e6a23c;
+  font-weight: bold;
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+
+.or-divider span {
+  background: var(--color-muted);
+  padding: 2px 16px;
+  border-radius: 4px;
+  border: 1px dashed #e6a23c;
+}
+
+.or-condition {
+  background: #fdf6ec;
+  border-radius: 6px;
+  padding: 4px 8px;
 }
 
 .pagination-wrap {

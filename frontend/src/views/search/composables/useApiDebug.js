@@ -124,6 +124,7 @@ export function useApiDebug(allModels) {
     { label: '模糊匹配', value: 'contains' },
     { label: '前缀匹配', value: 'startswith' },
     { label: '后缀匹配', value: 'endswith' },
+    { label: '模糊搜索', value: 'search' },
   ]
 
   const apiOrderFields = [
@@ -178,12 +179,43 @@ export function useApiDebug(allModels) {
   })
 
   const buildWhereClause = (conditions) => {
-    return conditions.filter(c => c.field && c.op).map(c => {
-      let v = c.value
-      if (c.op === 'in') v = v.split(',').map(s => s.trim())
-      return { [c.op]: { [c.field]: v } }
-    })
+    const group1 = []
+    const orGroups = {}
+    for (const c of conditions) {
+      if (!(c.field || c.op === 'search') || !c.op || !c.value) continue
+      let cond = null
+      if (c.op === 'search') {
+        cond = { search: c.value }
+      } else if (c.op === 'in') {
+        cond = { in: { [c.field]: c.value.split(',').map(s => s.trim()) } }
+      } else {
+        cond = { [c.op]: { [c.field]: c.value } }
+      }
+      if (!cond) continue
+      const g = c.group || 1
+      if (g === 1) {
+        group1.push(cond)
+      } else {
+        if (!orGroups[g]) orGroups[g] = []
+        orGroups[g].push(cond)
+      }
+    }
+    const where = [...group1]
+    for (const g of Object.keys(orGroups)) {
+      if (orGroups[g].length) where.push({ or: orGroups[g] })
+    }
+    return where
   }
+
+  const addApiOrGroup = () => {
+    const maxGroup = apiConditions.value.reduce((max, c) => Math.max(max, c.group || 1), 0)
+    apiConditions.value.push({ group: maxGroup + 1, field: '', op: 'eq', value: '' })
+  }
+
+  const sortedApiIndices = computed(() => {
+    const arr = apiConditions.value
+    return arr.map((_, i) => i).sort((a, b) => (arr[a].group || 1) - (arr[b].group || 1))
+  })
 
   const buildGetParams = (params, paramValues, conditions) => {
     const qs = new URLSearchParams()
@@ -336,7 +368,7 @@ export function useApiDebug(allModels) {
   return {
     apiEndpointGroups, apiSelectedKey, apiSelected, apiParamValues, apiConditions,
     apiSending, apiRequestUrl, apiRequestBody, apiResponseData, apiResponseStatus, apiResponseTime,
-    apiOperators, apiModelFields, apiSavedSqls,
+    apiOperators, apiModelFields, apiSavedSqls, addApiOrGroup, sortedApiIndices,
     getApiOptions, selectApiEndpoint, sendApiRequest, copyApiRequest, copyApiResponse,
     isApiReadOnly, loadApiSavedSqls, formatJson,
   }

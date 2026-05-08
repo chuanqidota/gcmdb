@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"gcmdb/app/cmdb/models"
 	"gcmdb/app/cmdb/params"
@@ -39,12 +40,6 @@ func SimpleSearchInstance(modelId uint, listInstance params.ListInstance) (*resp
 
 	db := baseQuery()
 
-	// like 比较自动加 % 通配符
-	compareValue := value
-	if compare == "like" {
-		compareValue = "%" + value + "%"
-	}
-
 	// 搜索条件：在所有字段中模糊匹配
 	addSearchCondition := func(db *gorm.DB) *gorm.DB {
 		if search == "" {
@@ -74,38 +69,78 @@ func SimpleSearchInstance(modelId uint, listInstance params.ListInstance) (*resp
 		return count > 0
 	}
 
-	switch {
-	// 只有 field+value+compare
-	case search == "" && field != "" && value != "" && compare != "":
-		if !ValidFieldName(field) {
-			return nil, fmt.Errorf("非法字段名:%s", field)
+	// 应用单个字段条件
+	applyFieldCondition := func(db *gorm.DB, f, v, c string) (*gorm.DB, error) {
+		if !ValidFieldName(f) {
+			return nil, fmt.Errorf("非法字段名:%s", f)
 		}
-		// 精确匹配且字段已索引时，使用 indexed_values 命中索引
-		if compare == "=" && isFieldIndexed(field) {
-			db = db.Where("indexed_values LIKE ?", "%,"+value+",%")
+		if c == "like" {
+			v = "%" + v + "%"
+		}
+		if c == "=" && isFieldIndexed(f) {
+			db = db.Where("indexed_values LIKE ?", "%,"+v+",%")
 		} else {
-			db = db.Where(fmt.Sprintf("data->>'$.%s' %s ?", field, compare), compareValue)
+			db = db.Where(fmt.Sprintf("data->>'$.%s' %s ?", f, c), v)
 		}
+		return db, nil
+	}
 
-	// search + field+value+compare
-	case search != "" && field != "" && value != "" && compare != "":
-		if !ValidFieldName(field) {
-			return nil, fmt.Errorf("非法字段名:%s", field)
+	// 多条件模式
+	if listInstance.Conditions != "" {
+		var conditions []params.SimpleCondition
+		if err := json.Unmarshal([]byte(listInstance.Conditions), &conditions); err != nil {
+			return nil, fmt.Errorf("参数错误-conditions: %s", err.Error())
 		}
-		if compare == "=" && isFieldIndexed(field) {
-			db = db.Where("indexed_values LIKE ?", "%,"+value+",%")
-		} else {
-			db = db.Where(fmt.Sprintf("data->>'$.%s' %s ?", field, compare), compareValue)
+		for _, cond := range conditions {
+			if cond.Field == "" || cond.Compare == "" || cond.Value == "" {
+				continue
+			}
+			if !params.ValidatorCompare(cond.Compare) {
+				return nil, fmt.Errorf("参数错误-compare: %s", cond.Compare)
+			}
+			var err error
+			db, err = applyFieldCondition(db, cond.Field, cond.Value, cond.Compare)
+			if err != nil {
+				return nil, err
+			}
 		}
 		db = addSearchCondition(db)
+	} else {
+		// 单条件模式（向后兼容）
+		// like 比较自动加 % 通配符
+		compareValue := value
+		if compare == "like" {
+			compareValue = "%" + value + "%"
+		}
 
-	// 只有 search（无 field/value）
-	case search != "" && (field == "" || value == ""):
-		db = addSearchCondition(db)
+		switch {
+		case search == "" && field != "" && value != "" && compare != "":
+			if !ValidFieldName(field) {
+				return nil, fmt.Errorf("非法字段名:%s", field)
+			}
+			if compare == "=" && isFieldIndexed(field) {
+				db = db.Where("indexed_values LIKE ?", "%,"+value+",%")
+			} else {
+				db = db.Where(fmt.Sprintf("data->>'$.%s' %s ?", field, compare), compareValue)
+			}
 
-	// 无任何条件：search=="" 且无 field/value（分支1）
-	default:
-		// 不加额外条件，列出全部
+		case search != "" && field != "" && value != "" && compare != "":
+			if !ValidFieldName(field) {
+				return nil, fmt.Errorf("非法字段名:%s", field)
+			}
+			if compare == "=" && isFieldIndexed(field) {
+				db = db.Where("indexed_values LIKE ?", "%,"+value+",%")
+			} else {
+				db = db.Where(fmt.Sprintf("data->>'$.%s' %s ?", field, compare), compareValue)
+			}
+			db = addSearchCondition(db)
+
+		case search != "" && (field == "" || value == ""):
+			db = addSearchCondition(db)
+
+		default:
+			// 不加额外条件，列出全部
+		}
 	}
 
 	var count int64

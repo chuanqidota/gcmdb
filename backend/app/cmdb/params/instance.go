@@ -7,17 +7,24 @@ type UpdateInstance struct {
 }
 
 type ListInstance struct {
-	Search  string `form:"search" label:"模糊搜索"`
-	Field   string `form:"field" label:"指定字段"`
-	Value   string `form:"value" label:"指定值"`
-	Compare string `form:"compare" label:"比较符"`
-	Limit   int    `form:"limit" label:"分页limit"`
-	Offset  int    `form:"offset" label:"分页offset"`
+	Search     string `form:"search" label:"模糊搜索"`
+	Field      string `form:"field" label:"指定字段"`
+	Value      string `form:"value" label:"指定值"`
+	Compare    string `form:"compare" label:"比较符"`
+	Conditions string `form:"conditions" label:"多条件JSON"`
+	Limit      int    `form:"limit" label:"分页limit"`
+	Offset     int    `form:"offset" label:"分页offset"`
+}
+
+type SimpleCondition struct {
+	Field   string `json:"field"`
+	Compare string `json:"compare"`
+	Value   string `json:"value"`
 }
 
 func ValidatorCompare(compare string) bool {
 	switch compare {
-	case "=", "like", "!=":
+	case "=", "!=", "like", ">", ">=", "<", "<=":
 		return true
 	}
 	return false
