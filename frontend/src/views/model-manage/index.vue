@@ -95,16 +95,7 @@
         </el-card>
 
         <!-- 详情展开面板 -->
-        <el-card v-if="expandedModelId" class="detail-card">
-          <template #header>
-            <div class="card-header">
-              <div class="detail-header">
-                <span class="detail-title">{{ expandedModel.name }}</span>
-                <el-tag size="small" type="info">{{ expandedModel.alias }}</el-tag>
-              </div>
-              <el-button text @click="expandedModelId = null"><el-icon><Close /></el-icon></el-button>
-            </div>
-          </template>
+        <el-drawer v-model="detailDrawerVisible" :title="`${expandedModel.name} (${expandedModel.alias})`" size="85%" direction="rtl" @close="expandedModelId = null">
           <el-tabs v-model="detailTab">
             <!-- 字段管理 Tab -->
             <el-tab-pane label="字段" name="fields">
@@ -253,7 +244,7 @@
               <el-empty v-if="!detailData.fieldRelationsLoading && !detailData.fieldRelations.length" description="暂无字段关联" :image-size="48" />
             </el-tab-pane>
           </el-tabs>
-        </el-card>
+        </el-drawer>
       </el-col>
     </el-row>
 
@@ -621,6 +612,10 @@ const handleMoveGroup = async () => {
 // ===== 模型详情展开 =====
 const expandedModelId = ref(null)
 const expandedModel = ref({})
+const detailDrawerVisible = computed({
+  get: () => !!expandedModelId.value,
+  set: (val) => { if (!val) expandedModelId.value = null },
+})
 const detailTab = ref('fields')
 const selectedFieldGroup = ref(null)
 
@@ -1057,11 +1052,7 @@ onMounted(async () => {
   margin-top: 12px;
 }
 
-/* 详情面板 */
-.detail-card {
-  margin-top: 12px;
-}
-
+/* 详情面板（抽屉内） */
 .detail-header {
   display: flex;
   align-items: center;
