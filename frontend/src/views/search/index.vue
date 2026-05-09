@@ -175,13 +175,7 @@
                     :instance-id="row.id"
                     :cache="instRelationCache[row.id]"
                     :tab-change-handler="handleTabChange"
-                    @view-topo="(instId) => {
-                      const rel = instRelationCache[instId]
-                      if (rel?.groups?.length) {
-                        const g = rel.groups[0]
-                        openTopoForInstance(instId, g.model_id, g.model_name, g.model_alias)
-                      }
-                    }"
+                    @view-topo="(instId, modelId, modelName, modelAlias) => openTopoForInstance(instId, modelId, modelName, modelAlias)"
                     @open-detail="(instId, name, alias) => openRelDrawer(instId, name, alias)"
                   />
                 </template>
@@ -527,13 +521,7 @@
           :instance-id="relDrawerCurrent.instanceId"
           :cache="relDrawerRelationCache[relDrawerCurrent.instanceId]"
           :tab-change-handler="handleRelDrawerTabChange"
-          @view-topo="(instId) => {
-            const rel = relDrawerRelationCache[instId]
-            if (rel?.groups?.length) {
-              const g = rel.groups[0]
-              openTopoForInstance(instId, g.model_id, g.model_name, g.model_alias)
-            }
-          }"
+          @view-topo="(instId, modelId, modelName, modelAlias) => openTopoForInstance(instId, modelId, modelName, modelAlias)"
           @open-detail="(instId, name, alias) => pushRelDrawer(instId, name, alias)"
         />
       </div>

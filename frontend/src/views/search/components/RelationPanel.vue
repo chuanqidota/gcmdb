@@ -127,7 +127,7 @@ export default {
     }
 
     function handleViewTopo(rel) {
-      emit('viewTopo', rel.instance_id)
+      emit('viewTopo', rel.instance_id, rel.model_id, rel.model_name, rel.model_alias)
     }
 
     return { page, pageSize, total, paginated, emit, onTabChange, syncPage, syncSize, handleViewTopo }
