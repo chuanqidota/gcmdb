@@ -81,5 +81,6 @@ export function useConditionBuilder() {
     resetConditions,
     sortConditions,
     buildWhere,
+    OPERATORS,
   }
 }

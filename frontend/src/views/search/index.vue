@@ -12,7 +12,7 @@
     </div>
 
     <!-- 搜索区 (接口调试 tab 时隐藏) -->
-    <div v-show="activeTab !== 'api'" class="search-hero">
+    <div v-show="activeTab !== 'api'" class="search-hero" :class="{ 'hero-column': activeTab === 'instance' }">
       <!-- 全文检索 -->
       <div v-if="activeTab === 'fulltext'" class="search-box">
         <el-input
@@ -29,25 +29,34 @@
         <el-button type="primary" class="search-btn" @click="doFulltextSearch" :loading="ft.loading">搜索</el-button>
       </div>
 
-      <!-- 实例搜索：模型选择 + 操作按钮（与全文检索同款居中布局） -->
-      <div v-if="activeTab === 'instance'" class="instance-search-box">
-        <el-select
-          v-model="inst.modelId"
-          placeholder="选择模型开始搜索..."
-          filterable
-          class="instance-model-select"
-          @change="onModelChange"
-        >
-          <el-option
-            v-for="m in allModels"
-            :key="m.id"
-            :label="`${m.name} (${m.alias})`"
-            :value="m.id"
-          />
-        </el-select>
-        <el-button type="primary" class="search-btn" @click="doInstanceSearch" :loading="inst.loading" :disabled="!inst.modelId">搜索</el-button>
-        <el-button class="search-btn" @click="resetInstance">重置</el-button>
-      </div>
+      <!-- 实例搜索 -->
+      <template v-if="activeTab === 'instance'">
+        <div class="search-box">
+          <el-select
+            v-model="inst.modelId"
+            placeholder="选择模型..."
+            filterable
+            class="search-model-select"
+            @change="onModelChange"
+          >
+            <el-option
+              v-for="m in allModels"
+              :key="m.id"
+              :label="`${m.name} (${m.alias})`"
+              :value="m.id"
+            />
+          </el-select>
+          <el-input v-model="inst.globalSearch" placeholder="全局搜索所有字段..." clearable @keyup.enter="doInstanceSearch" class="search-input">
+            <template #prefix><el-icon><Search /></el-icon></template>
+          </el-input>
+          <el-button type="primary" class="search-btn" @click="doInstanceSearch" :loading="inst.loading" :disabled="!inst.modelId">搜索</el-button>
+          <el-button class="search-btn" @click="resetInstance">重置</el-button>
+        </div>
+        <div class="cond-action-row">
+          <el-button size="small" @click="inst.conditions.push({ group: 1, field: '', op: 'eq', val: '' })">+ 添加条件</el-button>
+          <el-button size="small" @click="addOrGroup">+ 添加 OR 组</el-button>
+        </div>
+      </template>
 
       <!-- 模型浏览 -->
       <div v-if="activeTab === 'model'" class="search-box">
@@ -109,49 +118,44 @@
 
       <!-- 实例搜索：条件构建器 + 结果 -->
       <template v-if="activeTab === 'instance'">
-        <!-- 条件构建器 -->
-        <div v-if="inst.modelId" class="condition-builder">
-          <!-- 全局搜索 -->
-          <div class="global-search-row">
-            <el-input v-model="inst.globalSearch" placeholder="全局搜索所有字段..." clearable @keyup.enter="doInstanceSearch" style="width: 300px" size="small">
-              <template #prefix><el-icon><Search /></el-icon></template>
-            </el-input>
-          </div>
-          <template v-for="(idx, di) in sortedIndices" :key="idx">
-            <!-- OR 分隔条：当当前条件的 group > 前一个条件的 group 时显示 -->
-            <div v-if="di > 0 && (inst.conditions[idx].group || 1) > (inst.conditions[sortedIndices[di - 1]].group || 1)" class="or-divider">
-              <span>OR</span>
-            </div>
-            <div class="condition-row" :class="{ 'or-condition': (inst.conditions[idx].group || 1) > 1 }">
-              <el-tag v-if="(inst.conditions[idx].group || 1) === 1" size="small" type="info">AND</el-tag>
-              <el-tag v-else size="small" type="warning">OR</el-tag>
-              <el-select v-model="inst.conditions[idx].field" placeholder="字段" class="cond-field" :disabled="inst.conditions[idx].op === 'search'">
-                <el-option v-for="f in inst.fields" :key="f.alias" :value="f.alias">
-                  <span>{{ f.name }}</span>
-                  <el-tag v-if="f.is_indexed" size="small" type="primary" style="margin-left: 6px">索引</el-tag>
-                </el-option>
-              </el-select>
-              <el-select v-model="inst.conditions[idx].op" class="cond-op" @change="inst.conditions[idx].field = ''">
-                <el-option label="=" value="eq" />
-                <el-option label="!=" value="ne" />
-                <el-option label=">" value="gt" />
-                <el-option label=">=" value="ge" />
-                <el-option label="<" value="lt" />
-                <el-option label="<=" value="le" />
-                <el-option label="包含" value="contains" />
-                <el-option label="开头是" value="startswith" />
-                <el-option label="结尾是" value="endswith" />
-                <el-option label="在列表" value="in" />
-                <el-option label="模糊搜索" value="search" />
-              </el-select>
-              <el-input v-model="inst.conditions[idx].val" :placeholder="inst.conditions[idx].op === 'search' ? '全文关键词' : '值'" class="cond-val" />
-              <el-button :icon="Delete" circle @click="inst.conditions.splice(idx, 1)" />
-            </div>
-          </template>
-          <div class="condition-actions">
-            <el-button @click="inst.conditions.push({ group: 1, field: '', op: 'eq', val: '' })">+ 添加条件</el-button>
-            <el-button @click="addOrGroup">+ 添加 OR 组</el-button>
-          </div>
+        <!-- 条件构建器（高级条件） -->
+        <div class="condition-builder" v-if="inst.modelId">
+          <!-- 条件行 -->
+            <template v-for="(idx, di) in sortedIndices" :key="idx">
+              <div v-if="di > 0 && (inst.conditions[idx].group || 1) > (inst.conditions[sortedIndices[di - 1]].group || 1)" class="or-divider">
+                <span>OR</span>
+              </div>
+              <div class="condition-row" :class="{ 'or-condition': (inst.conditions[idx].group || 1) > 1 }">
+                <el-tag v-if="(inst.conditions[idx].group || 1) === 1" size="small" type="info">AND</el-tag>
+                <el-tag v-else size="small" type="warning">OR</el-tag>
+                <el-select v-model="inst.conditions[idx].field" placeholder="字段" class="cond-field" :disabled="inst.conditions[idx].op === 'search'">
+                  <el-option v-for="f in inst.fields" :key="f.alias" :value="f.alias">
+                    <span>{{ f.name }}</span>
+                    <el-tag v-if="f.is_indexed" size="small" type="primary" style="margin-left: 6px">索引</el-tag>
+                  </el-option>
+                </el-select>
+                <el-select v-model="inst.conditions[idx].op" class="cond-op" @change="v => { if (v === 'search') inst.conditions[idx].field = '' }">
+                  <el-option label="=" value="eq" />
+                  <el-option label="!=" value="ne" />
+                  <el-option label=">" value="gt" />
+                  <el-option label=">=" value="ge" />
+                  <el-option label="<" value="lt" />
+                  <el-option label="<=" value="le" />
+                  <el-option label="包含" value="contains" />
+                  <el-option label="开头是" value="startswith" />
+                  <el-option label="结尾是" value="endswith" />
+                  <el-option label="在列表" value="in" />
+                  <el-option label="模糊搜索" value="search" />
+                </el-select>
+                <el-input v-model="inst.conditions[idx].val" :placeholder="inst.conditions[idx].op === 'search' ? '全文关键词' : '值'" class="cond-val" />
+                <el-button :icon="Delete" circle @click="inst.conditions.splice(idx, 1)" />
+                <template v-if="di === sortedIndices.length - 1">
+                  <span class="condition-spacer"></span>
+                  <el-button size="small" @click="inst.conditions.push({ group: 1, field: '', op: 'eq', val: '' })">+ 添加条件</el-button>
+                  <el-button size="small" @click="addOrGroup">+ 添加 OR 组</el-button>
+                </template>
+              </div>
+            </template>
         </div>
         <div class="result-count" v-if="inst.count > 0">
           找到 <strong>{{ inst.count }}</strong> 条实例
@@ -202,6 +206,11 @@
                               min-width="100"
                             >
                               <template #default="{ row: rel }">{{ rel.data?.[f.alias] ?? '-' }}</template>
+                            </el-table-column>
+                            <el-table-column label="操作" width="70" fixed="right">
+                              <template #default="{ row: rel }">
+                                <el-button link type="primary" size="small" @click="openDrillDrawer(rel)">关联</el-button>
+                              </template>
                             </el-table-column>
                           </el-table>
                           <div class="inst-relation-pagination">
@@ -410,7 +419,7 @@
                     <el-select v-model="apiConditions[idx].field" placeholder="字段" size="small" style="width: 100px" filterable :disabled="apiConditions[idx].op === 'search'">
                       <el-option v-for="f in apiModelFields" :key="f.alias" :label="f.name" :value="f.alias" />
                     </el-select>
-                    <el-select v-model="apiConditions[idx].op" placeholder="操作符" size="small" style="width: 110px" @change="apiConditions[idx].field = ''">
+                    <el-select v-model="apiConditions[idx].op" placeholder="操作符" size="small" style="width: 110px" @change="v => { if (v === 'search') apiConditions[idx].field = '' }">
                       <el-option v-for="op in apiOperators" :key="op.value" :label="op.label" :value="op.value" />
                     </el-select>
                     <el-input v-model="apiConditions[idx].value" :placeholder="apiConditions[idx].op === 'search' ? '全文关键词' : '值'" size="small" style="flex: 1" />
@@ -527,6 +536,64 @@
       </div>
     </div>
   </el-drawer>
+
+  <!-- 递归关联钻入 Drawer -->
+  <el-drawer v-model="drillDrawer.visible" :title="drillTitle" size="70%" direction="rtl" @close="closeDrillDrawer">
+    <div v-if="drillDrawer.instance" class="inst-relation-panel" v-loading="drillCache[drillDrawer.instance.instance_id]?.loading">
+      <template v-if="drillCache[drillDrawer.instance.instance_id]?.groups?.length">
+        <div class="inst-relation-header">
+          <el-tabs v-model="drillCache[drillDrawer.instance.instance_id].activeTab" @tab-change="(id) => onDrillTabChange(drillDrawer.instance.instance_id, Number(id))" class="inst-relation-tabs">
+            <el-tab-pane v-for="g in drillCache[drillDrawer.instance.instance_id].groups" :key="g.model_id" :name="String(g.model_id)">
+              <template #label>
+                <span class="tab-label">
+                  <span :class="['tab-direction', g.direction]">{{ g.direction === 'upstream' ? '←' : '→' }}</span>
+                  {{ g.model_name }}
+                  <el-badge :value="g.instances.length" class="tab-badge" />
+                </span>
+              </template>
+            </el-tab-pane>
+          </el-tabs>
+        </div>
+        <template v-for="g in drillCache[drillDrawer.instance.instance_id].groups" :key="'drill-' + g.model_id">
+          <div v-if="String(g.model_id) === drillCache[drillDrawer.instance.instance_id].activeTab">
+            <el-table
+              :data="getDrillPaginatedInstances(drillDrawer.instance.instance_id, g.model_id)"
+              size="small" stripe highlight-current-row
+              v-loading="drillCache[drillDrawer.instance.instance_id]?.tabData?.[g.model_id]?.loading"
+            >
+              <el-table-column prop="instance_id" label="ID" width="60">
+                <template #default="{ row: rel }">{{ rel.instance_id }}</template>
+              </el-table-column>
+              <el-table-column
+                v-for="f in (drillCache[drillDrawer.instance.instance_id]?.tabData?.[g.model_id]?.fields || [])"
+                :key="f.alias" :label="f.name" show-overflow-tooltip min-width="100"
+              >
+                <template #default="{ row: rel }">{{ rel.data?.[f.alias] ?? '-' }}</template>
+              </el-table-column>
+              <el-table-column label="操作" width="70" fixed="right">
+                <template #default="{ row: rel }">
+                  <el-button link type="primary" size="small" @click="openDrillDrawer(rel)">关联</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div class="inst-relation-pagination">
+              <el-pagination
+                v-model:current-page="drillCache[drillDrawer.instance.instance_id].tabData[g.model_id].page"
+                v-model:page-size="drillCache[drillDrawer.instance.instance_id].tabData[g.model_id].pageSize"
+                :total="drillCache[drillDrawer.instance.instance_id].tabData[g.model_id].instances.length"
+                :page-sizes="[10, 20, 50]"
+                layout="total, sizes, prev, pager, next"
+                small background
+              />
+            </div>
+          </div>
+        </template>
+      </template>
+      <template v-else-if="!drillCache[drillDrawer.instance.instance_id]?.loading">
+        <div class="inst-relation-empty">暂无关联实例</div>
+      </template>
+    </div>
+  </el-drawer>
 </template>
 
 <script setup>
@@ -563,12 +630,19 @@ const {
   inst, instRelationCache, instRelations,
   onModelChange, doInstanceSearch, calcColWidth, resetInstance, addOrGroup,
   onInstExpandChange, onInstTabChange, getInstPaginatedInstances,
+  drillDrawer, drillCache, openDrillDrawer, closeDrillDrawer,
+  onDrillTabChange, getDrillPaginatedInstances,
 } = useInstance(allModels)
 
 // 按 group 排序后的条件索引数组（保留原数组引用，v-model 不断裂）
 const sortedIndices = computed(() => {
   const arr = inst.value.conditions
   return arr.map((_, i) => i).sort((a, b) => (arr[a].group || 1) - (arr[b].group || 1))
+})
+const drillTitle = computed(() => {
+  const inst = drillDrawer.value.instance
+  if (!inst) return '关联实例'
+  return `${inst.model_name || ''} #${inst.instance_id} — 关联实例`
 })
 const { modelSearch, expandedModelId, modelFieldsCache, groupedModels, toggleFields, resolveRelation } = useModelBrowse(allModels, allModelGroups, allRelationTypes)
 const {
@@ -612,8 +686,8 @@ onMounted(async () => {
 .tab-bar {
   display: flex;
   gap: 32px;
-  margin-top: 40px;
-  margin-bottom: 32px;
+  margin-top: 24px;
+  margin-bottom: 24px;
 }
 
 .tab-item {
@@ -641,7 +715,18 @@ onMounted(async () => {
   width: 100%;
   display: flex;
   justify-content: center;
-  margin-bottom: 40px;
+  margin-bottom: 16px;
+}
+
+.search-hero.hero-column {
+  flex-direction: column;
+  align-items: center;
+}
+
+.cond-action-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .search-box {
@@ -669,7 +754,8 @@ onMounted(async () => {
 }
 
 .search-model-select {
-  width: 160px;
+  width: 200px;
+  flex-shrink: 0;
 }
 
 .search-model-select :deep(.el-input__wrapper) {
@@ -685,38 +771,6 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
-/* 实例搜索：复用全文检索的 hero 居中布局 */
-.instance-search-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  max-width: 640px;
-}
-
-.instance-search-box .instance-model-select {
-  flex: 1;
-}
-
-.instance-search-box .instance-model-select :deep(.el-input__wrapper) {
-  border-radius: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  padding: 4px 20px;
-  height: 40px;
-  transition: box-shadow 0.2s ease;
-}
-
-.instance-search-box .instance-model-select :deep(.el-input__wrapper:focus-within) {
-  box-shadow: 0 2px 16px rgba(37, 99, 235, 0.15);
-}
-
-.instance-search-box .search-btn {
-  border-radius: 24px;
-  padding: 0 28px;
-  height: 40px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
 
 /* ===== 结果区 ===== */
 .results-area {
@@ -756,25 +810,21 @@ onMounted(async () => {
   margin-top: 16px;
 }
 
-/* 条件构建器外层间距 */
-
 /* 条件构建器 */
 .condition-builder {
-  margin-bottom: 16px;
-  padding: 16px;
-  background: var(--color-muted);
-  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  max-width: 960px;
+  width: 100%;
 }
 
-.global-search-row {
-  margin-bottom: 12px;
-}
 
 .condition-row {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .cond-field {
@@ -786,13 +836,12 @@ onMounted(async () => {
 }
 
 .cond-val {
-  flex: 1;
+  flex: 2;
+  min-width: 120px;
 }
 
-.condition-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
+.condition-spacer {
+  flex: 1;
 }
 
 .or-divider {

@@ -50,14 +50,17 @@
             </div>
           </template>
 
-          <!-- 条件构建器（与综合搜索一致） -->
+          <!-- 条件构建器 -->
           <div class="condition-builder">
-            <!-- 全局搜索 -->
-            <div class="global-search-row">
-              <el-input v-model="globalSearch" placeholder="全局搜索所有字段..." clearable @keyup.enter="loadInstances" style="width: 300px" size="small">
+            <!-- 搜索行 -->
+            <div class="cond-search-row">
+              <el-input v-model="globalSearch" placeholder="全局搜索所有字段..." clearable @keyup.enter="loadInstances" size="small" class="cond-search-input">
                 <template #prefix><el-icon><Search /></el-icon></template>
               </el-input>
+              <el-button type="primary" size="small" @click="loadInstances" :loading="loading">搜索</el-button>
+              <el-button size="small" @click="resetAll">重置</el-button>
             </div>
+            <!-- 条件行 -->
             <template v-for="(idx, di) in sortedIndices" :key="idx">
               <div v-if="di > 0 && (conditions[idx].group || 1) > (conditions[sortedIndices[di - 1]].group || 1)" class="or-divider">
                 <span>OR</span>
@@ -71,18 +74,22 @@
                     <el-tag v-if="f.is_indexed" size="small" type="primary" style="margin-left: 6px">索引</el-tag>
                   </el-option>
                 </el-select>
-                <el-select v-model="conditions[idx].op" size="small" style="width: 110px" @change="conditions[idx].field = ''">
+                <el-select v-model="conditions[idx].op" size="small" style="width: 110px" @change="v => { if (v === 'search') conditions[idx].field = '' }">
                   <el-option v-for="op in OPERATORS" :key="op.value" :label="op.label" :value="op.value" />
                 </el-select>
                 <el-input v-model="conditions[idx].val" :placeholder="conditions[idx].op === 'search' ? '全文关键词' : '值'" size="small" style="flex: 1" @keyup.enter="loadInstances" />
                 <el-button link type="danger" size="small" @click="removeCondition(idx)"><el-icon><Delete /></el-icon></el-button>
+                <template v-if="di === sortedIndices.length - 1">
+                  <span class="condition-spacer"></span>
+                  <el-button size="small" @click="addCondition(1)">+ 条件</el-button>
+                  <el-button size="small" @click="addOrGroup">+ OR组</el-button>
+                </template>
               </div>
             </template>
-            <div class="condition-actions">
+            <!-- 空状态：无条件时显示添加按钮 -->
+            <div v-if="sortedIndices.length === 0" class="condition-actions">
               <el-button size="small" @click="addCondition(1)">+ 添加条件</el-button>
               <el-button size="small" @click="addOrGroup">+ 添加 OR 组</el-button>
-              <el-button type="primary" size="small" @click="loadInstances" :loading="loading">搜索</el-button>
-              <el-button size="small" @click="resetAll">重置</el-button>
             </div>
           </div>
 
@@ -800,29 +807,40 @@ onMounted(buildTree)
   font-weight: 600;
 }
 
-/* 条件构建器（与综合搜索一致） */
+/* 条件构建器 */
 .condition-builder {
-  margin-bottom: 16px;
-  padding: 16px;
-  background: var(--color-muted);
-  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
 }
 
-.global-search-row {
-  margin-bottom: 12px;
+.cond-search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.cond-search-input {
+  flex: 1;
+  max-width: 360px;
 }
 
 .condition-row {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+}
+
+.condition-spacer {
+  flex: 1;
 }
 
 .condition-actions {
   display: flex;
   gap: 8px;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .or-divider {

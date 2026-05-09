@@ -199,6 +199,84 @@ export function useInstance(allModels) {
     return tabData.instances.slice(start, start + size)
   }
 
+  // ===== 递归钻入：查看关联实例的关联 =====
+  const drillDrawer = ref({ visible: false, instance: null })
+  const drillCache = ref({})
+
+  function openDrillDrawer(relInstance) {
+    drillDrawer.value = { visible: true, instance: relInstance }
+    if (!drillCache.value[relInstance.instance_id]) {
+      loadDrillRelations(relInstance)
+    }
+  }
+
+  function closeDrillDrawer() {
+    drillDrawer.value = { visible: false, instance: null }
+  }
+
+  const loadDrillRelations = async (relInstance) => {
+    const id = relInstance.instance_id
+    drillCache.value[id] = { groups: [], loading: true, activeTab: '', tabData: {} }
+    try {
+      const res = await getInstanceTopology(id)
+      const topoData = res.data || {}
+      const upstream = (topoData.upstream || []).map(r => ({ ...r, direction: 'upstream' }))
+      const downstream = (topoData.downstream || []).map(r => ({ ...r, direction: 'downstream' }))
+      const allRels = [...upstream, ...downstream]
+
+      const groupMap = new Map()
+      for (const rel of allRels) {
+        const key = rel.model_id
+        if (!groupMap.has(key)) {
+          groupMap.set(key, { model_id: rel.model_id, model_name: rel.model_name, model_alias: rel.model_alias, direction: rel.direction, instances: [] })
+        }
+        groupMap.get(key).instances.push(rel)
+      }
+
+      const groups = [...groupMap.values()]
+      drillCache.value[id].groups = groups
+      drillCache.value[id].loading = false
+
+      if (groups.length) {
+        const tabToLoad = String(groups[0].model_id)
+        drillCache.value[id].activeTab = tabToLoad
+        onDrillTabChange(id, Number(tabToLoad))
+      }
+    } catch {
+      drillCache.value[id] = { groups: [], loading: false, activeTab: '', tabData: {} }
+    }
+  }
+
+  const onDrillTabChange = async (instanceId, modelId) => {
+    const cache = drillCache.value[instanceId]
+    if (!cache || cache.tabData[modelId]) return
+
+    const group = cache.groups.find(g => g.model_id === modelId)
+    if (!group) return
+
+    cache.tabData[modelId] = { instances: group.instances, fields: [], loading: true, page: 1, pageSize: 10 }
+    drillCache.value = { ...drillCache.value }
+
+    try {
+      const detailRes = await getModelDetail(group.model_alias)
+      const fields = (detailRes.data?.model_fields || []).slice(0, 8)
+      cache.tabData[modelId].fields = fields
+    } catch {
+      cache.tabData[modelId].fields = []
+    } finally {
+      cache.tabData[modelId].loading = false
+      drillCache.value = { ...drillCache.value }
+    }
+  }
+
+  const getDrillPaginatedInstances = (instanceId, modelId) => {
+    const tabData = drillCache.value[instanceId]?.tabData?.[modelId]
+    if (!tabData) return []
+    const size = tabData.pageSize || 10
+    const start = (tabData.page - 1) * size
+    return tabData.instances.slice(start, start + size)
+  }
+
   // Load relations between current page instances
   async function loadInstanceRelations() {
     if (!inst.value.results.length) { instRelations.value = []; return }
@@ -225,5 +303,7 @@ export function useInstance(allModels) {
     inst, instRelationCache, instRelations,
     onModelChange, doInstanceSearch, calcColWidth, resetInstance, addOrGroup,
     onInstExpandChange, onInstTabChange, getInstPaginatedInstances,
+    drillDrawer, drillCache, openDrillDrawer, closeDrillDrawer,
+    onDrillTabChange, getDrillPaginatedInstances,
   }
 }
