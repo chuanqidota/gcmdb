@@ -183,6 +183,61 @@ export function useTopology(allModels, allModelGroups, inst, instFields) {
     } catch { /* ignore */ }
   }
 
+  async function openTopoForInstance(instanceId, modelId, modelName, modelAlias) {
+    const model = allModels.value.find(m => m.id === modelId)
+    if (!model) return
+    destroyTopoGraph()
+    topoSelectedInstance.value = null
+
+    const groupIdx = allModelGroups.value.findIndex(g => g.id === model.group_id)
+    topoModelColorMap[modelId] = GROUP_COLORS[(groupIdx >= 0 ? groupIdx : 0) % GROUP_COLORS.length]
+
+    const nodeId = `inst-${instanceId}`
+    topoNodeMap.set(nodeId, { id: instanceId, model_id: modelId, model_name: modelName, model_alias: modelAlias })
+    const nodes = [{
+      id: nodeId,
+      data: { label: `#${instanceId}\n${modelName}`, instanceId, modelId },
+      style: { fill: topoModelColorMap[modelId], stroke: '#fff', lineWidth: 2, radius: 12 },
+    }]
+
+    try {
+      const res = await getInstanceTopology(instanceId)
+      const topoData = res.data || {}
+      const edges = []
+      for (const rel of (topoData.downstream || [])) {
+        const relNodeId = `inst-${rel.instance_id}`
+        if (!topoNodeMap.has(relNodeId)) {
+          topoModelColorMap[rel.model_id] = topoModelColorMap[rel.model_id] || GROUP_COLORS[Object.keys(topoModelColorMap).length % GROUP_COLORS.length]
+          topoNodeMap.set(relNodeId, { id: rel.instance_id, model_id: rel.model_id, model_name: rel.model_name, model_alias: rel.model_alias, ...(rel.data || {}) })
+          nodes.push({ id: relNodeId, data: { label: `#${rel.instance_id}\n${rel.model_name}`, instanceId: rel.instance_id, modelId: rel.model_id }, style: { fill: topoModelColorMap[rel.model_id], stroke: '#fff', lineWidth: 1.5, radius: 10 } })
+        }
+        const edgeId = `edge-${nodeId}-${relNodeId}`
+        if (!topoEdgeSet.has(edgeId)) {
+          topoEdgeSet.add(edgeId)
+          edges.push({ id: edgeId, source: nodeId, target: relNodeId, data: { relType: rel.relation_type || '' } })
+        }
+      }
+      for (const rel of (topoData.upstream || [])) {
+        const relNodeId = `inst-${rel.instance_id}`
+        if (!topoNodeMap.has(relNodeId)) {
+          topoModelColorMap[rel.model_id] = topoModelColorMap[rel.model_id] || GROUP_COLORS[Object.keys(topoModelColorMap).length % GROUP_COLORS.length]
+          topoNodeMap.set(relNodeId, { id: rel.instance_id, model_id: rel.model_id, model_name: rel.model_name, model_alias: rel.model_alias, ...(rel.data || {}) })
+          nodes.push({ id: relNodeId, data: { label: `#${rel.instance_id}\n${rel.model_name}`, instanceId: rel.instance_id, modelId: rel.model_id }, style: { fill: topoModelColorMap[rel.model_id], stroke: '#fff', lineWidth: 1.5, radius: 10 } })
+        }
+        const edgeId = `edge-${relNodeId}-${nodeId}`
+        if (!topoEdgeSet.has(edgeId)) {
+          topoEdgeSet.add(edgeId)
+          edges.push({ id: edgeId, source: relNodeId, target: nodeId, data: { relType: rel.relation_type || '' } })
+        }
+      }
+
+      topoDrawerTitle.value = `实例拓扑 — ${modelName} #${instanceId}`
+      topoDrawerVisible.value = true
+      await nextTick()
+      initTopoGraph(nodes, edges)
+    } catch { /* ignore */ }
+  }
+
   function initTopoGraph(nodes, edges) {
     if (!topoGraphContainer.value) return
     const rect = topoGraphContainer.value.getBoundingClientRect()
@@ -338,6 +393,6 @@ export function useTopology(allModels, allModelGroups, inst, instFields) {
   return {
     topoDrawerVisible, topoDrawerTitle, topoGraphSearchText, topoSelectedInstance,
     topoGraphContainer, topoNodeCount, topoFieldRows, topoRelations,
-    openBatchTopo, openSingleTopo, onTopoGraphSearch, focusTopoNode, onTopoDrawerClose,
+    openBatchTopo, openSingleTopo, openTopoForInstance, onTopoGraphSearch, focusTopoNode, onTopoDrawerClose,
   }
 }

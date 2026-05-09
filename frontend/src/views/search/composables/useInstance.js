@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { getModelDetail, searchInstance, getInstanceTopology } from '../../../api/search'
 
 export function useInstance(allModels) {
@@ -17,8 +17,112 @@ export function useInstance(allModels) {
     topoLoading: false,
   })
 
-  const instRelationCache = ref({})
+  const instRelationCache = reactive({})
   const instRelations = ref([])
+
+  // ===== 关联抽屉 =====
+  const relDrawerVisible = ref(false)
+  const relDrawerStack = ref([])
+  const relDrawerCurrent = computed(() => relDrawerStack.value[relDrawerStack.value.length - 1] || null)
+
+  async function openRelDrawer(instanceId, modelName, modelAlias) {
+    relDrawerStack.value = []
+    await pushRelDrawer(instanceId, modelName, modelAlias)
+    relDrawerVisible.value = true
+  }
+
+  async function pushRelDrawer(instanceId, modelName, modelAlias) {
+    relDrawerStack.value.push({ instanceId, modelName, modelAlias, fields: [], instanceData: {}, loading: true })
+    const idx = relDrawerStack.value.length - 1
+    try {
+      const [detailRes, topoRes] = await Promise.all([
+        getModelDetail(modelAlias),
+        getInstanceTopology(instanceId),
+      ])
+      relDrawerStack.value[idx].fields = (detailRes.data?.model_fields || []).slice(0, 10)
+      relDrawerStack.value[idx].instanceData = topoRes.data?.instance?.data || {}
+    } catch {
+      relDrawerStack.value[idx].fields = []
+    } finally {
+      relDrawerStack.value[idx].loading = false
+    }
+    // 加载该实例的关联
+    loadRelDrawerRelations(instanceId)
+  }
+
+  function popRelDrawer() {
+    relDrawerStack.value.pop()
+  }
+
+  function popToRelDrawer(idx) {
+    relDrawerStack.value = relDrawerStack.value.slice(0, idx + 1)
+  }
+
+  function closeRelDrawer() {
+    relDrawerStack.value = []
+    relDrawerVisible.value = false
+  }
+
+  // 抽屉内关联数据
+  const relDrawerRelationCache = reactive({})
+
+  async function loadRelDrawerRelations(instanceId) {
+    relDrawerRelationCache[instanceId] = { groups: [], loading: true, activeTab: '', tabData: {} }
+    try {
+      const res = await getInstanceTopology(instanceId)
+      const topoData = res.data || {}
+      const upstream = (topoData.upstream || []).map(r => ({ ...r, direction: 'upstream' }))
+      const downstream = (topoData.downstream || []).map(r => ({ ...r, direction: 'downstream' }))
+      const allRels = [...upstream, ...downstream]
+
+      const groupMap = new Map()
+      for (const rel of allRels) {
+        const key = rel.model_id
+        if (!groupMap.has(key)) {
+          groupMap.set(key, { model_id: rel.model_id, model_name: rel.model_name, model_alias: rel.model_alias, direction: rel.direction, instances: [] })
+        }
+        groupMap.get(key).instances.push(rel)
+      }
+
+      const groups = [...groupMap.values()]
+      relDrawerRelationCache[instanceId].groups = groups
+      relDrawerRelationCache[instanceId].loading = false
+
+      if (groups.length) {
+        const tabToLoad = String(groups[0].model_id)
+        relDrawerRelationCache[instanceId].activeTab = tabToLoad
+        onRelDrawerTabChange(instanceId, groups[0].model_id)
+      }
+    } catch {
+      relDrawerRelationCache[instanceId] = { groups: [], loading: false, activeTab: '', tabData: {} }
+    }
+  }
+
+  async function onRelDrawerTabChange(instanceId, modelId) {
+    const cache = relDrawerRelationCache[instanceId]
+    if (!cache || cache.tabData[modelId]) return
+
+    const group = cache.groups.find(g => g.model_id === modelId)
+    if (!group) return
+
+    cache.tabData[modelId] = { instances: group.instances, fields: [], loading: true, page: 1, pageSize: 10 }
+
+    try {
+      const detailRes = await getModelDetail(group.model_alias)
+      const fields = (detailRes.data?.model_fields || []).slice(0, 8)
+      cache.tabData[modelId].fields = fields
+    } catch {
+      cache.tabData[modelId].fields = []
+    } finally {
+      cache.tabData[modelId].loading = false
+    }
+  }
+
+  function handleRelDrawerTabChange(instanceId, modelId) {
+    onRelDrawerTabChange(instanceId, modelId)
+  }
+
+  // ===== 搜索相关 =====
 
   async function onModelChange(id) {
     inst.value.fields = []
@@ -27,7 +131,7 @@ export function useInstance(allModels) {
     inst.value.columns = []
     inst.value.count = 0
     inst.value.page = 1
-    instRelationCache.value = {}
+    Object.keys(instRelationCache).forEach(k => delete instRelationCache[k])
     if (!id) return
     try {
       const m = allModels.value.find(x => x.id === id)
@@ -44,9 +148,8 @@ export function useInstance(allModels) {
     inst.value.loading = true
     try {
       const where = []
-      const group1 = [] // group 1 = AND (default)
-      const orGroups = {} // group 2+ = OR
-      // 全局搜索优先
+      const group1 = []
+      const orGroups = {}
       if (inst.value.globalSearch) {
         group1.push({ search: inst.value.globalSearch })
       }
@@ -122,7 +225,7 @@ export function useInstance(allModels) {
     inst.value.columnLabelMap = {}
     inst.value.count = 0
     inst.value.page = 1
-    instRelationCache.value = {}
+    Object.keys(instRelationCache).forEach(k => delete instRelationCache[k])
   }
 
   function addOrGroup() {
@@ -132,13 +235,13 @@ export function useInstance(allModels) {
 
   // Expand row: load related instances
   const onInstExpandChange = (row, expanded) => {
-    if (expanded.length && !instRelationCache.value[row.id]) {
+    if (expanded.length && !instRelationCache[row.id]) {
       loadInstRelations(row)
     }
   }
 
   const loadInstRelations = async (row) => {
-    instRelationCache.value[row.id] = { groups: [], loading: true, activeTab: '', tabData: {} }
+    instRelationCache[row.id] = { groups: [], loading: true, activeTab: '', tabData: {} }
     try {
       const res = await getInstanceTopology(row.id)
       const topoData = res.data || {}
@@ -156,28 +259,27 @@ export function useInstance(allModels) {
       }
 
       const groups = [...groupMap.values()]
-      instRelationCache.value[row.id].groups = groups
-      instRelationCache.value[row.id].loading = false
+      instRelationCache[row.id].groups = groups
+      instRelationCache[row.id].loading = false
 
       if (groups.length) {
         const tabToLoad = String(groups[0].model_id)
-        instRelationCache.value[row.id].activeTab = tabToLoad
+        instRelationCache[row.id].activeTab = tabToLoad
         onInstTabChange(row, Number(tabToLoad))
       }
     } catch {
-      instRelationCache.value[row.id] = { groups: [], loading: false, activeTab: '', tabData: {} }
+      instRelationCache[row.id] = { groups: [], loading: false, activeTab: '', tabData: {} }
     }
   }
 
   const onInstTabChange = async (row, modelId) => {
-    const cache = instRelationCache.value[row.id]
+    const cache = instRelationCache[row.id]
     if (!cache || cache.tabData[modelId]) return
 
     const group = cache.groups.find(g => g.model_id === modelId)
     if (!group) return
 
     cache.tabData[modelId] = { instances: group.instances, fields: [], loading: true, page: 1, pageSize: 10 }
-    instRelationCache.value = { ...instRelationCache.value }
 
     try {
       const detailRes = await getModelDetail(group.model_alias)
@@ -187,94 +289,11 @@ export function useInstance(allModels) {
       cache.tabData[modelId].fields = []
     } finally {
       cache.tabData[modelId].loading = false
-      instRelationCache.value = { ...instRelationCache.value }
     }
   }
 
-  const getInstPaginatedInstances = (instanceId, modelId) => {
-    const tabData = instRelationCache.value[instanceId]?.tabData?.[modelId]
-    if (!tabData) return []
-    const size = tabData.pageSize || 10
-    const start = (tabData.page - 1) * size
-    return tabData.instances.slice(start, start + size)
-  }
-
-  // ===== 递归钻入：查看关联实例的关联 =====
-  const drillDrawer = ref({ visible: false, instance: null })
-  const drillCache = ref({})
-
-  function openDrillDrawer(relInstance) {
-    drillDrawer.value = { visible: true, instance: relInstance }
-    if (!drillCache.value[relInstance.instance_id]) {
-      loadDrillRelations(relInstance)
-    }
-  }
-
-  function closeDrillDrawer() {
-    drillDrawer.value = { visible: false, instance: null }
-  }
-
-  const loadDrillRelations = async (relInstance) => {
-    const id = relInstance.instance_id
-    drillCache.value[id] = { groups: [], loading: true, activeTab: '', tabData: {} }
-    try {
-      const res = await getInstanceTopology(id)
-      const topoData = res.data || {}
-      const upstream = (topoData.upstream || []).map(r => ({ ...r, direction: 'upstream' }))
-      const downstream = (topoData.downstream || []).map(r => ({ ...r, direction: 'downstream' }))
-      const allRels = [...upstream, ...downstream]
-
-      const groupMap = new Map()
-      for (const rel of allRels) {
-        const key = rel.model_id
-        if (!groupMap.has(key)) {
-          groupMap.set(key, { model_id: rel.model_id, model_name: rel.model_name, model_alias: rel.model_alias, direction: rel.direction, instances: [] })
-        }
-        groupMap.get(key).instances.push(rel)
-      }
-
-      const groups = [...groupMap.values()]
-      drillCache.value[id].groups = groups
-      drillCache.value[id].loading = false
-
-      if (groups.length) {
-        const tabToLoad = String(groups[0].model_id)
-        drillCache.value[id].activeTab = tabToLoad
-        onDrillTabChange(id, Number(tabToLoad))
-      }
-    } catch {
-      drillCache.value[id] = { groups: [], loading: false, activeTab: '', tabData: {} }
-    }
-  }
-
-  const onDrillTabChange = async (instanceId, modelId) => {
-    const cache = drillCache.value[instanceId]
-    if (!cache || cache.tabData[modelId]) return
-
-    const group = cache.groups.find(g => g.model_id === modelId)
-    if (!group) return
-
-    cache.tabData[modelId] = { instances: group.instances, fields: [], loading: true, page: 1, pageSize: 10 }
-    drillCache.value = { ...drillCache.value }
-
-    try {
-      const detailRes = await getModelDetail(group.model_alias)
-      const fields = (detailRes.data?.model_fields || []).slice(0, 8)
-      cache.tabData[modelId].fields = fields
-    } catch {
-      cache.tabData[modelId].fields = []
-    } finally {
-      cache.tabData[modelId].loading = false
-      drillCache.value = { ...drillCache.value }
-    }
-  }
-
-  const getDrillPaginatedInstances = (instanceId, modelId) => {
-    const tabData = drillCache.value[instanceId]?.tabData?.[modelId]
-    if (!tabData) return []
-    const size = tabData.pageSize || 10
-    const start = (tabData.page - 1) * size
-    return tabData.instances.slice(start, start + size)
+  function handleTabChange(instanceId, modelId) {
+    onInstTabChange({ id: instanceId }, modelId)
   }
 
   // Load relations between current page instances
@@ -302,8 +321,10 @@ export function useInstance(allModels) {
   return {
     inst, instRelationCache, instRelations,
     onModelChange, doInstanceSearch, calcColWidth, resetInstance, addOrGroup,
-    onInstExpandChange, onInstTabChange, getInstPaginatedInstances,
-    drillDrawer, drillCache, openDrillDrawer, closeDrillDrawer,
-    onDrillTabChange, getDrillPaginatedInstances,
+    onInstExpandChange, onInstTabChange, handleTabChange,
+    // 关联抽屉
+    relDrawerVisible, relDrawerStack, relDrawerCurrent, relDrawerRelationCache,
+    openRelDrawer, pushRelDrawer, popRelDrawer, popToRelDrawer, closeRelDrawer,
+    handleRelDrawerTabChange,
   }
 }

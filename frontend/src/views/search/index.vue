@@ -171,66 +171,19 @@
             <el-table :data="inst.results" stripe size="small" highlight-current-row @expand-change="onInstExpandChange" row-key="id">
               <el-table-column type="expand" width="45">
                 <template #default="{ row }">
-                  <div class="inst-relation-panel" v-loading="instRelationCache[row.id]?.loading">
-                    <template v-if="instRelationCache[row.id]?.groups?.length">
-                      <div class="inst-relation-header">
-                        <el-tabs v-model="instRelationCache[row.id].activeTab" @tab-change="(id) => onInstTabChange(row, Number(id))" class="inst-relation-tabs">
-                          <el-tab-pane v-for="g in instRelationCache[row.id].groups" :key="g.model_id" :name="String(g.model_id)">
-                            <template #label>
-                              <span class="tab-label">
-                                <span :class="['tab-direction', g.direction]">{{ g.direction === 'upstream' ? '←' : '→' }}</span>
-                                {{ g.model_name }}
-                                <el-badge :value="g.instances.length" class="tab-badge" />
-                              </span>
-                            </template>
-                          </el-tab-pane>
-                        </el-tabs>
-                      </div>
-                      <template v-for="g in instRelationCache[row.id].groups" :key="'content-' + g.model_id">
-                        <div v-if="String(g.model_id) === instRelationCache[row.id].activeTab">
-                          <el-table
-                            :data="getInstPaginatedInstances(row.id, g.model_id)"
-                            size="small"
-                            stripe
-                            highlight-current-row
-                            v-loading="instRelationCache[row.id]?.tabData?.[g.model_id]?.loading"
-                          >
-                            <el-table-column prop="instance_id" label="ID" width="60">
-                              <template #default="{ row: rel }">{{ rel.instance_id }}</template>
-                            </el-table-column>
-                            <el-table-column
-                              v-for="f in (instRelationCache[row.id]?.tabData?.[g.model_id]?.fields || [])"
-                              :key="f.alias"
-                              :label="f.name"
-                              show-overflow-tooltip
-                              min-width="100"
-                            >
-                              <template #default="{ row: rel }">{{ rel.data?.[f.alias] ?? '-' }}</template>
-                            </el-table-column>
-                            <el-table-column label="操作" width="70" fixed="right">
-                              <template #default="{ row: rel }">
-                                <el-button link type="primary" size="small" @click="openDrillDrawer(rel)">关联</el-button>
-                              </template>
-                            </el-table-column>
-                          </el-table>
-                          <div class="inst-relation-pagination">
-                            <el-pagination
-                              v-model:current-page="instRelationCache[row.id].tabData[g.model_id].page"
-                              v-model:page-size="instRelationCache[row.id].tabData[g.model_id].pageSize"
-                              :total="instRelationCache[row.id].tabData[g.model_id].instances.length"
-                              :page-sizes="[10, 20, 50]"
-                              layout="total, sizes, prev, pager, next"
-                              small
-                              background
-                            />
-                          </div>
-                        </div>
-                      </template>
-                    </template>
-                    <template v-else-if="!instRelationCache[row.id]?.loading">
-                      <div class="inst-relation-empty">暂无关联实例</div>
-                    </template>
-                  </div>
+                  <RelationPanel
+                    :instance-id="row.id"
+                    :cache="instRelationCache[row.id]"
+                    :tab-change-handler="handleTabChange"
+                    @view-topo="(instId) => {
+                      const rel = instRelationCache[instId]
+                      if (rel?.groups?.length) {
+                        const g = rel.groups[0]
+                        openTopoForInstance(instId, g.model_id, g.model_name, g.model_alias)
+                      }
+                    }"
+                    @open-detail="(instId, name, alias) => openRelDrawer(instId, name, alias)"
+                  />
                 </template>
               </el-table-column>
               <el-table-column
@@ -537,63 +490,56 @@
     </div>
   </el-drawer>
 
-  <!-- 递归关联钻入 Drawer -->
-  <el-drawer v-model="drillDrawer.visible" :title="drillTitle" size="70%" direction="rtl" @close="closeDrillDrawer">
-    <div v-if="drillDrawer.instance" class="inst-relation-panel" v-loading="drillCache[drillDrawer.instance.instance_id]?.loading">
-      <template v-if="drillCache[drillDrawer.instance.instance_id]?.groups?.length">
-        <div class="inst-relation-header">
-          <el-tabs v-model="drillCache[drillDrawer.instance.instance_id].activeTab" @tab-change="(id) => onDrillTabChange(drillDrawer.instance.instance_id, Number(id))" class="inst-relation-tabs">
-            <el-tab-pane v-for="g in drillCache[drillDrawer.instance.instance_id].groups" :key="g.model_id" :name="String(g.model_id)">
-              <template #label>
-                <span class="tab-label">
-                  <span :class="['tab-direction', g.direction]">{{ g.direction === 'upstream' ? '←' : '→' }}</span>
-                  {{ g.model_name }}
-                  <el-badge :value="g.instances.length" class="tab-badge" />
-                </span>
-              </template>
-            </el-tab-pane>
-          </el-tabs>
+  <!-- 关联实例抽屉 -->
+  <el-drawer v-model="relDrawerVisible" :title="relDrawerCurrent ? `${relDrawerCurrent.modelName} #${relDrawerCurrent.instanceId}` : '关联实例'" size="85%" direction="rtl" @close="closeRelDrawer">
+    <div class="rel-drawer-content">
+      <!-- 面包屑导航 -->
+      <div v-if="relDrawerStack.length > 1" class="rel-breadcrumb">
+        <span
+          v-for="(item, idx) in relDrawerStack"
+          :key="idx"
+          class="rel-breadcrumb-item"
+          :class="{ active: idx === relDrawerStack.length - 1 }"
+          @click="idx < relDrawerStack.length - 1 && popToRelDrawer(idx)"
+        >
+          {{ item.modelName }} #{{ item.instanceId }}
+          <el-icon v-if="idx < relDrawerStack.length - 1" class="rel-breadcrumb-sep"><ArrowRight /></el-icon>
+        </span>
+      </div>
+
+      <!-- 当前实例字段值 -->
+      <div v-if="relDrawerCurrent" class="rel-detail-section">
+        <div class="rel-section-title">字段值</div>
+        <div v-loading="relDrawerCurrent.loading">
+          <el-table v-if="relDrawerCurrent.fields.length" :data="relDrawerFieldRows" size="small" stripe highlight-current-row max-height="300">
+            <el-table-column prop="name" label="字段" width="150" />
+            <el-table-column prop="alias" label="别名" width="120" />
+            <el-table-column prop="value" label="值" show-overflow-tooltip />
+          </el-table>
+          <div v-else-if="!relDrawerCurrent.loading" class="rel-empty">暂无字段</div>
         </div>
-        <template v-for="g in drillCache[drillDrawer.instance.instance_id].groups" :key="'drill-' + g.model_id">
-          <div v-if="String(g.model_id) === drillCache[drillDrawer.instance.instance_id].activeTab">
-            <el-table
-              :data="getDrillPaginatedInstances(drillDrawer.instance.instance_id, g.model_id)"
-              size="small" stripe highlight-current-row
-              v-loading="drillCache[drillDrawer.instance.instance_id]?.tabData?.[g.model_id]?.loading"
-            >
-              <el-table-column prop="instance_id" label="ID" width="60">
-                <template #default="{ row: rel }">{{ rel.instance_id }}</template>
-              </el-table-column>
-              <el-table-column
-                v-for="f in (drillCache[drillDrawer.instance.instance_id]?.tabData?.[g.model_id]?.fields || [])"
-                :key="f.alias" :label="f.name" show-overflow-tooltip min-width="100"
-              >
-                <template #default="{ row: rel }">{{ rel.data?.[f.alias] ?? '-' }}</template>
-              </el-table-column>
-              <el-table-column label="操作" width="70" fixed="right">
-                <template #default="{ row: rel }">
-                  <el-button link type="primary" size="small" @click="openDrillDrawer(rel)">关联</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-            <div class="inst-relation-pagination">
-              <el-pagination
-                v-model:current-page="drillCache[drillDrawer.instance.instance_id].tabData[g.model_id].page"
-                v-model:page-size="drillCache[drillDrawer.instance.instance_id].tabData[g.model_id].pageSize"
-                :total="drillCache[drillDrawer.instance.instance_id].tabData[g.model_id].instances.length"
-                :page-sizes="[10, 20, 50]"
-                layout="total, sizes, prev, pager, next"
-                small background
-              />
-            </div>
-          </div>
-        </template>
-      </template>
-      <template v-else-if="!drillCache[drillDrawer.instance.instance_id]?.loading">
-        <div class="inst-relation-empty">暂无关联实例</div>
-      </template>
+      </div>
+
+      <!-- 关联列表 -->
+      <div v-if="relDrawerCurrent" class="rel-detail-section">
+        <div class="rel-section-title">关联实例</div>
+        <RelationPanel
+          :instance-id="relDrawerCurrent.instanceId"
+          :cache="relDrawerRelationCache[relDrawerCurrent.instanceId]"
+          :tab-change-handler="handleRelDrawerTabChange"
+          @view-topo="(instId) => {
+            const rel = relDrawerRelationCache[instId]
+            if (rel?.groups?.length) {
+              const g = rel.groups[0]
+              openTopoForInstance(instId, g.model_id, g.model_name, g.model_alias)
+            }
+          }"
+          @open-detail="(instId, name, alias) => pushRelDrawer(instId, name, alias)"
+        />
+      </div>
     </div>
   </el-drawer>
+
 </template>
 
 <script setup>
@@ -605,6 +551,7 @@ import { useInstance } from './composables/useInstance'
 import { useModelBrowse } from './composables/useModelBrowse'
 import { useApiDebug } from './composables/useApiDebug'
 import { useTopology } from './composables/useTopology'
+import RelationPanel from './components/RelationPanel.vue'
 
 const typeTag = { string: '', number: 'success', bool: 'warning', date: 'info', datetime: 'info', json: 'danger' }
 
@@ -629,20 +576,16 @@ const { ft, doFulltextSearch } = useFulltext()
 const {
   inst, instRelationCache, instRelations,
   onModelChange, doInstanceSearch, calcColWidth, resetInstance, addOrGroup,
-  onInstExpandChange, onInstTabChange, getInstPaginatedInstances,
-  drillDrawer, drillCache, openDrillDrawer, closeDrillDrawer,
-  onDrillTabChange, getDrillPaginatedInstances,
+  onInstExpandChange, onInstTabChange, handleTabChange,
+  relDrawerVisible, relDrawerStack, relDrawerCurrent, relDrawerRelationCache,
+  openRelDrawer, pushRelDrawer, popRelDrawer, popToRelDrawer, closeRelDrawer,
+  handleRelDrawerTabChange,
 } = useInstance(allModels)
 
 // 按 group 排序后的条件索引数组（保留原数组引用，v-model 不断裂）
 const sortedIndices = computed(() => {
   const arr = inst.value.conditions
   return arr.map((_, i) => i).sort((a, b) => (arr[a].group || 1) - (arr[b].group || 1))
-})
-const drillTitle = computed(() => {
-  const inst = drillDrawer.value.instance
-  if (!inst) return '关联实例'
-  return `${inst.model_name || ''} #${inst.instance_id} — 关联实例`
 })
 const { modelSearch, expandedModelId, modelFieldsCache, groupedModels, toggleFields, resolveRelation } = useModelBrowse(allModels, allModelGroups, allRelationTypes)
 const {
@@ -655,8 +598,20 @@ const {
 const {
   topoDrawerVisible, topoDrawerTitle, topoGraphSearchText, topoSelectedInstance,
   topoGraphContainer, topoNodeCount, topoFieldRows, topoRelations,
-  openBatchTopo, openSingleTopo, onTopoGraphSearch, focusTopoNode, onTopoDrawerClose,
+  openBatchTopo, openSingleTopo, openTopoForInstance, onTopoGraphSearch, focusTopoNode, onTopoDrawerClose,
 } = useTopology(allModels, allModelGroups, inst)
+
+// 关联抽屉字段行
+const relDrawerFieldRows = computed(() => {
+  if (!relDrawerCurrent.value) return []
+  const fields = relDrawerCurrent.value.fields || []
+  const data = relDrawerCurrent.value.instanceData || {}
+  return fields.map(f => ({
+    name: f.name,
+    alias: f.alias,
+    value: data[f.alias] !== undefined && data[f.alias] !== null ? String(data[f.alias]) : '-',
+  }))
+})
 
 // ===== 初始化 =====
 onMounted(async () => {
@@ -1535,5 +1490,63 @@ onMounted(async () => {
   font-size: 12px;
   line-height: 1.6;
   overflow: auto;
+}
+
+/* ===== 关联实例抽屉 ===== */
+.rel-drawer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+}
+
+.rel-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 12px;
+  background: var(--color-muted);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.rel-breadcrumb-item {
+  cursor: pointer;
+  color: var(--color-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rel-breadcrumb-item.active {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  cursor: default;
+}
+
+.rel-breadcrumb-sep {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.rel-detail-section {
+  flex-shrink: 0;
+}
+
+.rel-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.rel-empty {
+  text-align: center;
+  padding: 24px;
+  font-size: 13px;
+  color: var(--color-text-muted);
 }
 </style>
