@@ -40,6 +40,7 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    entrypoint: sh -c "./gcmdb migrate && ./gcmdb"
 
   # 前端
   gcmdb-web:
