@@ -13,7 +13,6 @@
             </template>
           </el-tab-pane>
         </el-tabs>
-        <el-button size="small" type="primary" @click="emit('viewTopo', instanceId)" style="margin-left: 12px; flex-shrink: 0;">查看拓扑图</el-button>
       </div>
       <template v-for="g in cache.groups" :key="'c-' + g.model_id">
         <div v-if="String(g.model_id) === cache.activeTab">

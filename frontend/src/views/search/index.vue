@@ -306,7 +306,7 @@
     </div>
 
     <!-- 接口调试 -->
-    <div v-if="activeTab === 'api'" class="api-test-layout">
+    <div v-if="activeTab === 'api'" class="api-test-layout" :class="{ resizing: apiResizing }">
       <!-- 左栏：接口列表 -->
       <div class="api-col-endpoints">
         <div class="api-panel-title">OpenAPI 接口</div>
@@ -332,7 +332,7 @@
       </div>
 
       <!-- 中栏：参数表单 -->
-      <div class="api-col-params">
+      <div class="api-col-params" :style="{ width: apiParamsWidth + 'px' }">
         <div v-if="apiSelected" class="api-param-section">
           <div class="api-panel-title">参数 — {{ apiSelected.name }}</div>
           <div class="api-param-form">
@@ -399,6 +399,13 @@
           <span>请在左侧选择接口</span>
         </div>
       </div>
+
+      <!-- 拖拽调宽手柄 -->
+      <div
+        class="api-resize-handle"
+        :class="{ active: apiResizing }"
+        @mousedown="onApiResizeStart"
+      />
 
       <!-- 右栏：请求预览 + 响应 -->
       <div class="api-col-response">
@@ -531,7 +538,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Search, Delete, CircleCheckFilled, ArrowDown, ArrowRight, ArrowLeft, Close, CopyDocument } from '@element-plus/icons-vue'
 import { getAllModels, getModelGroups, getModelRelationTypes } from '../../api/search'
 import { useFulltext } from './composables/useFulltext'
@@ -588,6 +595,37 @@ const {
   topoGraphContainer, topoNodeCount, topoFieldRows, topoRelations,
   openBatchTopo, openSingleTopo, openTopoForInstance, onTopoGraphSearch, focusTopoNode, onTopoDrawerClose,
 } = useTopology(allModels, allModelGroups, inst)
+
+// 接口调试 — 中栏拖拽调宽
+const apiParamsWidth = ref(300)
+const apiResizing = ref(false)
+let startX = 0
+let startWidth = 0
+
+function onApiResizeStart(e) {
+  e.preventDefault()
+  apiResizing.value = true
+  startX = e.clientX
+  startWidth = apiParamsWidth.value
+  document.addEventListener('mousemove', onApiResizeMove)
+  document.addEventListener('mouseup', onApiResizeEnd)
+}
+
+function onApiResizeMove(e) {
+  const delta = e.clientX - startX
+  apiParamsWidth.value = Math.min(600, Math.max(200, startWidth + delta))
+}
+
+function onApiResizeEnd() {
+  apiResizing.value = false
+  document.removeEventListener('mousemove', onApiResizeMove)
+  document.removeEventListener('mouseup', onApiResizeEnd)
+}
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousemove', onApiResizeMove)
+  document.removeEventListener('mouseup', onApiResizeEnd)
+})
 
 // 关联抽屉字段行
 const relDrawerFieldRows = computed(() => {
@@ -1197,6 +1235,11 @@ onMounted(async () => {
   align-self: stretch;
 }
 
+.api-test-layout.resizing {
+  user-select: none;
+  cursor: col-resize;
+}
+
 /* 左栏：接口列表 */
 .api-col-endpoints {
   width: 180px;
@@ -1210,11 +1253,48 @@ onMounted(async () => {
 /* 中栏：参数表单 */
 .api-col-params {
   width: 300px;
+  min-width: 200px;
+  max-width: 600px;
   flex-shrink: 0;
   overflow-y: auto;
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
+}
+
+/* 拖拽调宽手柄 */
+.api-resize-handle {
+  width: 6px;
+  cursor: col-resize;
+  border-radius: 3px;
+  background: transparent;
+  transition: background 0.15s;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.api-resize-handle:hover,
+.api-resize-handle.active {
+  background: var(--color-primary-light-5, #c0c4cc);
+}
+
+.api-resize-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 24px;
+  border-radius: 1px;
+  background: var(--color-border);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.api-resize-handle:hover::after,
+.api-resize-handle.active::after {
+  opacity: 1;
 }
 
 .api-param-empty {
