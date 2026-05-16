@@ -2,6 +2,21 @@
 
 Golang CMDB（配置管理数据库）—— 通用 IT 资产管理系统，支持动态模型定义、实例管理、关系拓扑、全文检索、审计日志，开箱即用。
 
+## 系统截图
+
+| | | |
+|:---:|:---:|:---:|
+| ![登录页面](docs/image/1_login.png) | ![仪表盘](docs/image/2_dashboard.png) | ![全文搜索](docs/image/3_fulltextsearch.png) |
+| 1. 登录页面 | 2. 仪表盘 | 3. 全文搜索 |
+| ![实例搜索](docs/image/4_instancesearch.png) | ![实例详情](docs/image/5_instanceextend.png) | ![模型搜索](docs/image/6_modelsearch.png) |
+| 4. 实例搜索 | 5. 实例详情 | 6. 模型搜索 |
+| ![API 测试](docs/image/7_apitest.png) | ![实例管理](docs/image/8_instancemanage.png) | ![模型管理](docs/image/9_modelmanage.png) |
+| 7. API 测试 | 8. 实例管理 | 9. 模型管理 |
+| ![模型详情](docs/image/10_modeldetail.png) | ![模型扩展](docs/image/11_modelextend.png) | ![SQL 查询](docs/image/12_directsql.png) |
+| 10. 模型详情 | 11. 模型扩展 | 12. SQL 查询 |
+| ![审计日志](docs/image/13_audit.png) | | |
+| 13. 审计日志 | | |
+
 ## 功能特性
 
 - **动态模型**：自定义资产类型（主机、数据库、服务等），支持 7 种字段类型（string/number/bool/date/datetime/json/enum）、字段分组、唯一约束
