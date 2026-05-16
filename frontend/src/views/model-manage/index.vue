@@ -77,7 +77,7 @@
                 </el-table-column>
                 <el-table-column label="操作" width="220" fixed="right">
                   <template #default="{ row }">
-                    <el-button link type="primary" @click.stop="toggleDetail(row)">{{ expandedModelId === row.id ? '收起' : '详情' }}</el-button>
+                    <el-button link type="primary" @click.stop="toggleDetail(row)">{{ expandedModelId === row.id ? '收起' : '配置' }}</el-button>
                     <el-button link type="primary" @click.stop="showModelDialog(row)">编辑</el-button>
                     <el-button link type="primary" @click.stop="showMoveGroupDialog(row)">移组</el-button>
                     <el-button link type="danger" @click.stop="handleDeleteModel(row)">删除</el-button>
