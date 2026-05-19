@@ -5,10 +5,16 @@ server:
   session_max_age: 604800
 database:
   username: root
-  password: root
+  password: jinang123
   host: 127.0.0.1
   port: 3306
   name: gcmdb
 cors:
   allowed_origins: []
 token_cache_ttl: 5
+llm:
+  api_url: "https://api.openai.com/v1/chat/completions"
+  api_key: ""
+  model: "gpt-4o"
+  max_tokens: 4096
+  temperature: 0.1

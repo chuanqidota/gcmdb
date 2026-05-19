@@ -26,6 +26,13 @@ type Config struct {
 		AllowedOrigins []string `mapstructure:"allowed_origins"`
 	} `mapstructure:"cors"`
 	TokenCacheTTL int `mapstructure:"token_cache_ttl"` // 单位：分钟，默认 5
+	LLM struct {
+		APIURL      string  `mapstructure:"api_url"`
+		APIKey      string  `mapstructure:"api_key"`
+		Model       string  `mapstructure:"model"`
+		MaxTokens   int     `mapstructure:"max_tokens"`
+		Temperature float64 `mapstructure:"temperature"`
+	} `mapstructure:"llm"`
 }
 
 var Conf = new(Config)
