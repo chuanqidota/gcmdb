@@ -12,7 +12,7 @@
     </div>
 
     <!-- 搜索区 (接口调试 tab 时隐藏) -->
-    <div v-show="activeTab !== 'api'" class="search-hero" :class="{ 'hero-column': activeTab === 'instance' }">
+    <div v-show="activeTab !== 'api' && activeTab !== 'llm'" class="search-hero" :class="{ 'hero-column': activeTab === 'instance' }">
       <!-- 全文检索 -->
       <div v-if="activeTab === 'fulltext'" class="search-box">
         <el-input
@@ -72,7 +72,7 @@
     </div>
 
     <!-- 结果区 (接口调试 tab 时隐藏) -->
-    <div v-show="activeTab !== 'api'" class="results-area">
+    <div v-show="activeTab !== 'api' && activeTab !== 'llm'" class="results-area">
 
       <!-- 全文检索结果 -->
       <template v-if="activeTab === 'fulltext' && (ft.results.length > 0 || ft.loading)">
@@ -442,6 +442,126 @@
         </div>
       </div>
     </div>
+
+    <!-- 大模型检索 -->
+    <div v-if="activeTab === 'llm'" class="llm-search-layout">
+      <!-- 搜索输入区 -->
+      <div class="llm-search-box">
+        <el-input
+          v-model="llm.message"
+          placeholder="用自然语言描述你想查询的数据... 例如：找出所有交换机的管理IP"
+          clearable
+          @keyup.enter="doLlmSearch"
+          class="llm-search-input"
+          :disabled="llm.loading"
+        >
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <el-button type="primary" class="llm-search-btn" @click="doLlmSearch" :loading="llm.loading">
+          发送
+        </el-button>
+        <el-button class="llm-search-btn" @click="doClearSession" :disabled="llm.loading">
+          新对话
+        </el-button>
+      </div>
+
+      <!-- 模型范围选择 -->
+      <div class="llm-model-filter">
+        <span class="llm-filter-label">查询范围：</span>
+        <el-select
+          v-model="llm.modelFilter"
+          placeholder="全部模型"
+          multiple
+          filterable
+          collapse-tags
+          collapse-tags-tooltip
+          clearable
+          size="small"
+          class="llm-model-select"
+        >
+          <el-option v-for="m in allModels" :key="m.id" :label="m.name" :value="m.alias" />
+        </el-select>
+        <span v-if="llm.tokenUsed > 0" class="llm-token-info">
+          Token: {{ llm.tokenUsed }}
+        </span>
+      </div>
+
+      <!-- 加载状态 -->
+      <div v-if="llm.loading" class="llm-loading">
+        <el-skeleton :rows="3" animated />
+      </div>
+
+      <!-- 思考过程 -->
+      <div v-if="llm.thinking && !llm.loading" class="llm-thinking">
+        <div class="llm-section-title">思考过程</div>
+        <div class="llm-thinking-content">{{ llm.thinking }}</div>
+      </div>
+
+      <!-- AI 分析 -->
+      <div v-if="llm.aiAnalysis && !llm.loading" class="llm-analysis">
+        <div class="llm-section-title">AI 分析</div>
+        <div class="llm-analysis-content">{{ llm.aiAnalysis }}</div>
+      </div>
+
+      <!-- 查询结果 -->
+      <div v-if="llm.results.length > 0 && !llm.loading" class="llm-results">
+        <template v-for="(result, idx) in llm.results" :key="idx">
+          <div class="llm-result-section">
+            <div class="llm-result-header">
+              <span class="llm-result-model">{{ result.model_name }}</span>
+              <el-tag size="small" type="info">{{ result.model_alias }}</el-tag>
+              <span class="llm-result-count">共 {{ result.count }} 条</span>
+            </div>
+            <el-table
+              v-if="result.data && result.data.length > 0"
+              :data="result.data"
+              stripe
+              size="small"
+              highlight-current-row
+              show-overflow-tooltip
+              max-height="400"
+            >
+              <el-table-column
+                v-for="(val, key) in result.data[0]"
+                :key="key"
+                :prop="String(key)"
+                :label="String(key)"
+                :min-width="120"
+              />
+            </el-table>
+            <el-empty v-else description="无数据" :image-size="60" />
+          </div>
+        </template>
+      </div>
+
+      <!-- 无结果提示 -->
+      <div v-if="!hasResults && !llm.loading && llm.history.length === 0" class="llm-empty">
+        <el-empty description="用自然语言描述你想查询的数据，例如：找出所有交换机的管理IP" />
+      </div>
+
+      <!-- 对话历史 -->
+      <div v-if="llm.history.length > 0" class="llm-history">
+        <div class="llm-history-toggle" @click="llm.showHistory = !llm.showHistory">
+          <el-icon><ArrowDown v-if="!llm.showHistory" /><ArrowUp v-else /></el-icon>
+          对话历史 ({{ llm.history.length }})
+        </div>
+        <transition name="llm-slide">
+          <div v-show="llm.showHistory" class="llm-history-list">
+            <div v-for="(item, idx) in llm.history" :key="idx" class="llm-history-item">
+              <div class="llm-history-question">
+                <span class="llm-history-role">Q:</span>
+                {{ item.message }}
+                <span class="llm-history-time">{{ item.timestamp }}</span>
+              </div>
+              <div v-if="item.aiAnalysis" class="llm-history-answer">
+                <span class="llm-history-role">A:</span>
+                {{ item.aiAnalysis }}
+              </div>
+            </div>
+          </div>
+        </transition>
+      </div>
+    </div>
   </div>
 
   <!-- 拓扑图 Drawer -->
@@ -539,13 +659,14 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { Search, Delete, CircleCheckFilled, ArrowDown, ArrowRight, ArrowLeft, Close, CopyDocument } from '@element-plus/icons-vue'
+import { Search, Delete, CircleCheckFilled, ArrowDown, ArrowRight, ArrowLeft, Close, CopyDocument, ArrowUp } from '@element-plus/icons-vue'
 import { getAllModels, getModelGroups, getModelRelationTypes } from '../../api/search'
 import { useFulltext } from './composables/useFulltext'
 import { useInstance } from './composables/useInstance'
 import { useModelBrowse } from './composables/useModelBrowse'
 import { useApiDebug } from './composables/useApiDebug'
 import { useTopology } from './composables/useTopology'
+import { useLlmSearch } from './composables/useLlmSearch'
 import RelationPanel from './components/RelationPanel.vue'
 
 const typeTag = { string: '', number: 'success', bool: 'warning', date: 'info', datetime: 'info', json: 'danger' }
@@ -555,6 +676,7 @@ const tabs = [
   { name: 'instance', label: '实例搜索' },
   { name: 'model', label: '模型浏览' },
   { name: 'api', label: '接口调试' },
+  { name: 'llm', label: '大模型检索' },
 ]
 
 const activeTab = ref('fulltext')
@@ -595,6 +717,8 @@ const {
   topoGraphContainer, topoNodeCount, topoFieldRows, topoRelations,
   openBatchTopo, openSingleTopo, openTopoForInstance, onTopoGraphSearch, focusTopoNode, onTopoDrawerClose,
 } = useTopology(allModels, allModelGroups, inst)
+
+const { llm, hasResults, doLlmSearch, doClearSession } = useLlmSearch(allModels)
 
 // 接口调试 — 中栏拖拽调宽
 const apiParamsWidth = ref(300)
@@ -1616,5 +1740,214 @@ onMounted(async () => {
   padding: 24px;
   font-size: 13px;
   color: var(--color-text-muted);
+}
+
+/* ===== 大模型检索 ===== */
+.llm-search-layout {
+  width: 100%;
+  max-width: 960px;
+  align-self: center;
+}
+
+.llm-search-box {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.llm-search-input {
+  flex: 1;
+}
+
+.llm-search-input :deep(.el-input__wrapper) {
+  border-radius: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 4px 20px;
+  height: 44px;
+  transition: box-shadow 0.2s ease;
+}
+
+.llm-search-input :deep(.el-input__wrapper:focus-within) {
+  box-shadow: 0 2px 16px rgba(37, 99, 235, 0.15);
+}
+
+.llm-search-btn {
+  border-radius: 24px;
+  padding: 0 24px;
+  height: 44px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.llm-model-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: var(--color-muted);
+  border-radius: var(--radius-md);
+}
+
+.llm-filter-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.llm-model-select {
+  flex: 1;
+  max-width: 500px;
+}
+
+.llm-token-info {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-left: auto;
+}
+
+.llm-loading {
+  padding: 16px 0;
+}
+
+.llm-thinking,
+.llm-analysis {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.llm-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.llm-thinking-content {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.llm-analysis-content {
+  font-size: 14px;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  line-height: 1.8;
+}
+
+.llm-results {
+  margin-bottom: 16px;
+}
+
+.llm-result-section {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.llm-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.llm-result-model {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.llm-result-count {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-left: auto;
+}
+
+.llm-empty {
+  padding: 60px 0;
+}
+
+.llm-history {
+  margin-top: 24px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 16px;
+}
+
+.llm-history-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 8px 0;
+  user-select: none;
+}
+
+.llm-history-toggle:hover {
+  color: var(--color-primary);
+}
+
+.llm-history-list {
+  margin-top: 8px;
+}
+
+.llm-history-item {
+  padding: 12px;
+  background: var(--color-muted);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+}
+
+.llm-history-question {
+  font-size: 14px;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+}
+
+.llm-history-answer {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  padding-left: 20px;
+}
+
+.llm-history-role {
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-right: 6px;
+}
+
+.llm-history-time {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-left: 8px;
+}
+
+.llm-slide-enter-active,
+.llm-slide-leave-active {
+  transition: all 0.2s ease;
+}
+
+.llm-slide-enter-from,
+.llm-slide-leave-to {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+}
+
+.llm-slide-enter-to,
+.llm-slide-leave-from {
+  max-height: 500px;
 }
 </style>
