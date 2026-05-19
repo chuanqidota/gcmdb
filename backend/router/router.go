@@ -107,6 +107,10 @@ func Engine() *gin.Engine {
 		cmdb.GET("audit-log", auditApi.Audit.ListAuditLog)                                    // 查询审计日志
 		cmdb.GET("audit-log/:resource_type/:resource_id", auditApi.Audit.RetrieveAuditLog)    // 查询资源审计历史
 
+		// 大模型搜索
+		cmdb.POST("llm-search", cmdbApi.LLMSearch.Search)             // 大模型搜索
+		cmdb.POST("llm-search/clear", cmdbApi.LLMSearch.ClearSession) // 清空会话
+
 		// 首页统计
 		cmdb.GET("stats", cmdbApi.Stats.GetStats) // 首页统计数据
 
