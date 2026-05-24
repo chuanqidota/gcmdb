@@ -1,7 +1,7 @@
 services:
   # mysql
   mysql:
-    image: mysql:8
+    image: docker.1ms.run/library/mysql:8.4.9
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root

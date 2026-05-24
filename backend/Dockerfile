@@ -1,4 +1,4 @@
-FROM golang:1.25-alpine AS builder
+FROM docker.1ms.run/library/golang:1.25.10 AS builder
 RUN go env -w GO111MODULE=on \
     && go env -w CGO_ENABLED=0 \
     && go env -w GOOS=linux \
@@ -10,7 +10,7 @@ RUN go mod download
 COPY . .
 RUN go build -o gcmdb main.go
 
-FROM alpine:3
+FROM docker.1ms.run/library/alpine:3.22.4
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /opt/data
 COPY --from=builder /opt/data/gcmdb .
