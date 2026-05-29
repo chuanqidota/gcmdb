@@ -689,7 +689,7 @@ function switchTab(name) {
 }
 
 // Composables
-const { ft, doFulltextSearch } = useFulltext()
+const { ft, doFulltextSearch } = useFulltext(allModels)
 const {
   inst, instRelationCache, instRelations,
   onModelChange, doInstanceSearch, calcColWidth, resetInstance, addOrGroup,

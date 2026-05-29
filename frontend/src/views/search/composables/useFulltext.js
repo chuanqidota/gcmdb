@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { fulltextSearch, searchInstance } from '../../../api/search'
 
-export function useFulltext() {
+export function useFulltext(allModels) {
   const ft = ref({
     keyword: '',
     modelAlias: '',
@@ -40,9 +40,11 @@ export function useFulltext() {
         }
         const res = await searchInstance(body)
         const results = res.data?.results || []
+        const selectedModel = allModels?.value?.find(m => m.alias === ft.value.modelAlias)
+        const modelName = selectedModel?.name || ft.value.modelAlias
         ft.value.results = results.map(r => ({
           id: r.id,
-          model_name: ft.value.modelAlias,
+          model_name: modelName,
           model_alias: ft.value.modelAlias,
           data: Object.fromEntries(Object.entries(r).filter(([k]) => !['id', 'model_id', 'model_alias'].includes(k))),
         }))
